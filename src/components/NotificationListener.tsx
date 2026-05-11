@@ -1,0 +1,162 @@
+import { useEffect, useRef } from 'react';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { useAuth } from './AuthProvider';
+import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
+
+export function NotificationListener() {
+  const { user, role } = useAuth();
+  const { t } = useTranslation();
+  const notifiedOrders = useRef<Set<string>>(new Set());
+  const notifiedMessages = useRef<Set<string>>(new Set());
+  const notifiedSales = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    // Request notification and geolocation permissions
+    const requestPermissions = async () => {
+      try {
+        if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+          await Notification.requestPermission();
+        }
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(() => {}, () => {}, { timeout: 10000 });
+        }
+      } catch (err) {
+        console.warn("Permission request failed", err);
+      }
+    };
+    
+    if (user) {
+      requestPermissions();
+    }
+
+    if (!user) return;
+
+    const unsubscribers: (() => void)[] = [];
+
+    // 1. Order Notifications
+    if (role === 'pharmacist' || role === 'vendor') {
+      const q = query(collection(db, 'orders'), where('pharmacyId', '==', user.uid), where('status', '==', 'pending'));
+      const unsub = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const order = change.doc.data();
+            if (!notifiedOrders.current.has(change.doc.id)) {
+              notifiedOrders.current.add(change.doc.id);
+              // Only notify if recent
+              const isRecent = order.createdAt?.toMillis && (Date.now() - order.createdAt.toMillis() < 60000 * 5); // 5 mins
+              if (isRecent) {
+                toast(t("new_order_pharmacist_toast", "New order received!"), { icon: '🔔' });
+                if (Notification.permission === 'granted') {
+                  new Notification(t("new_order", "New Order"), {
+                    body: t("new_order_pharmacist_desc", "A new order is waiting for your approval."),
+                  });
+                }
+              }
+            }
+          }
+        });
+      });
+      unsubscribers.push(unsub);
+    } else if (role === 'driver') {
+      const q = query(collection(db, 'orders'), where('status', '==', 'ready'));
+      const unsub = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const order = change.doc.data();
+            if (!notifiedOrders.current.has(change.doc.id)) {
+              notifiedOrders.current.add(change.doc.id);
+              toast(t("new_order_toast", "New order available for delivery!"), { icon: '🚚' });
+              if (Notification.permission === 'granted') {
+                new Notification(t("new_order", "New Order"), {
+                  body: t("new_order_desc", "An order is ready to be delivered."),
+                });
+              }
+            }
+          }
+        });
+      });
+      unsubscribers.push(unsub);
+    } else if (role === 'patient') {
+      const q = query(collection(db, 'orders'), where('patientId', '==', user.uid));
+      const unsub = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'modified') {
+            const order = change.doc.data();
+            
+            let body = '';
+            let title = t('order_update', 'Order Update');
+            if (order.status === 'out_for_delivery') body = t('order_out_for_delivery', 'Your order is out for delivery!');
+            else if (order.status === 'delivered') body = t('order_delivered', 'Your order has been delivered!');
+            else if (order.status === 'cancelled') body = `${t('order_cancelled', 'Your order was cancelled.')} ${order.cancellationReason || ''}`;
+            else if (order.status === 'rejected') body = `${t('order_rejected', 'Your order was rejected.')} ${order.cancellationReason || ''}`;
+            
+            if (body) {
+              toast(body, { icon: order.status === 'cancelled' || order.status === 'rejected' ? '❌' : '📦' });
+              if (Notification.permission === 'granted') {
+                new Notification(title, { body });
+              }
+            }
+          }
+        });
+      });
+      unsubscribers.push(unsub);
+    }
+
+    // 2. Message Notifications
+    if (role === 'patient' || role === 'driver' || role === 'pharmacy') {
+      const messagesQ = query(collection(db, 'messages'), where('receiverId', '==', user.uid));
+      const unsubMessages = onSnapshot(messagesQ, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const msg = change.doc.data();
+            if (!notifiedMessages.current.has(change.doc.id)) {
+              notifiedMessages.current.add(change.doc.id);
+              // Only notify if it's recent (within last minute) to avoid spam on initial load
+              const isRecent = msg.createdAt?.toMillis && (Date.now() - msg.createdAt.toMillis() < 60000);
+              if (isRecent) {
+                 toast(t('new_message_received', 'New message received!'), { icon: '💬' });
+                 if (Notification.permission === 'granted') {
+                   new Notification(t('new_message', 'New Message'), {
+                     body: msg.text.substring(0, 50) + (msg.text.length > 50 ? '...' : ''),
+                   });
+                 }
+              }
+            }
+          }
+        });
+      });
+      unsubscribers.push(unsubMessages);
+    }
+
+    // 3. Flash Sales Notifications (For patients primarily, but can be for anyone)
+    const salesQ = query(collection(db, 'flash_sales'));
+    const unsubSales = onSnapshot(salesQ, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const sale = change.doc.data();
+          if (!notifiedSales.current.has(change.doc.id)) {
+            notifiedSales.current.add(change.doc.id);
+            const isRecent = sale.createdAt?.toMillis && (Date.now() - sale.createdAt.toMillis() < 60000);
+            if (isRecent && role === 'patient') {
+               toast(`${t('flash_sale', 'Flash Sale!')} ${sale.title}`, { icon: '⚡' });
+               if (Notification.permission === 'granted') {
+                 new Notification(t('flash_sale_emoji', 'Flash Sales 🔥'), {
+                   body: `${sale.title}: ${sale.discountPercentage}% ${t('off', 'off')}.`,
+                 });
+               }
+            }
+          }
+        }
+      });
+    });
+    unsubscribers.push(unsubSales);
+
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
+  }, [user, role]);
+
+  return null;
+}

@@ -1,0 +1,112 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile containing role and basic info.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["patient", "pharmacy", "driver", "admin"] },
+        "name": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["email", "role", "name", "createdAt"]
+    },
+    "Pharmacy": {
+      "title": "Pharmacy",
+      "description": "Pharmacy details.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "rating": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "address", "ownerId", "rating", "createdAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Medicine or product available.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "price": { "type": "number" },
+        "pharmacyId": { "type": "string" },
+        "needsPrescription": { "type": "boolean" },
+        "stock": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "category", "price", "pharmacyId", "needsPrescription", "stock", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "An order placed by a patient.",
+      "type": "object",
+      "properties": {
+        "patientId": { "type": "string" },
+        "pharmacyId": { "type": "string" },
+        "driverId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "substitution_proposed", "processing", "out_for_delivery", "delivered", "cancelled"] },
+        "total": { "type": "number" },
+        "items": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["patientId", "pharmacyId", "status", "total", "items", "createdAt", "updatedAt"]
+    },
+    "Prescription": {
+      "title": "Prescription",
+      "description": "Prescription uploaded by a patient.",
+      "type": "object",
+      "properties": {
+        "patientId": { "type": "string" },
+        "pharmacyId": { "type": "string" },
+        "fileUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "reviewed", "rejected"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["patientId", "fileUrl", "status", "createdAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Chat message between users concerning an order.",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["orderId", "senderId", "receiverId", "text", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "/pharmacies/{pharmacyId}": {
+      "schema": { "$ref": "#/entities/Pharmacy" },
+      "description": "Pharmacies"
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Products available"
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Orders"
+    },
+    "/prescriptions/{prescriptionId}": {
+      "schema": { "$ref": "#/entities/Prescription" },
+      "description": "Prescriptions"
+    },
+    "/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Chat messages"
+    }
+  }
+}

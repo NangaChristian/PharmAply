@@ -1,6 +1,8 @@
 import { History, Star, Bug, Rocket } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function AdminChangelog() {
+    const { t } = useTranslation();
   const versions = [
     {
       version: "v2.1.0",
@@ -39,8 +41,8 @@ export function AdminChangelog() {
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
       <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0">
-         <h1 className="font-bold text-gray-900 text-2xl mb-1">Changelog</h1>
-         <p className="text-gray-500 text-sm">Platform updates and release notes</p>
+         <h1 className="font-bold text-gray-900 text-2xl mb-1"> {t('changelog', 'Changelog')} </h1>
+         <p className="text-gray-500 text-sm"> {t('platform_updates_and_release_n', 'Platform updates and release notes')} </p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 max-w-3xl">

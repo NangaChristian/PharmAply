@@ -1,6 +1,8 @@
 import { Book, Code, Terminal, Server } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function AdminDocumentation() {
+    const { t } = useTranslation();
   const sections = [
     {
       title: "Platform Overview",
@@ -35,8 +37,8 @@ export function AdminDocumentation() {
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
       <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0">
-         <h1 className="font-bold text-gray-900 text-2xl mb-1">Documentation</h1>
-         <p className="text-gray-500 text-sm">System architecture, API docs, and platform guidelines</p>
+         <h1 className="font-bold text-gray-900 text-2xl mb-1"> {t('documentation', 'Documentation')} </h1>
+         <p className="text-gray-500 text-sm"> {t('system_architecture_api_docs_a', 'System architecture, API docs, and platform guidelines')} </p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 space-y-6">

@@ -11,7 +11,7 @@ export function RoleLayout({ role }: RoleLayoutProps) {
 
   return (
     <div className="flex-1 flex flex-col relative h-full overflow-hidden">
-      <div className="flex-1 overflow-x-hidden overflow-y-auto relative pb-[70px]">
+      <div className="flex-1 overflow-x-hidden overflow-y-auto relative">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -19,7 +19,7 @@ export function RoleLayout({ role }: RoleLayoutProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="min-h-full"
+            className="flex-1 flex flex-col h-full"
           >
             <Outlet />
           </motion.div>

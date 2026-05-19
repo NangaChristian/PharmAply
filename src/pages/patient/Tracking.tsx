@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle, Package, Truck, Home, Phone } from "lucide-react";
+import { ArrowLeft, CheckCircle, Package, Truck, Home, Phone, Star } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
@@ -69,12 +69,12 @@ export function PatientTracking() {
   ];
 
   return (
-    <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="px-6 pt-12 pb-4 flex items-center justify-between bg-white shadow-sm z-10">
-         <button onClick={() => navigate('/patient')} className="w-10 h-10 flex items-center justify-center bg-gray-50 rounded-full">
-            <ArrowLeft size={20} className="text-gray-900" />
+    <div className="flex-1 bg-slate-50 dark:bg-black flex flex-col h-full overflow-hidden">
+      <div className="px-6 pt-12 pb-4 flex items-center justify-between bg-white dark:bg-black shadow-sm z-10">
+         <button onClick={() => navigate('/patient')} className="w-10 h-10 flex items-center justify-center bg-gray-50 dark:bg-black rounded-full">
+            <ArrowLeft size={20} className="text-gray-900 dark:text-white" />
          </button>
-         <h1 className="font-bold text-gray-900 text-sm">{t('delivery_status', 'Delivery Status')}</h1>
+         <h1 className="font-bold text-gray-900 dark:text-white text-sm">{t('delivery_status', 'Delivery Status')}</h1>
          <div className="w-10"></div>
       </div>
 
@@ -93,26 +93,30 @@ export function PatientTracking() {
                 </Marker>
             </MapContainer>
             
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-48 bg-white/95 backdrop-blur-md p-3 rounded-2xl shadow-lg flex items-center gap-3">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-48 bg-white dark:bg-black/95 backdrop-blur-md p-3 rounded-2xl shadow-lg flex items-center gap-3">
                <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600">
                   <Truck size={18} />
                </div>
                <div>
-                  <p className="font-bold text-gray-900 text-sm">{t('arriving_in', 'Arriving in')}</p>
+                  <p className="font-bold text-gray-900 dark:text-white text-sm">{t('arriving_in', 'Arriving in')}</p>
                   <p className="font-bold text-indigo-600">{eta > 0 ? `${eta} ${t('mins', 'mins')}` : t('arrived', 'Arrived')}</p>
                </div>
             </div>
          </div>
 
          {/* Driver Info */}
-         <div className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between shadow-sm">
+         <div className="bg-white dark:bg-black p-4 rounded-2xl border border-gray-100 dark:border-zinc-800 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-3">
                <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden">
                    <img src="https://i.pravatar.cc/150?u=b042581f4e29026704z" alt="Driver" className="w-full h-full object-cover" />
                </div>
                <div>
-                  <p className="font-bold text-gray-900 text-sm">Ahmed Hassan</p>
-                  <p className="text-xs text-gray-500">{t('delivery_driver', 'Delivery Driver')} &bull; 4.9 <Star size={10} className="inline fill-yellow-400 text-yellow-400" /></p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-gray-900 dark:text-white text-sm"> {t('ahmed_hassan', 'Ahmed Hassan')} </p>
+                    <span className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-green-200">
+                      <CheckCircle size={10} />  {t('verified', 'Verified')} </span>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">{t('delivery_driver', 'Delivery Driver')}  {t('bull_4_9', '&bull; 4.9')} <Star size={10} className="inline fill-yellow-400 text-yellow-400" /></p>
                </div>
             </div>
             <div className="flex gap-2">
@@ -126,24 +130,24 @@ export function PatientTracking() {
          </div>
 
          {/* Timeline */}
-         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <h3 className="font-bold text-gray-900 mb-6">{t('order_status', 'Order #{{id}} Status').replace('{{id}}', id || '1123')}</h3>
+         <div className="bg-white dark:bg-black p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm">
+            <h3 className="font-bold text-gray-900 dark:text-white mb-6">{t('order_status', 'Order #{{id}} Status').replace('{{id}}', id || '1123')}</h3>
             <div className="space-y-6 relative">
-               <div className="absolute left-[15px] top-[20px] bottom-[20px] w-0.5 bg-gray-100"></div>
+               <div className="absolute left-[15px] top-[20px] bottom-[20px] w-0.5 bg-gray-100 dark:bg-zinc-900"></div>
                {statuses.map((status, index) => {
                  const Icon = status.icon;
                  return (
                    <div key={index} className="flex gap-4 relative z-10">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-4 border-white shadow-sm ${
                         status.completed ? 'bg-indigo-600 text-white' : 
-                        status.active ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-gray-100 text-gray-400'
+                        status.active ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-gray-100 dark:bg-zinc-900 text-gray-400 dark:text-gray-500'
                       }`}>
                          <Icon size={14} className={status.completed ? 'fill-current opacity-80' : ''} />
                       </div>
                       <div className="pt-1.5 flex-1 flex justify-between items-start">
                          <div>
-                            <p className={`font-bold text-sm ${status.active || status.completed ? 'text-gray-900' : 'text-gray-400'}`}>{status.label}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{status.date}</p>
+                            <p className={`font-bold text-sm ${status.active || status.completed ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>{status.label}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-0.5">{status.date}</p>
                          </div>
                       </div>
                    </div>
@@ -157,6 +161,4 @@ export function PatientTracking() {
   );
 }
 
-function Star(props: any) {
-  return <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
-}
+ 

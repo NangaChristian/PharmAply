@@ -1,8 +1,8 @@
 import React, { useState, useRef } from "react";
 import { ArrowLeft, Camera, Upload, CheckCircle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from '../../lib/firebase';
+import { collection, addDoc, serverTimestamp } from '../../lib/firebase';
 import { db, storage, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { useTranslation } from "react-i18next";
@@ -49,14 +49,14 @@ export function PatientPrescriptionUpload() {
             );
           });
         } catch (storageErr: any) {
-          console.warn("Storage upload failed, using placeholder url for prototype:", storageErr);
-          setProgress(100);
-          fileUrl = `https://via.placeholder.com/800x1000.png?text=${encodeURIComponent(file.name)}`;
+          console.error("Storage upload failed:", storageErr);
+          throw storageErr;
         }
 
         await addDoc(collection(db, 'prescriptions'), {
            patientId: user.uid,
            fileUrl: fileUrl,
+           fileName: file.name,
            status: 'pending_review',
            createdAt: serverTimestamp()
         });
@@ -72,12 +72,12 @@ export function PatientPrescriptionUpload() {
   };
 
   return (
-    <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="px-6 pt-12 pb-4 flex items-center gap-4 bg-white shadow-sm z-10">
-         <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center bg-gray-50 rounded-full">
-            <ArrowLeft size={20} className="text-gray-900" />
+    <div className="flex-1 bg-slate-50 dark:bg-black flex flex-col h-full overflow-hidden">
+      <div className="px-6 pt-12 pb-4 flex items-center gap-4 bg-white dark:bg-black shadow-sm z-10">
+         <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center bg-gray-50 dark:bg-black rounded-full">
+            <ArrowLeft size={20} className="text-gray-900 dark:text-white" />
          </button>
-         <h1 className="font-bold text-gray-900 text-lg">{t('send_prescription', 'Send Prescription')}</h1>
+         <h1 className="font-bold text-gray-900 dark:text-white text-lg">{t('send_prescription', 'Send Prescription')}</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 flex flex-col">
@@ -98,7 +98,7 @@ export function PatientPrescriptionUpload() {
                    <button 
                      disabled={uploading}
                      onClick={() => fileInputRef.current?.click()} 
-                     className="bg-white border-2 border-dashed border-indigo-200 rounded-3xl flex flex-col items-center justify-center gap-3 hover:bg-indigo-50 transition text-indigo-600 disabled:opacity-50 overflow-hidden relative"
+                     className="bg-white dark:bg-black border-2 border-dashed border-indigo-200 rounded-3xl flex flex-col items-center justify-center gap-3 hover:bg-indigo-50 transition text-indigo-600 disabled:opacity-50 overflow-hidden relative"
                    >
                       {uploading ? (
                          <div className="flex flex-col items-center w-full px-8">
@@ -122,8 +122,8 @@ export function PatientPrescriptionUpload() {
                 <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
                    <CheckCircle size={40} />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">{t('prescription_sent', 'Prescription Sent!')}</h2>
-                <p className="text-sm text-gray-500 mb-8 max-w-[250px]">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{t('prescription_sent', 'Prescription Sent!')}</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-8 max-w-[250px]">
                    {t('prescription_sent_desc', 'The pharmacy is reviewing your prescription. You will receive a quote shortly.')}
                 </p>
                 <div className="w-full space-y-3">
@@ -135,7 +135,7 @@ export function PatientPrescriptionUpload() {
                    </button>
                    <button 
                      onClick={() => navigate('/patient/orders')} 
-                     className="w-full bg-slate-200 text-slate-800 font-bold py-4 rounded-xl"
+                     className="w-full bg-slate-200 text-slate-800 dark:text-slate-100 font-bold py-4 rounded-xl"
                    >
                       {t('view_orders', 'View Orders')}
                    </button>

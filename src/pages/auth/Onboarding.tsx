@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
-import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from '../../lib/firebase';
 import { auth, googleProvider, db, handleFirestoreError, OperationType } from '../../lib/firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from '../../lib/firebase';
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../components/AuthProvider";
 import toast from 'react-hot-toast';
@@ -78,11 +78,12 @@ export function Onboarding() {
     setLoading(true);
     setErrorText("");
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const userDocRef = doc(db, 'users', result.user.uid);
+      const result: any = await signInWithPopup(auth, googleProvider);
+      const userUid = result.user?.uid || result.user?.id || 'google_auth_placeholder';
+      const userDocRef = doc(db, 'users', userUid);
       const userDoc = await getDoc(userDocRef);
 
-      const isAppAdmin = result.user.email === 'admin@pharmaply.com';
+      const isAppAdmin = result.user?.email === 'admin@pharmaply.com';
       let finalRole = isAppAdmin ? 'admin' : selectedRole;
 
       if (!userDoc.exists()) {
@@ -93,8 +94,8 @@ export function Onboarding() {
            return;
         }
         const userData: any = {
-          email: result.user.email,
-          name: result.user.displayName || result.user.email?.split('@')[0],
+          email: result.user?.email || 'unknown',
+          name: result.user?.displayName || result.user?.email?.split('@')[0] || 'Unknown User',
           role: finalRole,
           createdAt: serverTimestamp(),
         };
@@ -265,7 +266,7 @@ export function Onboarding() {
                </div>
                
                <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('choose_language')}</h2>
-               <p className="text-gray-500 mb-10 text-center">Select your preferred language to get started.</p>
+               <p className="text-gray-500 mb-10 text-center"> {t('select_your_preferred_language', 'Select your preferred language to get started.')} </p>
                
                <div className="w-full max-w-sm space-y-4">
                   <button
@@ -274,7 +275,7 @@ export function Onboarding() {
                   >
                      <div className="flex items-center gap-4">
                         <span className="text-2xl">🇺🇸</span>
-                        <span className="font-bold text-gray-900 text-base">English</span>
+                        <span className="font-bold text-gray-900 text-base"> {t('english', 'English')} </span>
                      </div>
                      <div className="w-6 h-6 rounded-full border-2 border-gray-200 flex items-center justify-center"></div>
                   </button>
@@ -285,7 +286,18 @@ export function Onboarding() {
                   >
                      <div className="flex items-center gap-4">
                         <span className="text-2xl">🇫🇷</span>
-                        <span className="font-bold text-gray-900 text-base">Français</span>
+                        <span className="font-bold text-gray-900 text-base"> {t('fran_ais', 'Français')} </span>
+                     </div>
+                     <div className="w-6 h-6 rounded-full border-2 border-gray-200 flex items-center justify-center"></div>
+                  </button>
+
+                  <button
+                     onClick={() => { i18n.changeLanguage('ar'); setStep(2); }}
+                     className="w-full flex items-center justify-between p-5 rounded-2xl border-2 transition-all duration-200 border-gray-100 bg-white hover:border-[#344fb1] hover:bg-indigo-50/30"
+                  >
+                     <div className="flex items-center gap-4">
+                        <span className="text-2xl">🇦🇪</span>
+                        <span className="font-bold text-gray-900 text-base">العربية</span>
                      </div>
                      <div className="w-6 h-6 rounded-full border-2 border-gray-200 flex items-center justify-center"></div>
                   </button>
@@ -467,16 +479,16 @@ export function Onboarding() {
                   <form onSubmit={handleEmailAuth} className="space-y-4 flex-1 overflow-y-auto px-1">
                      {authMode === 'signup' && (
                         <div>
-                           <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                           <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#344fb1] outline-none transition" placeholder="John Doe" required />
+                           <label className="block text-sm font-medium text-gray-700 mb-1"> {t('full_name', 'Full Name')} </label>
+                           <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#344fb1] outline-none transition" placeholder={t('john_doe', 'John Doe')} required />
                         </div>
                      )}
                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#344fb1] outline-none transition" placeholder="email@example.com" required />
+                        <label className="block text-sm font-medium text-gray-700 mb-1"> {t('email_address', 'Email Address')} </label>
+                        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#344fb1] outline-none transition" placeholder={t('email_example_com', 'email@example.com')} required />
                      </div>
                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1"> {t('password', 'Password')} </label>
                         <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#344fb1] outline-none transition" placeholder="••••••••" required minLength={6} />
                      </div>
                      
@@ -487,8 +499,7 @@ export function Onboarding() {
                            onClick={() => navigate('/forget-password')} 
                            className="text-sm font-bold text-[#344fb1] hover:underline"
                          >
-                           Forget Password?
-                         </button>
+                            {t('forget_password', 'Forget Password?')} </button>
                        </div>
                      )}
 
@@ -502,7 +513,7 @@ export function Onboarding() {
                      
                      <div className="relative flex items-center py-4">
                         <div className="flex-grow border-t border-gray-200"></div>
-                        <span className="flex-shrink-0 mx-4 text-gray-400 text-sm">Or continue with</span>
+                        <span className="flex-shrink-0 mx-4 text-gray-400 text-sm"> {t('or_continue_with', 'Or continue with')} </span>
                         <div className="flex-grow border-t border-gray-200"></div>
                      </div>
 
@@ -518,8 +529,7 @@ export function Onboarding() {
                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                         </svg>
-                        Google
-                     </button>
+                         {t('google', 'Google')} </button>
                   </form>
 
                   <div className="mt-4 pt-4 border-t border-gray-100 text-center">

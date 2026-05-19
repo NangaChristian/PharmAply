@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Store, FileText, CheckCircle, Upload } from 'lucide-react';
 import { auth, db, storage } from '../../lib/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { createUserWithEmailAndPassword } from '../../lib/firebase';
+import { doc, setDoc, serverTimestamp } from '../../lib/firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from '../../lib/firebase';
 import toast from 'react-hot-toast';
+import { useTranslation } from "react-i18next";
 
 export function PharmacistRegistration() {
+    const { t } = useTranslation();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -65,8 +67,8 @@ export function PharmacistRegistration() {
           const uploadTask = await uploadBytesResumable(fileRef, files.operatingLicense);
           operatingLicenseUrl = await getDownloadURL(uploadTask.ref);
         } catch (storageErr) {
-          console.warn("Storage upload failed, mocked for prototype", storageErr);
-          operatingLicenseUrl = `https://via.placeholder.com/800x600.png?text=Operating+License`;
+          console.error("Storage upload failed", storageErr);
+          throw storageErr;
         }
       }
 
@@ -76,8 +78,8 @@ export function PharmacistRegistration() {
           const uploadTask = await uploadBytesResumable(fileRef, files.taxpayerCard);
           taxpayerCardUrl = await getDownloadURL(uploadTask.ref);
         } catch (storageErr) {
-          console.warn("Storage upload failed, mocked for prototype", storageErr);
-          taxpayerCardUrl = `https://via.placeholder.com/800x600.png?text=Taxpayer+Card`;
+          console.error("Storage upload failed", storageErr);
+          throw storageErr;
         }
       }
 
@@ -122,7 +124,7 @@ export function PharmacistRegistration() {
         <button onClick={() => step > 1 && step < 4 ? prevStep() : navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
           <ArrowLeft size={24} className="text-gray-900" />
         </button>
-        <h1 className="font-bold text-gray-900 text-lg">Pharmacy Registration</h1>
+        <h1 className="font-bold text-gray-900 text-lg"> {t('pharmacy_registration', 'Pharmacy Registration')} </h1>
       </div>
 
       <div className="flex-1 overflow-y-auto w-full flex flex-col pt-6 pb-20">
@@ -152,25 +154,25 @@ export function PharmacistRegistration() {
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center"><Store size={24} /></div>
                   <div>
-                    <h2 className="font-bold text-gray-900 text-lg">Account & Pharmacy Details</h2>
-                    <p className="text-xs text-gray-500">Basic information</p>
+                    <h2 className="font-bold text-gray-900 text-lg"> {t('account_pharmacy_details', 'Account & Pharmacy Details')} </h2>
+                    <p className="text-xs text-gray-500"> {t('basic_information', 'Basic information')} </p>
                   </div>
                 </div>
 
                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                   <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="pharmacy@example.com" />
+                   <label className="block text-sm font-medium text-gray-700 mb-1"> {t('email_address', 'Email Address')} </label>
+                   <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder={t('pharmacy_example_com', 'pharmacy@example.com')} />
                 </div>
                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                   <label className="block text-sm font-medium text-gray-700 mb-1"> {t('password', 'Password')} </label>
                    <input type="password" name="password" value={formData.password} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="••••••••" />
                 </div>
                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Pharmacy Name</label>
-                   <input type="text" name="pharmacyName" value={formData.pharmacyName} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="e.g. HealthFirst Pharmacy" />
+                   <label className="block text-sm font-medium text-gray-700 mb-1"> {t('pharmacy_name', 'Pharmacy Name')} </label>
+                   <input type="text" name="pharmacyName" value={formData.pharmacyName} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder={t('e_g_healthfirst_pharmacy', 'e.g. HealthFirst Pharmacy')} />
                 </div>
                 
-                <button onClick={nextStep} disabled={!formData.email || !formData.password || !formData.pharmacyName} className="w-full py-4 mt-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition">Continue</button>
+                <button onClick={nextStep} disabled={!formData.email || !formData.password || !formData.pharmacyName} className="w-full py-4 mt-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition"> {t('continue', 'Continue')} </button>
               </div>
             )}
 
@@ -179,25 +181,25 @@ export function PharmacistRegistration() {
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center"><Store size={24} /></div>
                   <div>
-                    <h2 className="font-bold text-gray-900 text-lg">Owner & Location Info</h2>
-                    <p className="text-xs text-gray-500">Contact details</p>
+                    <h2 className="font-bold text-gray-900 text-lg"> {t('owner_location_info', 'Owner & Location Info')} </h2>
+                    <p className="text-xs text-gray-500"> {t('contact_details', 'Contact details')} </p>
                   </div>
                 </div>
 
                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Owner Full Name</label>
-                   <input type="text" name="ownerName" value={formData.ownerName} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="John Doe" />
+                   <label className="block text-sm font-medium text-gray-700 mb-1"> {t('owner_full_name', 'Owner Full Name')} </label>
+                   <input type="text" name="ownerName" value={formData.ownerName} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder={t('john_doe', 'John Doe')} />
                 </div>
                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Pharmacy Address</label>
-                   <input type="text" name="address" value={formData.address} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="e.g. Makepe, Douala" />
+                   <label className="block text-sm font-medium text-gray-700 mb-1"> {t('pharmacy_address', 'Pharmacy Address')} </label>
+                   <input type="text" name="address" value={formData.address} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder={t('e_g_makepe_douala', 'e.g. Makepe, Douala')} />
                 </div>
                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                   <input type="text" name="phoneNumber" value={formData.phoneNumber} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="+237 6XX XXX XXX" />
+                   <label className="block text-sm font-medium text-gray-700 mb-1"> {t('phone_number', 'Phone Number')} </label>
+                   <input type="text" name="phoneNumber" value={formData.phoneNumber} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder={t('237_6xx_xxx_xxx', '+237 6XX XXX XXX')} />
                 </div>
                 
-                <button onClick={nextStep} disabled={!formData.ownerName || !formData.address || !formData.phoneNumber} className="w-full py-4 mt-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition">Continue to KYC</button>
+                <button onClick={nextStep} disabled={!formData.ownerName || !formData.address || !formData.phoneNumber} className="w-full py-4 mt-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition"> {t('continue_to_kyc', 'Continue to KYC')} </button>
               </div>
             )}
 
@@ -206,14 +208,14 @@ export function PharmacistRegistration() {
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center"><FileText size={24} /></div>
                   <div>
-                    <h2 className="font-bold text-gray-900 text-lg">KYC & Verification</h2>
-                    <p className="text-xs text-gray-500">Cameroon Official Documents</p>
+                    <h2 className="font-bold text-gray-900 text-lg"> {t('kyc_verification', 'KYC & Verification')} </h2>
+                    <p className="text-xs text-gray-500"> {t('cameroon_official_documents', 'Cameroon Official Documents')} </p>
                   </div>
                 </div>
 
                 <div>
                    <label className="block text-sm font-medium text-gray-700 mb-1">Business Registration Number (RCCM)</label>
-                   <input type="text" name="registrationNumber" value={formData.registrationNumber} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="RC/DLA/xxxx/B/xxxx" />
+                   <input type="text" name="registrationNumber" value={formData.registrationNumber} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder={t('rc_dla_xxxx_b_xxxx', 'RC/DLA/xxxx/B/xxxx')} />
                 </div>
                 
                 <div className="pt-2">
@@ -225,7 +227,7 @@ export function PharmacistRegistration() {
                       </span>
                       <input type="file" className="hidden" accept=".pdf,image/jpeg,image/png" onChange={(e) => handleFileChange(e, 'operatingLicense')} />
                    </label>
-                   <p className="text-[10px] text-gray-400 mt-2 text-center">Required for approval</p>
+                   <p className="text-[10px] text-gray-400 mt-2 text-center"> {t('required_for_approval', 'Required for approval')} </p>
                 </div>
 
                 <div className="pt-2">
@@ -250,11 +252,10 @@ export function PharmacistRegistration() {
                  <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
                     <CheckCircle size={40} className="fill-current text-white" />
                  </div>
-                 <h2 className="text-2xl font-bold text-gray-900">Application Submitted!</h2>
-                 <p className="text-gray-500 max-w-xs">Your pharmacy registration is under review. Our team will verify your KYC documents within 24-48 hours according to Cameroon regulations.</p>
+                 <h2 className="text-2xl font-bold text-gray-900"> {t('application_submitted', 'Application Submitted!')} </h2>
+                 <p className="text-gray-500 max-w-xs"> {t('your_pharmacy_registration_is_', 'Your pharmacy registration is under review. Our team will verify your KYC documents within 24-48 hours according to Cameroon regulations.')} </p>
                  <button onClick={() => navigate('/pharmacist')} className="w-full py-4 mt-8 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition">
-                    Go to Dashboard
-                 </button>
+                     {t('go_to_dashboard', 'Go to Dashboard')} </button>
               </div>
             )}
          </div>

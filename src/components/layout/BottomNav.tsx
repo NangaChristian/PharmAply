@@ -34,10 +34,10 @@ export function BottomNav({ role }: BottomNavProps) {
   ];
 
   const adminLinks = [
-    { to: "/admin", icon: Home, label: "Dashboard" },
-    { to: "/admin/users", icon: User, label: "Users" },
-    { to: "/admin/finances", icon: FileText, label: "Finances" },
-    { to: "/admin/settings", icon: Settings, label: "Settings" },
+    { to: "/admin", icon: Home, label: t('admin_dashboard', "Dashboard") },
+    { to: "/admin/users", icon: User, label: t('admin_users', "Users") },
+    { to: "/admin/finances", icon: FileText, label: t('admin_finances', "Finances") },
+    { to: "/admin/settings", icon: Settings, label: t('admin_settings_menu', "Settings") },
   ];
 
   const links =
@@ -50,7 +50,7 @@ export function BottomNav({ role }: BottomNavProps) {
       : adminLinks;
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-100 flex items-center justify-between px-6 z-50">
+    <div className="h-16 bg-white dark:bg-black border-t border-gray-100 dark:border-zinc-800 flex items-center justify-between px-6 z-50 transition-colors shrink-0">
       {links.map((link) => {
         const Icon = link.icon;
         return (
@@ -61,7 +61,7 @@ export function BottomNav({ role }: BottomNavProps) {
             className={({ isActive }) =>
               cn(
                 "flex flex-col items-center gap-1 text-xs transition-colors",
-                isActive ? "text-indigo-600" : "text-gray-400"
+                isActive ? "text-indigo-600 dark:text-white" : "text-gray-400 dark:text-white/40"
               )
             }
           >

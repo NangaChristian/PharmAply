@@ -1,0 +1,328 @@
+N° Désignation Dosage Forme
+I.1 -ANESTHESIQUES GENERAUX
+1 Diazépam 5mg/ml Solution injectable
+2 Kétamine 50mg/ml Solution Injectable
+I.2 - ANESTHESIQUES LOCAUX 
+3 Bupivacaïne 0,5% Solution Injectable
+4 Lidocaïne 1% Solution Injectable, gel oral 
+5 Lidocaïne spray 5% Aérosol
+6 Lidocaïne 2% carpule dentaire
+7 Lidocaïne adrenaliné 1% Solution injectable
+I.3 - GAZ MEDICAUX
+8 Halothane
+9 Isoflurane
+I.4 - PREMEDICATION ANESTHESIQUE ET SEDATION POUR INTERVENTIONS DE COURTE DUREE
+10 Atropine 1mg/1ml Solution injectable
+11 Diazépam 5mg/ml Solution injectable
+12 Midazolam 5 mg/ml Solution Injectable
+13 Morphine 10mg/ml Solution Injectable
+14 Vécuronium 4mg/ml Solution injectable
+Partie 2- ANALGESIQUES – ANTIPYRETIQUES – ANTI-INFLAMMATOIRES –ANTIGOUTEUX
+II.1 - ANALGESIQUES ANTIPYRETIQUES
+15 Paracétamol 500mg Comprimé
+16 Métamizole 500mg/5ml Solution Injectable
+17 Ibuprofene +paracetamol 400mg/325mg comprime
+II.2 - ANALGESIQUES - ANTI-INFLAMMATOIRES NON STERODIENS
+18 Acide Acétyl Salicylique (AAS) 500mg Comprimé
+19 Acétylsalicylate de lysine 900mg Solution Injectable
+20 Diclofénac 50 mg Comprimé
+21 Ibuprofène 400mg Comprimé
+22 Ibuprofen + paracétamol 400mg/325mg Comprimé
+II.3 - ANTI-INFLAMMATOIRES STEROIDIENS
+23 Betamethasone 0,10%, pommade, crème
+24 Budésonide 0,5mg/2ml Aérosol
+25 Dexaméthasone 5mg Comprimé
+26 Hydrocortisone 1% Crème, pommade
+27 Methylprednisolone 40mg/2ml Suspension injectable
+28 Prednisolone 5mg Comprimé
+29 Triamcinolone 80mg /2ml Suspension Injectable
+II.4 - ANALGESIQUES OPIACES
+30 Morphine 10mg Comprimé 
+31 Tramadol 50 mg Comprimé
+II.5 - ANTI-GOUTEUX
+32 Allopurinol 100 mg Comprimé
+33 Colchicine 1mg Comprimé
+Partie 3– ANTIHISTAMINIQUES ET ANTIANAPHYLACTIQUES
+34 Adrénaline 0,5 mg Solution injectable
+35 Loratadine 10 mg Comprimé
+36 Mequitazine 10mg Solution buvable
+37 Noradrénaline 2 mg/ml. Solution injectable 
+38 Chlorphéniramine 4mg Comprimé
+Partie 4– ANTIDOTES ET AUTRES MEDICAMENTS UTILISES EN CAS D’INTOXICATION
+IV.1 - ANTIDOTES NON-SPECIFIQUES
+39 Charbon activé 50 g/sachet Granulé ou poudre
+IV.2 - ANTIDOTES SPECIFIQUES 
+40 Atropine 1mg/ml Solution Injectable
+41 Acide folinique 50mg Solution Injectable
+42 Acide Ascorbique (Vitamine C) 1g/5ml Solution Injectable
+43 Bicarbonate de sodium 1,4%; 4,2% Solution Injectable
+44 Deferioxamine (chelateur du fer) 100mg/ml Solution Injectable
+45 Diazépam 5mg/ml Solution Injectable
+46 Flumazénil 0,5mg/5ml Solution Injectable
+47 Gluconate de calcium 100mg/ml Solution Injectable
+48 Hydroxocobalamine 1mg/2ml Solution Injectable
+49 Hyposulfate/Thiosulfate de Sodium 250 mg Comprimé 
+50 Naloxone 0,4mg/ml Solution Injectable
+51 N-Acétyl cystéine 200 mg/ml/10ml Solution Injectable
+52 Phytoménadione (Vitamine K1) 10mg/ml/5ml Solution Injectable
+53 Protamine sulfate 10mg/ml/5ml Solution Injectable
+Partie 5 - ANTIEPILEPTIQUES – ANTICONVULSIVANTS
+54 Acide Valproïque 200mg Comprimé 
+55 Carbamazepine 200mg Comprimé
+56 Diazépam 5mg Comprimé
+57 Phénobarbital 10mg Comprimé
+58 Phenytoïne 100mg Comprimé
+Partie 6 - ANTI-INFECTIEUX
+VI.1.1 – ANTI HELMINTHIQUES
+59 Albendazole 400mg Comprimé
+60 Mébendazole 100mg Comprimé
+61 Niclosamide 500mg Comprimé 
+62 Pipérazine 300mg comprimé
+63 Pyrantel 125mg Comprimé
+VI.1.2 - ANTI HELMINTHIQUES SPECIFIQUES (ANTIFILARIENS)
+64 Diéthylcarbamazine 50mg Comprimé
+65 Ivermectine 3mg Comprimé
+VI.1.3 –SCHISTOSOMICIDES ET ANTITREMATODES
+66 Praziquantel 600 mg Comprimé
+VII.1.4.1 - ANTIPALUDIQUES
+67 Artemether 20mg/ml Solution Injectable
+68 Artemether + Luméfantrine 80mg+480mg Comprimé
+69 Artésunate+Amodiaquine 100mg+270mg Comprimé
+70 Artésunate 60mg/ml Solution Injectable
+71 Artésunate + pyronaridine 60mg+180mg Comprimé
+72 Dihydro-Artémisinine + pipéraquine 40mg/320mg Comprimé
+73 Quinine 200mg Comprimé
+74 Sulfadoxine+Pyriméthamine 500mg+25mg Comprimé
+75 Sulfadoxine-pyriméthamine + amodiaquine 500mg/25mg + 135mg Comprimé dispersible
+VI.1.4.2 – ANTIAMIBIENS
+76 Métronidazole 250mg Comprimé
+77 Tinidazole 500mg Comprimé
+VI.1.4.3 –ANTILEISHMANIENS
+78 Antimoniate de Méglumine 1,5g/ml Solution Injectable
+79 Miltefosine 50mg Comprimé, gélule 
+80 Stibogluconate de Sodium 100mg/ml Solution Injectable
+81 Pentamidine 200 mg/ml PPI
+VI.1.4.4 – TRYPANOCIDES
+82 Eflornitine M Solution Injectable
+83 Mélarsoprol 3,6%/5ml Solution Injectable
+84 Nifurtimox 120mg comprimé
+VI.2 - ANTIBACTERIENS
+85 Ampicilline 500mg PPI
+86 Amoxicilline 500mg Comprimé
+87 Amoxicilline+ Acide Clavulanique 500mg+50mg PPI
+88 Benzathinebenzylpeniclline 1,2 MUI PPI
+89 Benzylpenicilline 1MUI, 5MUI solution injectable
+90 Cloxacilline 500 mg Comprimé
+100 Netilmicine 25mg Solution Injectable
+101 Phénoxyméthyl pénicilline 250mg Comprimé 
+102 Spiramycine 1,5MUI Comprimé 
+103 Flucoxacilline 500mg Comprimé
+104 Acide fusidique 2% crème
+105 Azithromycine 250mg Comprimé
+106 Ceftriaxone 250mg PPI
+107 Cefuroxime 250mg Comprimé
+108 Cefotaxime 500mg/flacon PPI
+109 Cefixime 400mg comprimé
+110 Ciprofloxacine 500mg Comprimé
+111 Clarithromycine 500mg Comprimé
+112 Clindamycine 150mg Comprimé
+113 Doxycycline 100mg Comprimé
+114 Erythromycine 250mg Comprimé
+115 Gentamicine 40mg/ml Solution Injectable
+116 Metronidazole 250mg Comprimé
+117 Ofloxacine 1,5mg/0,5ml gouttes auriculaires
+118 Sulfamethoxazole + Trimetoprime 400mg comprimé
+119 Thiamphenicol 500mg Comprimé
+VI.3 - ANTILEPREUX
+120 Clofazimine 50mg Gélule
+121 Dapsone 25mg Comprimé
+122 Rifampicine 150mg Comprimé
+VI.4 - ANTITUBERCULEUX
+123 Acide para amino salicylique 4g Sachet granulés
+124 Amikacine 500mg Solution Injectable
+125 Capréomycine 1g Solution Injectable
+126 Clofazimine 50mg Capsule
+127 Cyclosérine 250mg comprimé
+128 Diarylquinoleine 400 mg Comprimé
+129 Ethambutol 400mg comprimé
+130 Ethionamide/prothionamide 125mg Comprimé
+131 Gatifloxacine 400mg Comprimé
+132 Isoniazide 100mg Comprimé
+133 Kanamycine 1g Solution Injectable
+134 Lévofloxacine 250mg Comprimé
+135 Linézolide 600 mg Comprimé
+136 Prothionamide 250mg comprimé
+137 Pyrazinamide 400mg Comprimé
+138 Rifampicine 300mg Comprimé
+139 Rifampicine + Isoniazide 150mg+75mg Comprimé
+143 Streptomycine 1g Solution Injectable
+144 Vancomycine 250mg PPI
+Partie 7 - ANTIFONGIQUES
+145 Amphotericine B 50mg/ml PPI
+146 Fluconazole 50mg Gélule
+147 Griséofulvine 500 mg Comprimé
+148 Itraconazole 100mg Gélule
+149 Ketoconazole 2% Crème dermique
+150 Miconazole 2% crème, Pommade, gel
+151 Nystatine 500000UI Comprimé
+152 Terbinafine 250mg comprimé
+Partie 8 - ANTIHERPETIQUES 
+153 Aciclovir 200mg Comprimé
+154 Ganciclovir 250mg Solution Injectable
+PARTIE 9 ANTIRETROVIRAUX 
+155 Abacavir/lamivudine 120mg/60mg Comprimé
+156 Atazanavir(+ritonavir) 300mg/100mg Comprimé
+157 Dolutegravir 50mg comprimé
+158 Lamivudine +Zidovudine 30mg + 60mg Comprimé 
+159 Lopinavir+Ritonavir 100mg/25mg Comprimé
+160 Névirapine 10mg/ml Sirop
+161 Raltegravir 400mg Comprimé
+162 Ritonavir 100mg Comprimé
+163 Tenofovir+Emtricitabine 300mg + 300mg Comprimé
+Partie 9 - ANTI – MIGRAINEUX
+168 Ergotamine 1mg Comprimé
+IX.1 – IMMUNOSUPPRESSEURS
+169 Cyclosporine 25mg Capsule 
+X1.1- ANTIANEMIQUES
+170 Acide folique 5mg Comprimé
+171 Fer 100mg/ml Solution injectable
+172 Sels ferreux 60mg Comprimé 
+XI.2 – ANTICOAGULANTS
+175 Acénocoumarol 1mg Comprimé
+176 Héparines de bas poids moléculaire Solution Injectable
+177 Rivaroxaban 10mg CP
+178 Warfarine 0,5mg Comprimé
+XI.3 – HEMOSTATIQUES
+179 Ethamsylate 250mg/2ml Suspension Injectable
+180 Phytomenadione (Vitamine K1) 10mg/ml Solution Injectable
+181 Acide tranxenamique 500mg Comprimé
+Partie 12 : PRODUITS SANGUINS D’ORIGINE HUMAINE ET SUBSTITUTS DU PLASMA
+182 Concentré globulaire
+Partie 13 - MEDICAMENTS UTILISES EN CARDIOLOGIE ET DIURETIQUES
+XIII.1 - ANTIARYTHMIQUES
+186 Amiodarone 50mg/ml Solution Injectable
+187 Lidocaïne 2% Solution Injectable
+188 Propranolol 40mg Comprimé
+XIII.2 - ANTIHYPERTENSEURS 
+189 Amlodipine 5mg Comprimé
+190 Atenolol 50mg Comprimé
+191 Captopril 25mg Comprimé
+192 Captopril + Hydrochlorathiazide 50mg+25mg Comprimé 
+193 Labetalol 100mg Solution Injectable
+194 Méthyldopa 250mg Comprimé
+195 Nicardipine 20mg Comprimé
+196 Nifedipine 10mg Comprimé
+197 Ramipril 2,5mg Comprimé
+198 Spironolactone 50mg Comprimé
+199 Sulfate de magnesium 5g/10ml Solution Injectable
+XIII.3 – CARDIOTONIQUES
+200 Digoxine 0,25 mg Comprimé
+201 Dobutamine 250mg / 20ml Solution Injectable
+XIII.5 - DIURETIQUES
+206 Furosémide 10mg/ml Solution Injectable
+207 Hydroclorothiazide 25mg Comprimé
+208 Indapamide 1.25mg Comprime
+209 Mannitol 10% Solution Injectable
+XIII.6 - ANTI-AGREGANT PLAQUETTAIRES
+211 Acide Acétylsalicylique 100mg Comprimé
+212 Clopidogrel 75mg Comprimé
+XIII.7 – HYPOLIPEMIANTS
+213 Atorvastatine 10mg Comprimé
+XIV.1 - ANTI-INFECTIEUX
+214 Aureomycine 3% pommade 
+215 Néomycine Bacitracine 5mg + 250UI Pommade 
+216 Permanganate de Potassium 500 mg Comprimé 
+XIV.2 - ANTI-PRURIGINEUX ET ANTI – INFLAMMATOIRES
+217 Calamine Lotion
+218 Crotamiton 10% Crème
+219 Prométhazine 2% Crème
+220 Loratadine 10mg Comprimé
+XIV.3 - ANTI-PARASITAIRES – SCABICIDES ET PEDICULICIDES
+221 Benzoate de Benzyl 25% Lotion
+222 Lindane 1% Crème
+XIV.4 - PROTECTEURS CUTANES
+223 Vaseline 100% Pommade
+224 Vaseline salicylée Pommade
+225 Crème Aqueuse Crème
+226 Oxyde de zinc, 10%/100g pommade
+Partie 15 - DESINFECTANTS ET ANTISEPTIQUES 
+227 Alcool éthylique 70° Solution
+228 Chlorhexidine 5% Solution
+229 Polyvidone iodée 10% Solution 
+XV.2 – DESINFECTANTS
+230 Bleu de méthylène 10% Solution
+231 Chlorure de benzalconium 30% Solution
+232 Eosine 2% Solution 
+233 Formol 1% solution
+234 Hypochlorite de sodium 0,50% Solution concentrée
+235 Peroxyde d’hydrogène 10% Solution 
+XVI.2 - PRODUITS DE DIAGNOSTIC UTILISES EN OPHTALMOLOGIE
+237 Fluoreceïne sodique 10% solution
+Partie 17 - MEDICAMENTS UTILISES EN GASTROENTEROLOGIE
+XVII.1 - ANTIACIDES ET AUTRES PANSEMENTS GASTRIQUES 
+238 Diosmectite 3g Gel en sachet 
+239 Hydroxyde d’aluminium 500mg Comprimé
+240 Hydroxyde de Magnésium 500mg Comprimé
+XVII.2 - ANTI ULCEREUX 
+241 Cimétidine 200mg comprimé
+242 Ranitidine 150mg Comprimé
+243 Oméprazole 20mg Gélule /comprimé
+XVII.3 - ANTI EMETIQUES
+244 Dompéridone 10 mg Comprimé
+245 Métopimazine 7,5mg Comprimé
+246 METOCLOPRAMIDE 10 mg Comprimé
+XVII.4 – ANTISPASMODIQUES
+247 Drotaverine 40 mg ; Comprimé 
+248 Phloroglucinol 80mg ; 160mg Comprimé 
+249 Trimébutine 24mg/5ml suspension buvable
+XVII.5.1. – ANTIDIARRHEIQUES
+250 Lopéramide 2mg Gélule
+XVII.5.2. -REHYDRATATION ORALE 
+251 SRO+Zinc Kit poudre sachet
+XVII.6 - LAXATIFS
+252 Bisacodyl 5mg comprimé
+254 Huile de paraffine
+255 Lactulose 15mg Sachet
+XVII.7 – ANTIHEMORROIDAIRES
+256 Flavonoide 500mg comprime 
+XVIII.1 - CONTRACEPTIFS-HORMONAUX
+258 Dispositif intra-utérin libérant du 20µg/jour
+259 Norgestrel 0,075mg Comprimé
+261 Levonorgestrel 1,5mg Comprimé
+XVIII.2 - AUTRES CONTRACEPTIFS
+262 Condoms masculins
+263 Condoms féminins
+264 Dispositif Intra Utérin (DIU)
+XVIII.3.1 – INSULINES
+268 Insuline humaine action rapide 100UI/ml/10ml Solution Injectable
+269 Insuline humaine action intermédiaire 100UI/ml/10ml Solution Injectable
+270 Insuline humaine retard 100UI/ml/10ml Solution Injectable
+XVIII.3.2 - AUTRES ANTIDIABETIQUES
+271 Glibenclamide 5mg Comprimé
+272 Gliclazide 60mg Comprimé
+273 Metformine 500mg Comprimé
+XIX.2 – VACCINS
+281 Antituberculeux (BCG) Solution Injectable
+283 Antitétanique ≥ 40UI/0,5ml Solution Injectable
+Partie 20 - PREPARATIONS OPHTALMIQUES
+296 Atropine 1% Collyre
+297 Cyclopentolate 0,50% Collyre
+298 Tropicamide 0,50% Collyre
+301 Hyaluronate de sodium 0,20% crème
+304 Aciclovir 3% Pommade 
+305 Aureomycine 1,00% pommade
+306 Ciprofloxacine 0,30% Collyre
+308 Tétracycline 1% Pommade ophtalmique 
+311 Acétazolamide 250mg Comprimé
+314 Pilocarpine 2% Collyre
+315 Timolol 0,50% Collyre
+321 Misoprostol 200µg comprimé
+322 Oxytocine 10UI/1ml Solution Injectable
+324 Salbutamol 4mg Comprimé
+325 Terbutaline 5mg Comprimé
+326 Nifédipine 10mg Comprimé
+340 Carbocystéine 5% Sirop 
+341 Salbutamol 100microgrammes / dose Aérosol
+342 Chlorure de sodium (Nacl) 0,9%/250ml Solution
+345 Glucose 5%/500ml Solution Injectable
+353 Nicotinamide 50mg Comprimé 

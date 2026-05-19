@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from '../lib/firebase';
 import { db } from '../lib/firebase';
 
 interface ThemeSettings {
   primaryColor: string;
   logoUrl: string;
+  defaultPharmacyLogo?: string;
   dashboardWelcomeText: string;
   dashboardSubtitleText: string;
 }
@@ -12,6 +13,7 @@ interface ThemeSettings {
 const defaultTheme: ThemeSettings = {
   primaryColor: '#4f46e5', // indigo-600
   logoUrl: '',
+  defaultPharmacyLogo: '',
   dashboardWelcomeText: 'Welcome to our application',
   dashboardSubtitleText: "Here's what is happening today."
 };

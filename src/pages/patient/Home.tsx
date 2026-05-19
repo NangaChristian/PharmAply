@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Tag, Heart, UploadCloud, ChevronRight, Activity, Star, ShoppingBag, Bell, Pill, Store, Thermometer, Sparkles, Sun, HeartPulse, Baby } from "lucide-react";
-import { BottomNav } from "../../components/layout/BottomNav";
-import { collection, query, limit, getDocs } from 'firebase/firestore';
+import { Search, MapPin, Tag, Heart, UploadCloud, ChevronRight, Activity, Star, ShoppingBag, Bell, Pill, Store, Thermometer, Sparkles, Sun, HeartPulse, Baby, CheckCircle, Clock } from "lucide-react";
+
+import { collection, query, limit, getDocs, where } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { useTheme } from '../../components/ThemeProvider';
@@ -18,54 +18,72 @@ export function PatientHome() {
   const [pharmacies, setPharmacies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const PATIENT_CATEGORIES = [
-    { id: '1', name: t('category_cold_flu', 'Cold & Flu'), icon: 'Thermometer' },
-    { id: '2', name: t('category_daily', 'Daily Essentials'), icon: 'Pill' },
-    { id: '3', name: t('category_skin', 'Skin Care'), icon: 'Sparkles' },
-    { id: '4', name: t('category_vitamins', 'Vitamins'), icon: 'Sun' },
-    { id: '5', name: t('category_first_aid', 'First Aid'), icon: 'Cross' },
-    { id: '6', name: t('category_baby', 'Baby Care'), icon: 'Baby' },
-  ];
-
   const suggestions = [
     { type: 'category', text: 'Pain Relief' },
     ...pharmacies.map(p => ({ type: 'pharmacy', text: p.name })),
   ].filter(s => s.text.toLowerCase().includes(search.toLowerCase()));
 
+    const handleSearchClick = (item: any) => {
+      navigate(`/patient/search?q=${encodeURIComponent(item.text)}`);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' && search) {
+        navigate(`/patient/search?q=${encodeURIComponent(search)}`);
+      }
+    };
+    const [categories, setCategories] = useState<any[]>([]);
+
   useEffect(() => {
     const fetchPharmacies = async () => {
       try {
-        const q = query(collection(db, 'pharmacies'), limit(5));
+        const q = query(collection(db, 'pharmacies'), where('status', '==', 'approved'), limit(5));
         const snapshot = await getDocs(q);
         const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setPharmacies(fetched);
       } catch (error) {
-        // Will throw handled error via handleFirestoreError but we catch it to not crash whole UI
         console.error("Failed to fetch pharmacies", error);
       } finally {
         setLoading(false);
       }
     };
+    
+    const fetchCategories = async () => {
+      try {
+        const cq = query(collection(db, 'categories'), limit(6));
+        const snapshot = await getDocs(cq);
+        const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setCategories(fetched);
+      } catch (error) {
+        console.error("Failed to fetch categories", error);
+      }
+    };
+
     fetchPharmacies();
+    fetchCategories();
   }, []);
 
   return (
-    <div className="flex-1 bg-gray-50 flex flex-col relative pb-16 h-full overflow-hidden">
+    <div className="flex-1 bg-gray-50 dark:bg-black flex flex-col relative pb-16 h-full overflow-hidden">
       {/* Header Profile Section */}
-      <div className="bg-white px-6 pt-12 pb-4 rounded-b-[2rem] shadow-sm z-20 flex flex-col gap-4 relative">
+      <div className="bg-white dark:bg-black px-6 pt-12 pb-4 rounded-b-[2rem] shadow-sm z-20 flex flex-col gap-4 relative">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden border-2 border-indigo-100 flex items-center justify-center text-xl text-gray-500 font-bold uppercase">
-              {user?.displayName ? user.displayName[0] : 'U'}
+            <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden border-2 border-indigo-100 flex items-center justify-center text-xl text-gray-500 dark:text-gray-400 font-bold uppercase shrink-0">
+               {user?.photoURL ? (
+                 <img src={user.photoURL} alt={user.displayName || 'User'} className="w-full h-full object-cover" />
+               ) : (
+                 user?.displayName ? user.displayName[0] : 'U'
+               )}
             </div>
             <div>
-              <p className="text-sm text-gray-500">{theme.dashboardWelcomeText} {theme.dashboardWelcomeText === 'Hi 👋' ? (user?.displayName || 'User') : ''}</p>
-              <div className="flex items-center text-gray-900 font-semibold text-sm">
-                {theme.dashboardSubtitleText || <><MapPin size={14} className="text-indigo-600 mr-1" />Select Address</>}
+              <p className="text-lg font-bold text-gray-900 dark:text-white leading-tight">{user?.displayName || 'User'}</p>
+              <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm mt-0.5">
+                {theme.dashboardSubtitleText || <><MapPin size={14} className="text-indigo-600 mr-1" /> {t('select_address', 'Select Address')} </>}
               </div>
             </div>
           </div>
-          <button onClick={() => navigate('/patient/notifications')} className="relative w-10 h-10 flex items-center justify-center bg-gray-50 rounded-full cursor-pointer hover:bg-gray-100 transition">
+          <button onClick={() => navigate('/patient/notifications')} className="relative w-10 h-10 flex items-center justify-center bg-gray-50 dark:bg-black rounded-full cursor-pointer hover:bg-gray-100 dark:bg-zinc-900 transition">
             <Bell size={20} className="text-gray-600" />
             <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
           </button>
@@ -73,33 +91,34 @@ export function PatientHome() {
 
         {/* Search Bar with Autosuggest */}
         <div className="relative mt-2">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" size={20} />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onFocus={() => setShowSuggestions(true)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+            onKeyDown={handleKeyDown}
             placeholder={t('search_placeholder', 'Search medicine, pharmacy...')}
-            className="w-full pl-12 pr-4 py-3.5 bg-gray-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-shadow"
+            className="w-full pl-12 pr-4 py-3.5 bg-gray-100 dark:bg-zinc-900 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-shadow"
           />
           
           {showSuggestions && search && (
-             <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 z-50">
+             <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-black rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-zinc-800 z-50">
                 {suggestions.length > 0 ? (
                    suggestions.map((s, i) => (
-                      <div key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0" onClick={() => navigate('/patient/search')}>
-                         <div className="text-gray-400">
+                      <div key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:bg-black cursor-pointer border-b border-gray-50 last:border-0" onClick={() => handleSearchClick(s)}>
+                         <div className="text-gray-400 dark:text-gray-500">
                             {s.type === 'product' && <Pill size={16} />}
                             {s.type === 'category' && <Search size={16} />}
                             {s.type === 'pharmacy' && <Store size={16} />}
                          </div>
-                         <span className="text-sm font-medium text-gray-900">{s.text}</span>
-                         <span className="text-[10px] text-gray-400 uppercase ml-auto">{s.type}</span>
+                         <span className="text-sm font-medium text-gray-900 dark:text-white">{s.text}</span>
+                         <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase ml-auto">{s.type}</span>
                       </div>
                    ))
                 ) : (
-                   <div className="p-4 text-center text-sm text-gray-500">No results found</div>
+                   <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500"> {t('no_results_found', 'No results found')} </div>
                 )}
              </div>
           )}
@@ -110,15 +129,15 @@ export function PatientHome() {
         
         {/* Upload Prescription Card */}
         <div className="bg-gradient-to-r from-indigo-600 to-blue-500 rounded-3xl p-5 text-white flex items-center justify-between shadow-lg shadow-indigo-200 relative overflow-hidden">
-          <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full translate-x-8 -translate-y-8 blur-2xl"></div>
+          <div className="absolute right-0 top-0 w-32 h-32 bg-white dark:bg-black/10 rounded-full translate-x-8 -translate-y-8 blur-2xl"></div>
           <div className="max-w-[65%] z-10">
             <h3 className="font-bold text-lg mb-1">{t('upload_prescription', 'Upload Prescription')}</h3>
             <p className="text-indigo-100 text-xs mb-3 leading-relaxed">{t('upload_desc', 'A licensed pharmacist will review it and process your order')}</p>
-            <button onClick={() => navigate('/patient/prescription-upload')} className="bg-white text-indigo-600 text-xs font-bold py-2 px-4 rounded-xl shadow-sm hover:bg-gray-50">
+            <button onClick={() => navigate('/patient/prescription-upload')} className="bg-white dark:bg-slate-950 text-indigo-600 text-xs font-bold py-2 px-4 rounded-xl shadow-sm hover:bg-gray-50 dark:bg-black">
               {t('upload_now', 'Upload Now')}
             </button>
           </div>
-          <div className="z-10 w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/30">
+          <div className="z-10 w-16 h-16 bg-white dark:bg-black/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/30">
             <UploadCloud size={32} className="text-white" />
           </div>
         </div>
@@ -126,45 +145,42 @@ export function PatientHome() {
         {/* Categories */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900">{t('categories', 'Categories')}</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white">{t('categories', 'Categories')}</h3>
             <button className="text-indigo-600 text-xs font-semibold">{t('see_all', 'See all')}</button>
           </div>
-          <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
-            {PATIENT_CATEGORIES.map((cat) => {
-              const Icon = {
-                Thermometer,
-                Pill,
-                Sparkles,
-                Sun,
-                Cross: HeartPulse,
-                Baby
-              }[cat.icon] || Activity;
-
-              return (
-              <div key={cat.id} className="flex flex-col items-center gap-2 min-w-[72px]">
-                <div className="w-16 h-16 rounded-2xl bg-white shadow-sm flex items-center justify-center text-indigo-500 border border-gray-100 hover:shadow-md transition cursor-pointer">
-                  <Icon size={24} />
-                </div>
+          <div className="grid grid-cols-3 gap-4">
+              {categories.map((cat) => (
+              <div 
+                key={cat.id} 
+                onClick={() => navigate(`/patient/search?q=${encodeURIComponent(cat.name)}`)}
+                className="flex flex-col items-center gap-2 cursor-pointer group"
+              >
+                  <div className="w-full aspect-square rounded-2xl bg-white dark:bg-black shadow-sm flex items-center justify-center text-indigo-500 border border-gray-100 dark:border-zinc-800 group-hover:shadow-md transition overflow-hidden">
+                    {cat.imageUrl ? (
+                      <img src={cat.imageUrl} alt={cat.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Activity size={28} />
+                    )}
+                  </div>
                 <span className="text-[11px] font-medium text-gray-600 text-center">{cat.name}</span>
               </div>
-            )})}
+            ))}
           </div>
         </div>
 
         {/* Pharmacy Offers */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900">{t('pharmacy_offers', 'Pharmacy Offers')}</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white">{t('pharmacy_offers', 'Pharmacy Offers')}</h3>
             <button className="text-indigo-600 text-xs font-semibold">{t('see_all', 'See all')}</button>
           </div>
           <div className="bg-red-50 rounded-2xl p-4 border border-red-100 flex items-center justify-between">
             <div>
               <div className="text-red-500 font-bold text-lg flex items-center gap-2">
                 <Tag size={20} className="fill-current" />
-                20% Discount
-              </div>
-              <p className="text-red-900 font-bold text-xl leading-tight">First Aid</p>
-              <p className="text-red-700/80 text-xs mt-1">Everything you need in kit!</p>
+                 {t('20_discount', '20% Discount')} </div>
+              <p className="text-red-900 font-bold text-xl leading-tight"> {t('first_aid', 'First Aid')} </p>
+              <p className="text-red-700/80 text-xs mt-1"> {t('everything_you_need_in_kit', 'Everything you need in kit!')} </p>
             </div>
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center">
               <Activity className="text-red-500" size={32} />
@@ -175,28 +191,43 @@ export function PatientHome() {
         {/* Nearby Pharmacies */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900">{t('nearby_pharmacies', 'Nearby pharmacies')}</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white">{t('nearby_pharmacies', 'Nearby pharmacies')}</h3>
             <button className="text-indigo-600 text-xs font-semibold">{t('see_all', 'See all')}</button>
           </div>
-          <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
-            {loading ? (
-              <div className="text-sm text-gray-500 py-4">Loading pharmacies...</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-2">
+              {loading ? (
+              <div className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 py-4"> {t('loading_pharmacies', 'Loading pharmacies...')} </div>
             ) : pharmacies.length === 0 ? (
-              <div className="text-sm text-gray-500 py-4">No pharmacies available. Admin must add them.</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 py-4"> {t('no_pharmacies_available_admin_', 'No pharmacies available. Admin must add them.')} </div>
             ) : (
               pharmacies.map((pharmacy) => (
-                <div key={pharmacy.id} onClick={() => navigate(`/patient/pharmacy/${pharmacy.id}`)} className="cursor-pointer min-w-[240px] bg-white rounded-2xl p-4 shadow-sm border border-gray-100 shrink-0 hover:shadow-md transition">
+                <div key={pharmacy.id} onClick={() => navigate(`/patient/pharmacy/${pharmacy.id}`)} className="cursor-pointer w-full bg-white dark:bg-black rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-zinc-800 hover:shadow-md transition">
                   <div className="flex justify-between items-start mb-3">
-                    <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500">
-                       <Store size={20} />
+                    <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500 overflow-hidden">
+                       {pharmacy.imageUrl ? (
+                           <img src={pharmacy.imageUrl} alt={pharmacy.name} className="w-full h-full object-cover" />
+                       ) : theme.defaultPharmacyLogo ? (
+                           <img src={theme.defaultPharmacyLogo} alt={pharmacy.name} className="w-full h-full object-cover" />
+                       ) : (
+                           <Store size={20} />
+                       )}
                     </div>
                     <div className="flex items-center bg-green-50 text-green-600 px-2 py-1 rounded-lg text-xs font-bold gap-1">
                       <Star size={12} className="fill-current text-yellow-400" />
                       {pharmacy.rating || 5.0}
                     </div>
                   </div>
-                  <h4 className="font-bold text-gray-900">{pharmacy.name}</h4>
-                  <div className="flex items-center text-gray-400 text-xs mt-1 mb-3">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-gray-900 dark:text-white">{pharmacy.name}</h4>
+                    {pharmacy.status === 'approved' ? (
+                      <span className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-green-200">
+                        <CheckCircle size={10} />  {t('verified', 'Verified')} </span>
+                    ) : (
+                      <span className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-amber-200">
+                        <Clock size={10} />  {t('pending_kyc', 'Pending KYC')} </span>
+                    )}
+                  </div>
+                  <div className="flex items-center text-gray-400 dark:text-gray-500 text-xs mt-1 mb-3">
                     <MapPin size={12} className="mr-1" />
                     {pharmacy.address}
                   </div>
@@ -207,6 +238,7 @@ export function PatientHome() {
         </div>
 
       </div>
+      
     </div>
   );
 }

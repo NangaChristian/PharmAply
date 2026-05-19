@@ -1,14 +1,16 @@
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { 
-  LayoutDashboard, Users, CircleDollarSign, Settings, FileText, LogOut, Package, Search, Bell, Globe, Store, Truck, 
-  Pill, Tags, CreditCard, FileBarChart, Ticket, HeadphonesIcon, UserCog, BookText, History, Plus, MessageSquare, Smartphone, Monitor, Folder
+  LayoutDashboard, Users, User, CircleDollarSign, Settings, FileText, LogOut, Package, Search, Bell, Globe, Store, Truck, 
+  Pill, Tags, CreditCard, FileBarChart, Ticket, HeadphonesIcon, UserCog, BookText, History, Plus, MessageSquare, Smartphone, Monitor, Folder, ChevronDown
 } from "lucide-react";
 import { auth } from "../../lib/firebase";
-import { signOut } from "firebase/auth";
+import { signOut } from '../../lib/firebase';
 import { useAuth } from "../../components/AuthProvider";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "motion/react";
+
+import { DarkModeToggle } from '../DarkModeToggle';
 
 export function AdminLayout() {
   const navigate = useNavigate();
@@ -23,7 +25,7 @@ export function AdminLayout() {
   }, [user, role, authLoading, navigate]);
 
   if (authLoading || !user || role !== 'admin') {
-    return <div className="h-screen w-screen flex items-center justify-center bg-[#F0F5F2]">Loading...</div>;
+    return <div className="h-screen w-screen flex items-center justify-center bg-[#F0F5F2]"> {t('loading', 'Loading...')} </div>;
   }
 
   const handleLogout = async () => {
@@ -33,63 +35,64 @@ export function AdminLayout() {
 
   const menuSections = [
     {
-       label: "MAIN MENU",
+       label: t('admin_main_menu', "MAIN MENU"),
        items: [
-         { to: "/admin", icon: LayoutDashboard, label: t("dashboard", "Dashboard / Overview"), end: true }
+         { to: "/admin", icon: LayoutDashboard, label: t('admin_dashboard', "Dashboard / Overview"), end: true }
        ]
     },
     {
-       label: "MEDICATIONS",
+       label: t('admin_medications', "MEDICATIONS"),
        items: [
-         { to: "/admin/products", icon: Pill, label: t("products", "Products"), end: false },
-         { to: "/admin/categories", icon: Tags, label: t("categories", "Categories"), end: false }
+         { to: "/admin/products", icon: Pill, label: t('admin_products', "Products"), end: true },
+         { to: "/admin/categories", icon: Tags, label: t('admin_categories', "Categories"), end: true }
        ]
     },
     {
-       label: "USERS",
+       label: t('admin_users', "USERS"),
        items: [
-         { to: "/admin/clients", icon: Users, label: t("patients", "Patients"), end: false },
-         { to: "/admin/vendors", icon: Store, label: t("pharmacies", "Pharmacies"), end: false },
-         { to: "/admin/drivers", icon: Truck, label: t("deliveries", "Deliveries"), end: false }
+         { to: "/admin/clients", icon: Users, label: t('admin_patients', "Patients"), end: true },
+         { to: "/admin/vendors", icon: Store, label: t('admin_pharmacies', "Pharmacies"), end: true },
+         { to: "/admin/drivers", icon: Truck, label: t('admin_deliveries', "Deliveries"), end: true },
+         { to: "/admin/cashiers", icon: CircleDollarSign, label: t('admin_cashiers', "Cashiers"), end: true }
        ]
     },
     {
-       label: "MANAGEMENT",
+       label: t('admin_management', "MANAGEMENT"),
        items: [
-         { to: "/admin/orders", icon: Package, label: t("orders", "Orders"), end: false },
-         { to: "/admin/finances", icon: CreditCard, label: t("finances", "Payment & Finances"), end: false },
-         { to: "/admin/reports", icon: FileBarChart, label: t("reports", "Reports"), end: false },
-         { to: "/admin/settings/promotions", icon: Ticket, label: t("promotions", "Promo codes & Offers"), end: false },
-         { to: "/admin/support", icon: HeadphonesIcon, label: t("support", "Customer Queries / Support"), end: false }
+         { to: "/admin/orders", icon: Package, label: t('admin_orders', "Orders"), end: true },
+         { to: "/admin/finances", icon: CreditCard, label: t('admin_finances', "Payment & Finances"), end: true },
+         { to: "/admin/reports", icon: FileBarChart, label: t('admin_reports', "Reports"), end: true },
+         { to: "/admin/settings/promotions", icon: Ticket, label: t('admin_promos', "Promo codes & Offers"), end: true },
+         { to: "/admin/support", icon: HeadphonesIcon, label: t('admin_support', "Customer Queries / Support"), end: true }
        ]
     },
     {
-       label: "SETTINGS",
+       label: t('admin_settings_menu', "SETTINGS"),
        items: [
-         { to: "/admin/settings", icon: Settings, label: t("general_settings", "General Settings"), end: false },
-         { to: "/admin/settings/app", icon: Smartphone, label: t("app_settings", "App Settings"), end: false },
-         { to: "/admin/settings/website", icon: Monitor, label: t("website_settings", "Website Settings"), end: false },
-         { to: "/admin/profile", icon: UserCog, label: t("profile_settings", "Profile Settings"), end: false }
+         { to: "/admin/settings", icon: Settings, label: t('admin_general_settings', "General Settings"), end: true },
+         { to: "/admin/settings/app", icon: Smartphone, label: t('admin_app_settings', "App Settings"), end: true },
+         { to: "/admin/settings/website", icon: Monitor, label: t('admin_web_settings', "Website Settings"), end: true },
+         { to: "/admin/profile", icon: UserCog, label: t('admin_profile_settings', "Profile Settings"), end: true }
        ]
     },
     {
-       label: "OTHER",
+       label: t('admin_other', "OTHER"),
        items: [
-         { to: "/admin/documentation", icon: BookText, label: t("documentation", "Documentation"), end: false },
-         { to: "/admin/changelog", icon: History, label: t("changelog", "Changelog"), end: false }
+         { to: "/admin/documentation", icon: BookText, label: t('admin_documentation', "Documentation"), end: true },
+         { to: "/admin/changelog", icon: History, label: t('admin_changelog', "Changelog"), end: true }
        ]
     }
   ];
 
   return (
-    <div className="flex w-full h-screen bg-[#F0F5F2] overflow-hidden text-slate-800 font-sans p-4">
+    <div className="flex w-full h-screen bg-[#F0F5F2] dark:bg-slate-900 overflow-hidden text-slate-800 dark:text-slate-200 font-sans p-4 transition-colors">
       {/* Sidebar */}
-      <aside className="w-72 bg-white rounded-3xl flex flex-col pt-8 pb-6 shadow-sm shrink-0 h-full relative z-20">
-        <div className="px-8 mb-8 flex items-center gap-3 text-slate-900">
-          <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center">
+      <aside className="w-72 bg-white dark:bg-slate-800 rounded-3xl flex flex-col pt-8 pb-6 shadow-sm shrink-0 h-full relative z-20 transition-colors">
+        <div className="px-8 mb-8 flex items-center gap-3 text-slate-900 dark:text-white">
+          <div className="w-8 h-8 rounded-full bg-[#1650ee] flex items-center justify-center">
              <Package size={16} className="text-white" />
           </div>
-          <h1 className="font-bold text-xl tracking-tight">PharmAply</h1>
+          <h1 className="font-bold text-xl tracking-tight text-[#0d4ff4]"> {t('pharmaply', 'PharmAply')} </h1>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 space-y-6 min-h-0 pb-4 scrollbar-hide">
@@ -107,8 +110,8 @@ export function AdminLayout() {
                       className={({ isActive }) =>
                         `flex items-center gap-3 px-4 py-2.5 rounded-2xl text-sm font-medium transition-colors ${
                           isActive
-                            ? "bg-slate-900 text-white"
-                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                            ? "bg-slate-900 text-white dark:bg-indigo-600"
+                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-slate-700 dark:hover:text-white"
                         }`
                       }
                     >
@@ -146,8 +149,8 @@ export function AdminLayout() {
                   <div className="absolute inset-0 flex items-center justify-center text-teal-800 font-bold text-[10px]">50%</div>
               </div>
               <div>
-                 <p className="text-xs font-bold text-slate-800">System Health</p>
-                 <p className="text-[10px] text-slate-500 leading-tight">All systems operational</p>
+                 <p className="text-xs font-bold text-slate-800 dark:text-slate-100"> {t('system_health', 'System Health')} </p>
+                 <p className="text-[10px] text-slate-500 leading-tight"> {t('all_systems_operational', 'All systems operational')} </p>
               </div>
            </div>
            
@@ -156,7 +159,7 @@ export function AdminLayout() {
              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-slate-900 text-white hover:bg-slate-800 transition-colors"
            >
               <LogOut size={16} />
-              Sign Out
+              {t('logout', 'Sign Out')}
            </button>
         </div>
       </aside>
@@ -169,45 +172,66 @@ export function AdminLayout() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input 
                 type="text" 
-                placeholder="Search" 
-                className="w-full bg-white border-0 py-3 pl-12 pr-4 rounded-full text-sm shadow-sm focus:ring-2 focus:ring-slate-900 outline-none"
+                placeholder={t('search_placeholder', 'Search')}
+                className="w-full bg-white dark:bg-slate-800 dark:text-white border-0 py-3 pl-12 pr-4 rounded-full text-sm shadow-sm focus:ring-2 focus:ring-slate-900 dark:focus:ring-indigo-500 outline-none"
               />
            </div>
            
            <div className="flex items-center gap-6">
-              <button className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-full shadow-sm text-xs font-bold hover:bg-slate-800 transition">
-                 <Plus size={14} /> Add New
-              </button>
+              <div className="relative group">
+                 <button className="flex items-center gap-2 bg-slate-900 dark:bg-indigo-600 text-white px-4 py-2 rounded-full shadow-sm text-xs font-bold hover:bg-slate-800 dark:hover:bg-indigo-700 transition">
+                    <Plus size={14} /> {t('add_new', 'Add New')}
+                 </button>
+                 <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                    <div className="p-2 flex flex-col gap-1">
+                       <button onClick={() => navigate('/admin/products')} className="text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg font-medium"> {t('add_product', 'Add Product')} </button>
+                       <button onClick={() => navigate('/admin/categories')} className="text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg font-medium"> {t('add_category', 'Add Category')} </button>
+                       <button onClick={() => navigate('/admin/vendors')} className="text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg font-medium"> {t('add_pharmacy', 'Add Pharmacy')} </button>
+                       <button onClick={() => navigate('/admin/drivers')} className="text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg font-medium"> {t('add_driver', 'Add Driver')} </button>
+                    </div>
+                 </div>
+              </div>
               
               <div className="flex items-center gap-4 text-slate-500">
-                 <button className="relative p-2 bg-white rounded-full shadow-sm hover:text-slate-900 transition">
+                 <DarkModeToggle className="shadow-sm bg-white dark:bg-slate-800 dark:text-slate-200" />
+                 <button onClick={() => navigate('/admin/support')} className="relative p-2 bg-white dark:bg-slate-800 dark:text-slate-200 rounded-full shadow-sm hover:text-slate-900 transition">
                     <MessageSquare size={18} />
                  </button>
-                 <button className="relative p-2 bg-white rounded-full shadow-sm hover:text-slate-900 transition">
+                 <button onClick={() => navigate('/admin/changelog')} className="relative p-2 bg-white dark:bg-slate-800 dark:text-slate-200 rounded-full shadow-sm hover:text-slate-900 transition">
                     <Bell size={18} />
                     <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
                  </button>
               </div>
 
-              <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm text-xs font-medium text-slate-600 cursor-pointer">
+              <div className="relative flex items-center gap-2 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full shadow-sm text-xs font-medium text-slate-600 dark:text-slate-300 border border-transparent hover:border-slate-200 transition">
                 <Globe size={14} /> 
+                <span className="uppercase">{i18n.language}</span>
+                <ChevronDown size={14} />
                 <select 
-                  className="bg-transparent outline-none focus:ring-0 text-xs font-medium uppercase cursor-pointer"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                   value={i18n.language}
                   onChange={(e) => i18n.changeLanguage(e.target.value)}
                 >
                   <option value="en">EN</option>
                   <option value="fr">FR</option>
+                  <option value="ar">AR</option>
                 </select>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div 
+                className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition"
+                onClick={() => navigate('/admin/profile')}
+              >
                  <div className="text-right hidden md:block">
-                    <p className="text-sm font-bold text-slate-900">Platform Admin</p>
-                    <p className="text-xs text-slate-500">admin@pharmaply.com</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{user?.displayName || "Platform Admin"}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{user?.email || "admin@pharmaply.com"}</p>
                  </div>
-                 <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border-2 border-white shadow-sm">
-                    <img src="https://i.pravatar.cc/150?img=11" alt="Admin" className="w-full h-full object-cover" />
+                 <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden border-2 border-white dark:border-slate-800 shadow-sm flex items-center justify-center">
+                    {user?.photoURL ? (
+                       <img src={user.photoURL} alt="Admin" className="w-full h-full object-cover" />
+                    ) : (
+                       <User size={20} className="text-slate-400" />
+                    )}
                  </div>
               </div>
            </div>

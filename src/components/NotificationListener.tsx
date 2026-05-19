@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from '../lib/firebase';
 import { db } from '../lib/firebase';
 import { useAuth } from './AuthProvider';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
+import { parseDate } from '../lib/utils';
 
 export function NotificationListener() {
   const { user, role } = useAuth();
@@ -45,7 +46,7 @@ export function NotificationListener() {
             if (!notifiedOrders.current.has(change.doc.id)) {
               notifiedOrders.current.add(change.doc.id);
               // Only notify if recent
-              const isRecent = order.createdAt?.toMillis && (Date.now() - order.createdAt.toMillis() < 60000 * 5); // 5 mins
+              const isRecent = parseDate(order.createdAt) && (Date.now() - parseDate(order.createdAt)!.getTime() < 60000 * 5); // 5 mins
               if (isRecent) {
                 toast(t("new_order_pharmacist_toast", "New order received!"), { icon: '🔔' });
                 if (Notification.permission === 'granted') {
@@ -114,7 +115,7 @@ export function NotificationListener() {
             if (!notifiedMessages.current.has(change.doc.id)) {
               notifiedMessages.current.add(change.doc.id);
               // Only notify if it's recent (within last minute) to avoid spam on initial load
-              const isRecent = msg.createdAt?.toMillis && (Date.now() - msg.createdAt.toMillis() < 60000);
+              const isRecent = parseDate(msg.createdAt) && (Date.now() - parseDate(msg.createdAt)!.getTime() < 60000);
               if (isRecent) {
                  toast(t('new_message_received', 'New message received!'), { icon: '💬' });
                  if (Notification.permission === 'granted') {
@@ -138,7 +139,7 @@ export function NotificationListener() {
           const sale = change.doc.data();
           if (!notifiedSales.current.has(change.doc.id)) {
             notifiedSales.current.add(change.doc.id);
-            const isRecent = sale.createdAt?.toMillis && (Date.now() - sale.createdAt.toMillis() < 60000);
+            const isRecent = parseDate(sale.createdAt) && (Date.now() - parseDate(sale.createdAt)!.getTime() < 60000);
             if (isRecent && role === 'patient') {
                toast(`${t('flash_sale', 'Flash Sale!')} ${sale.title}`, { icon: '⚡' });
                if (Notification.permission === 'granted') {

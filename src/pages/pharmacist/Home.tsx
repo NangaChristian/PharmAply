@@ -1,14 +1,18 @@
 import { useNavigate } from "react-router-dom";
-import { Activity, Search, Filter, MoreHorizontal, CheckCircle, Package, ShieldAlert } from "lucide-react";
-import { BottomNav } from "../../components/layout/BottomNav";
+import { Activity, Search, Filter, MoreHorizontal, CheckCircle, Package, ShieldAlert, AlertTriangle, Bell, Clock, TrendingUp, DollarSign, Pill } from "lucide-react";
+
 import { useState, useEffect } from "react";
-import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot, addDoc, serverTimestamp } from '../../lib/firebase';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { useTheme } from '../../components/ThemeProvider';
-import { formatCurrency } from '../../lib/utils';
+import { formatCurrency, parseDate } from '../../lib/utils';
+import dayjs from "dayjs";
+import { ProductCard } from '../../components/ProductCard';
+import { useTranslation } from "react-i18next";
 
 export function PharmacistHome() {
+    const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const theme = useTheme();
@@ -60,121 +64,206 @@ export function PharmacistHome() {
     };
   }, [user]);
 
+  const handleNotifyAdmin = async (product: any) => {
+    if (!user) return;
+    try {
+      await addDoc(collection(db, "logs"), {
+        action: "Low Stock Alert",
+        type: "System",
+        userId: user.uid,
+        details: `Pharmacy ${pharmacy?.name || user.uid} reported low stock for ${product.name} (${product.stock} left).`,
+        level: "warning",
+        createdAt: serverTimestamp()
+      });
+      alert(`Admin notified about ${product.name}`);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to notify admin");
+    }
+  };
+
+  const lowStockProducts = products.filter(p => typeof p.stock === 'number' && p.stock < 10);
+  const todayRevenue = orders.reduce((sum, order) => {
+    if (order.createdAt && dayjs(parseDate(order.createdAt)).isSame(dayjs(), 'day')) {
+      return sum + (order.total || 0);
+    }
+    return sum;
+  }, 0);
+
   return (
-    <div className="flex-1 bg-slate-50 flex flex-col relative pb-16 h-full overflow-hidden">
-      {/* Header */}
-      <div className="bg-white px-6 pt-12 pb-4 flex flex-col gap-6 z-10 shadow-sm rounded-b-[2rem]">
-         <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-               {theme.logoUrl ? (
-                 <img src={theme.logoUrl} alt="Logo" className="w-10 h-10 rounded-full object-cover bg-indigo-100" />
+    <div className="flex-1 bg-slate-50 dark:bg-black flex flex-col relative pb-20 h-full overflow-hidden">
+      {/* Sleek Header Section */}
+      <div className="bg-indigo-600 px-6 pt-12 pb-8 flex flex-col gap-6 z-10 rounded-b-[2.5rem] shadow-md relative overflow-hidden">
+         {/* Background Decoration */}
+         <div className="absolute top-0 right-0 w-64 h-64 bg-white dark:bg-black/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
+         <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-800/20 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
+         
+         <div className="flex items-center justify-between relative z-10">
+            <div className="flex items-center gap-4">
+               {user?.photoURL ? (
+                 <img src={user.photoURL} alt="Logo" className="w-12 h-12 rounded-full object-cover border-2 border-white/20 shadow-sm shrink-0" />
+               ) : theme.logoUrl ? (
+                 <img src={theme.logoUrl} alt="Logo" className="w-12 h-12 rounded-full object-cover border-2 border-white/20 shadow-sm shrink-0" />
                ) : (
-                 <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600">
+                 <div className="w-12 h-12 bg-white dark:bg-black/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm border border-white/30 shadow-sm shrink-0">
                     <Activity size={24} />
                  </div>
                )}
                <div>
-                  <h1 className="font-bold text-lg text-gray-900 leading-tight">{theme.dashboardWelcomeText}</h1>
-                  <p className="text-xs text-gray-500">{theme.dashboardSubtitleText}</p>
+                  <h1 className="font-bold text-xl text-white leading-tight flex items-center gap-2">
+                    {theme.dashboardWelcomeText}
+                    {pharmacy?.status === 'approved' && (
+                      <span className="bg-green-500/20 text-green-100 text-[10px] px-2 py-0.5 rounded-full border border-green-500/30 flex items-center gap-1 font-medium mt-0.5">
+                         <CheckCircle size={10} />  {t('verified', 'Verified')} </span>
+                    )}
+                  </h1>
+                  <p className="text-sm text-indigo-100 mt-1">{theme.dashboardSubtitleText}</p>
                </div>
             </div>
-            <div className="flex items-center gap-2">
-               <button className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full">
-                 <Search size={18} className="text-gray-600" />
-               </button>
-               <button className="w-10 h-10 flex items-center justify-center bg-indigo-50 text-indigo-600 rounded-full">
-                 <div className="relative">
-                    <Activity size={18} />
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                 </div>
-               </button>
+            
+            <button className="w-12 h-12 flex items-center justify-center bg-white dark:bg-black/10 hover:bg-white dark:bg-black/20 transition-colors rounded-full text-white backdrop-blur-sm relative">
+               <Bell size={22} />
+               {lowStockProducts.length > 0 && <span className="absolute top-3 right-3.5 w-2.5 h-2.5 bg-red-500 border border-indigo-600 rounded-full"></span>}
+            </button>
+         </div>
+
+         {/* Search Bar */}
+         <div className="relative z-10 mt-2">
+             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" size={20} />
+             <input 
+                type="text" 
+                placeholder={t('search_orders_meds', 'Search orders, meds...')} 
+                className="w-full bg-white dark:bg-black py-3.5 pl-12 pr-4 rounded-2xl text-sm outline-none text-gray-900 dark:text-white shadow-sm" 
+             />
+         </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-6 space-y-8 -mt-4 relative z-20 pb-8">
+         {/* Stats Row */}
+         <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white dark:bg-black p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-zinc-800 flex flex-col justify-between hover:shadow-md transition cursor-default">
+               <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center mb-3">
+                  <Package size={20} className="text-indigo-600" />
+               </div>
+               <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm font-medium mb-1"> {t('total_orders', 'Total Orders')} </p>
+               <p className="text-2xl font-bold text-gray-900 dark:text-white">{orders.length}</p>
+            </div>
+            
+            <div className="bg-white dark:bg-black p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-zinc-800 flex flex-col justify-between hover:shadow-md transition cursor-default">
+               <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center mb-3">
+                  <DollarSign size={20} className="text-emerald-600" />
+               </div>
+               <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm font-medium mb-1"> {t('today_s_revenue', 'Today\'s Revenue')} </p>
+               <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(todayRevenue)}</p>
             </div>
          </div>
 
          {pharmacy?.status === 'pending_verification' && (
-           <div className="bg-orange-50 border border-orange-200 p-4 rounded-xl flex items-start gap-3">
-              <ShieldAlert className="text-orange-500 shrink-0 mt-0.5" size={20} />
+           <div className="bg-amber-50 border whitespace-pre-wrap border-amber-200 p-5 rounded-3xl flex items-start gap-4">
+              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
+                 <ShieldAlert className="text-amber-600" size={20} />
+              </div>
               <div>
-                 <h3 className="text-orange-800 font-bold text-sm">Account Pending Verification</h3>
-                 <p className="text-orange-700 text-xs mt-1">Your pharmacy profile is under review by admins. Once approved, your products will be visible to patients.</p>
+                 <h3 className="text-amber-800 font-bold text-base mb-1"> {t('pending_kyc', 'Pending KYC')} </h3>
+                 <p className="text-amber-700/80 text-sm leading-relaxed"> {t('your_pharmacy_profile_is_under', 'Your pharmacy profile is under review by admins. Once approved, your products will be visible to patients.')} </p>
               </div>
            </div>
          )}
 
-         {/* Accept New Order Toggle Area? Actually let's look at the UI. */}
-         <div className="relative">
-             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-             <input type="text" placeholder="Search orders or medications" className="w-full bg-gray-100 py-3 pl-12 pr-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-100" />
-         </div>
-
-         <div className="flex gap-4">
-            <div className="flex-1 bg-indigo-600 text-white p-4 rounded-2xl shadow-md">
-               <p className="text-indigo-100 text-xs font-medium mb-1">Total Orders</p>
-               <p className="text-2xl font-bold">{orders.length} <span className="text-xs font-normal opacity-80">orders</span></p>
-            </div>
-            <div className="flex-1 bg-white border border-gray-100 p-4 rounded-2xl shadow-sm">
-               <p className="text-gray-500 text-xs font-medium mb-1">Delivered</p>
-               <p className="text-2xl font-bold text-gray-900">{orders.filter(o => o.status === 'delivered').length} <span className="text-xs font-normal text-gray-400">orders</span></p>
-            </div>
-         </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-6 space-y-8">
          {/* Orders */}
          <div>
-            <div className="flex items-center justify-between mb-4">
-               <h3 className="font-bold text-gray-900 text-lg">Recent Orders</h3>
-               <button onClick={() => navigate('/pharmacist/orders')} className="text-gray-400 font-medium text-sm flex items-center gap-1">All Orders <MoreHorizontal size={16}/></button>
+            <div className="flex items-center justify-between mb-5">
+               <h3 className="font-bold text-gray-900 dark:text-white text-xl"> {t('recent_orders', 'Recent Orders')} </h3>
+               <button onClick={() => navigate('/pharmacist/orders')} className="text-indigo-600 font-bold text-sm bg-indigo-50/50 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition"> {t('see_all', 'See all')} </button>
             </div>
-            <div className="space-y-3">
-               {loading ? <p className="text-sm text-gray-500">Loading...</p> : 
-                orders.length === 0 ? <p className="text-sm text-gray-500">No recent orders.</p> :
-                orders.slice(0,3).map(order => (
+            
+            <div className="space-y-4">
+               {loading ? <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 py-4 text-center animate-pulse"> {t('loading_orders', 'Loading orders...')} </p> : 
+                orders.length === 0 ? <div className="text-center bg-white dark:bg-black p-8 rounded-3xl border border-dashed border-gray-200 dark:border-zinc-800"><p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500"> {t('no_recent_orders', 'No recent orders.')} </p></div> :
+                orders.slice(0, 2).map(order => (
                   <div 
                     key={order.id} 
                     onClick={() => navigate(`/pharmacist/order/${order.id}`)}
-                    className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-3 cursor-pointer hover:shadow-md transition"
+                    className="bg-white dark:bg-black p-5 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-sm flex items-center justify-between cursor-pointer hover:shadow-md hover:border-indigo-100 transition group"
                   >
-                     <div className="flex justify-between items-start">
-                        <div>
-                           <p className="font-bold text-gray-900 text-sm">{order.id.slice(0, 8)}</p>
-                           <p className="text-xs text-gray-500">Total: {formatCurrency(order.total)}</p>
+                     <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-black border border-slate-100 dark:border-zinc-800 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 group-hover:bg-indigo-50 transition-colors">
+                           <CheckCircle size={20} />
                         </div>
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded-md bg-gray-100 text-gray-700 uppercase`}>
-                           {order.status}
-                        </span>
+                        <div>
+                           <p className="font-bold text-gray-900 dark:text-white text-base flex items-center gap-2">
+                               {t('order', 'Order #')} {order.id.slice(0, 5)}
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                                 order.status === 'delivered' ? 'bg-emerald-50 text-emerald-600' :
+                                 order.status === 'processing' ? 'bg-indigo-50 text-indigo-600' :
+                                 order.status === 'cancelled' ? 'bg-red-50 text-red-600' :
+                                 'bg-amber-50 text-amber-600'
+                              }`}>
+                                 {order.status}
+                              </span>
+                           </p>
+                           <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 flex items-center gap-1.5 mt-1">
+                              <Clock size={14} /> 
+                              {parseDate(order.createdAt) ? dayjs(parseDate(order.createdAt)).format('MMM D, h:mm A') : 'Just now'}
+                           </p>
+                        </div>
+                     </div>
+                     <div className="text-right">
+                        <p className="text-gray-400 dark:text-gray-500 text-xs mb-1 font-medium"> {t('total', 'Total')} </p>
+                        <p className="font-bold text-gray-900 dark:text-white text-lg group-hover:text-indigo-600 transition-colors">
+                           {formatCurrency(order.total)}
+                        </p>
                      </div>
                   </div>
                ))}
             </div>
          </div>
 
+         {/* Low Stock Alerts */}
+         {lowStockProducts.length > 0 && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+               <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-gray-900 dark:text-white text-lg flex items-center gap-2">
+                    <AlertTriangle size={20} className="text-orange-500"/>  {t('low_stock_alerts', 'Low Stock Alerts')} </h3>
+               </div>
+               <div className="space-y-4">
+               {lowStockProducts.slice(0, 2).map(product => (
+                     <div key={product.id} className="bg-orange-50 border border-orange-100 p-5 rounded-3xl shadow-sm flex items-center justify-between group hover:bg-orange-100/50 transition">
+                        <div className="flex items-center gap-4">
+                           <div className="w-12 h-12 rounded-xl bg-white dark:bg-black flex items-center justify-center shadow-sm">
+                              {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="w-8 h-8 object-cover rounded" /> : <AlertTriangle className="text-orange-400" size={20}/>}
+                           </div>
+                           <div>
+                              <p className="font-bold text-orange-900 text-base">{product.name}</p>
+                              <p className="text-sm text-orange-700/80 font-medium flex items-center gap-1 mt-0.5">
+                                <TrendingUp size={14} />  {t('only', 'Only')} {product.stock}  {t('left_in_stock', 'left in stock')} </p>
+                           </div>
+                        </div>
+                        <button 
+                           onClick={() => handleNotifyAdmin(product)}
+                           className="px-4 py-2 bg-white dark:bg-black hover:bg-orange-100 text-orange-700 text-sm font-bold rounded-xl transition shadow-sm border border-orange-200 opacity-90 group-hover:opacity-100"
+                        >
+                            {t('notify_admin', 'Notify Admin')} </button>
+                     </div>
+                  ))}
+               </div>
+            </div>
+         )}
+
          {/* Inventory Snapshot */}
          <div>
-            <div className="flex items-center justify-between mb-4">
-               <h3 className="font-bold text-gray-900 text-lg">Inventory Snapshot</h3>
-               <button onClick={() => navigate('/pharmacist/inventory')} className="text-indigo-600 font-medium text-sm">See all</button>
+            <div className="flex items-center justify-between mb-4 mt-6">
+               <h3 className="font-bold text-gray-900 dark:text-white text-xl"> {t('inventory_snapshot', 'Inventory Snapshot')} </h3>
+               <button onClick={() => navigate('/pharmacist/inventory')} className="text-indigo-600 font-bold text-sm bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition"> {t('see_all', 'See all')} </button>
             </div>
-            <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-4">
-               {loading ? <p className="text-sm text-gray-500">Loading...</p> : 
-                products.length === 0 ? <p className="text-sm text-gray-500 text-center w-full">Go to Inventory to add products.</p> :
-                products.map(item => {
-                  const status = item.stock > 10 ? 'In Stock' : item.stock > 0 ? 'Low Stock' : 'Out of Stock';
-                  return (
-                    <div key={item.id} className="min-w-[140px] bg-white border border-gray-100 p-3 rounded-2xl shadow-sm text-center">
-                       <div className="w-16 h-16 mx-auto bg-gray-50 rounded-xl mb-3 flex items-center justify-center">
-                          <Package size={24} className="text-gray-400"/>
-                       </div>
-                       <p className="text-sm font-bold text-gray-900 truncate">{item.name}</p>
-                       <p className={`text-xs font-semibold mt-1 ${
-                          status === 'In Stock' ? 'text-green-500' :
-                          status === 'Low Stock' ? 'text-orange-500' : 'text-red-500'
-                       }`}>
-                          {status}
-                       </p>
-                    </div>
-                  )
-               })}
+            <div className="grid grid-cols-2 gap-4 pb-6">
+               {loading ? <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500"> {t('loading', 'Loading...')} </p> : 
+                products.length === 0 ? <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 text-center w-full col-span-full"> {t('go_to_inventory_to_add_product', 'Go to Inventory to add products.')} </p> :
+                products.slice(0, 6).map(item => (
+                   <div key={item.id}>
+                      <ProductCard product={item} basePath="/pharmacist/inventory" showSaleBadge={true} />
+                   </div>
+                ))}
             </div>
          </div>
       </div>

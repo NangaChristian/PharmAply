@@ -1,11 +1,13 @@
 import { useState, useEffect, ChangeEvent, useRef } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { doc, getDoc, setDoc } from '../../../lib/firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from '../../../lib/firebase';
 import { db, storage, auth, handleFirestoreError, OperationType } from "../../../lib/firebase";
 import { Monitor, Save, Globe, Image as ImageIcon, UploadCloud } from "lucide-react";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 
 export function WebsiteSettings() {
+    const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
@@ -96,14 +98,14 @@ export function WebsiteSettings() {
     );
   };
 
-  if (loading) return <div className="p-8 text-slate-500">Loading settings...</div>;
+  if (loading) return <div className="p-8 text-slate-500"> {t('loading_settings', 'Loading settings...')} </div>;
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
       <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
          <div>
-             <h1 className="font-bold text-gray-900 text-2xl mb-1 flex items-center gap-2"><Monitor size={24} /> Website Settings</h1>
-             <p className="text-gray-500 text-sm">Configure marketing website details, SEO, and contact info</p>
+             <h1 className="font-bold text-gray-900 text-2xl mb-1 flex items-center gap-2"><Monitor size={24} />  {t('website_settings', 'Website Settings')} </h1>
+             <p className="text-gray-500 text-sm"> {t('configure_marketing_website_de', 'Configure marketing website details, SEO, and contact info')} </p>
          </div>
          <button 
            onClick={handleSave}
@@ -116,17 +118,17 @@ export function WebsiteSettings() {
 
       <div className="flex-1 overflow-y-auto p-8 max-w-3xl space-y-8">
          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2"><ImageIcon size={18} /> Website Assets</h2>
+            <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2"><ImageIcon size={18} />  {t('website_assets', 'Website Assets')} </h2>
             <div className="space-y-6">
                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Patient Homepage Hero Image</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2"> {t('patient_homepage_hero_image', 'Patient Homepage Hero Image')} </label>
                   <div className="w-full h-48 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center relative overflow-hidden group">
                      {settings.heroImageUrl ? (
                         <img src={settings.heroImageUrl} alt="Hero" className="w-full h-full object-cover" />
                      ) : (
                         <div className="text-center text-slate-500">
                            <ImageIcon size={32} className="mx-auto mb-2 opacity-50" />
-                           <span className="text-sm font-medium">No image uploaded</span>
+                           <span className="text-sm font-medium"> {t('no_image_uploaded', 'No image uploaded')} </span>
                         </div>
                      )}
                      <div 
@@ -148,14 +150,14 @@ export function WebsiteSettings() {
                </div>
 
                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Promotional Banner Image</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2"> {t('promotional_banner_image', 'Promotional Banner Image')} </label>
                   <div className="w-full h-32 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center relative overflow-hidden group">
                      {settings.promoBannerUrl ? (
                         <img src={settings.promoBannerUrl} alt="Banner" className="w-full h-full object-cover" />
                      ) : (
                         <div className="text-center text-slate-500">
                            <ImageIcon size={24} className="mx-auto mb-2 opacity-50" />
-                           <span className="text-sm font-medium">No image uploaded</span>
+                           <span className="text-sm font-medium"> {t('no_image_uploaded', 'No image uploaded')} </span>
                         </div>
                      )}
                      <div 
@@ -179,10 +181,10 @@ export function WebsiteSettings() {
          </div>
 
          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2"><Globe size={18} /> SEO & Meta Data</h2>
+            <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2"><Globe size={18} />  {t('seo_meta_data', 'SEO & Meta Data')} </h2>
             <div className="space-y-4">
                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Global SEO Title</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1"> {t('global_seo_title', 'Global SEO Title')} </label>
                   <input 
                     type="text" 
                     name="seoTitle"
@@ -192,7 +194,7 @@ export function WebsiteSettings() {
                   />
                </div>
                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Global SEO Description</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1"> {t('global_seo_description', 'Global SEO Description')} </label>
                   <textarea 
                     name="seoDescription"
                     value={settings.seoDescription}
@@ -205,10 +207,10 @@ export function WebsiteSettings() {
          </div>
 
          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h2 className="text-lg font-bold text-slate-900 mb-6">Company Information</h2>
+            <h2 className="text-lg font-bold text-slate-900 mb-6"> {t('company_information', 'Company Information')} </h2>
             <div className="space-y-4">
                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Contact Phone Number</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1"> {t('contact_phone_number', 'Contact Phone Number')} </label>
                   <input 
                     type="text" 
                     name="contactNumber"
@@ -218,7 +220,7 @@ export function WebsiteSettings() {
                   />
                </div>
                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Company Physical Address</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1"> {t('company_physical_address', 'Company Physical Address')} </label>
                   <input 
                     type="text" 
                     name="companyAddress"
@@ -231,10 +233,10 @@ export function WebsiteSettings() {
          </div>
 
          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h2 className="text-lg font-bold text-slate-900 mb-6">Social Links</h2>
+            <h2 className="text-lg font-bold text-slate-900 mb-6"> {t('social_links', 'Social Links')} </h2>
             <div className="space-y-4">
                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Facebook URL</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1"> {t('facebook_url', 'Facebook URL')} </label>
                   <input 
                     type="url" 
                     name="facebookUrl"
@@ -244,7 +246,7 @@ export function WebsiteSettings() {
                   />
                </div>
                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Instagram URL</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1"> {t('instagram_url', 'Instagram URL')} </label>
                   <input 
                     type="url" 
                     name="instagramUrl"
@@ -254,7 +256,7 @@ export function WebsiteSettings() {
                   />
                </div>
                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Twitter / X URL</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1"> {t('twitter_x_url', 'Twitter / X URL')} </label>
                   <input 
                     type="url" 
                     name="twitterUrl"

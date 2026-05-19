@@ -2,14 +2,16 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, UserCircle, Car, FileText, CheckCircle, Upload } from 'lucide-react';
 import { auth, db, storage } from '../../lib/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { createUserWithEmailAndPassword } from '../../lib/firebase';
+import { doc, setDoc, serverTimestamp } from '../../lib/firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from '../../lib/firebase';
 
 import { handleFirestoreError, OperationType } from '../../lib/firestore_error';
 import toast from 'react-hot-toast';
+import { useTranslation } from "react-i18next";
 
 export function DriverRegistration() {
+    const { t } = useTranslation();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -65,8 +67,8 @@ export function DriverRegistration() {
           const uploadTask = await uploadBytesResumable(fileRef, files.idCard);
           idCardUrl = await getDownloadURL(uploadTask.ref);
         } catch (storageErr) {
-          console.warn("Storage upload failed, mocked for prototype", storageErr);
-          idCardUrl = `https://via.placeholder.com/800x600.png?text=ID+Card`;
+          console.error("Storage upload failed", storageErr);
+          throw storageErr;
         }
       }
 
@@ -76,8 +78,8 @@ export function DriverRegistration() {
           const uploadTask = await uploadBytesResumable(fileRef, files.drivingLicense);
           drivingLicenseUrl = await getDownloadURL(uploadTask.ref);
         } catch (storageErr) {
-          console.warn("Storage upload failed, mocked for prototype", storageErr);
-          drivingLicenseUrl = `https://via.placeholder.com/800x600.png?text=Driving+License`;
+          console.error("Storage upload failed", storageErr);
+          throw storageErr;
         }
       }
 
@@ -135,7 +137,7 @@ export function DriverRegistration() {
         <button onClick={() => step > 1 && step < 4 ? prevStep() : navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
           <ArrowLeft size={24} className="text-gray-900" />
         </button>
-        <h1 className="font-bold text-gray-900 text-lg">Driver Registration</h1>
+        <h1 className="font-bold text-gray-900 text-lg"> {t('driver_registration', 'Driver Registration')} </h1>
       </div>
 
       <div className="flex-1 overflow-y-auto w-full flex flex-col pt-6 pb-20">
@@ -165,29 +167,29 @@ export function DriverRegistration() {
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center"><UserCircle size={24} /></div>
                   <div>
-                    <h2 className="font-bold text-gray-900 text-lg">Account Details</h2>
-                    <p className="text-xs text-gray-500">Basic information</p>
+                    <h2 className="font-bold text-gray-900 text-lg"> {t('account_details', 'Account Details')} </h2>
+                    <p className="text-xs text-gray-500"> {t('basic_information', 'Basic information')} </p>
                   </div>
                 </div>
 
                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                   <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="driver@example.com" />
+                   <label className="block text-sm font-medium text-gray-700 mb-1"> {t('email_address', 'Email Address')} </label>
+                   <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder={t('driver_example_com', 'driver@example.com')} />
                 </div>
                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                   <label className="block text-sm font-medium text-gray-700 mb-1"> {t('password', 'Password')} </label>
                    <input type="password" name="password" value={formData.password} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="••••••••" />
                 </div>
                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                   <input type="text" name="fullName" value={formData.fullName} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="John Doe" />
+                   <label className="block text-sm font-medium text-gray-700 mb-1"> {t('full_name', 'Full Name')} </label>
+                   <input type="text" name="fullName" value={formData.fullName} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder={t('john_doe', 'John Doe')} />
                 </div>
                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                   <input type="text" name="phoneNumber" value={formData.phoneNumber} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="+237 6XX XXX XXX" />
+                   <label className="block text-sm font-medium text-gray-700 mb-1"> {t('phone_number', 'Phone Number')} </label>
+                   <input type="text" name="phoneNumber" value={formData.phoneNumber} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder={t('237_6xx_xxx_xxx', '+237 6XX XXX XXX')} />
                 </div>
                 
-                <button onClick={nextStep} disabled={!formData.email || !formData.password || !formData.fullName || !formData.phoneNumber} className="w-full py-4 mt-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition">Continue</button>
+                <button onClick={nextStep} disabled={!formData.email || !formData.password || !formData.fullName || !formData.phoneNumber} className="w-full py-4 mt-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition"> {t('continue', 'Continue')} </button>
               </div>
             )}
 
@@ -196,25 +198,25 @@ export function DriverRegistration() {
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center"><Car size={24} /></div>
                   <div>
-                    <h2 className="font-bold text-gray-900 text-lg">Vehicle Information</h2>
-                    <p className="text-xs text-gray-500">Transportation details</p>
+                    <h2 className="font-bold text-gray-900 text-lg"> {t('vehicle_information', 'Vehicle Information')} </h2>
+                    <p className="text-xs text-gray-500"> {t('transportation_details', 'Transportation details')} </p>
                   </div>
                 </div>
 
                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
+                   <label className="block text-sm font-medium text-gray-700 mb-1"> {t('vehicle_type', 'Vehicle Type')} </label>
                    <select name="vehicleType" value={formData.vehicleType} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none">
-                     <option value="motorcycle">Motorcycle</option>
-                     <option value="car">Car</option>
-                     <option value="van">Van</option>
+                     <option value="motorcycle"> {t('motorcycle', 'Motorcycle')} </option>
+                     <option value="car"> {t('car', 'Car')} </option>
+                     <option value="van"> {t('van', 'Van')} </option>
                    </select>
                 </div>
                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Plate Number</label>
-                   <input type="text" name="vehiclePlate" value={formData.vehiclePlate} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder="e.g. CE-1234-A" />
+                   <label className="block text-sm font-medium text-gray-700 mb-1"> {t('vehicle_plate_number', 'Vehicle Plate Number')} </label>
+                   <input type="text" name="vehiclePlate" value={formData.vehiclePlate} onChange={handleInputChange} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none" placeholder={t('e_g_ce_1234_a', 'e.g. CE-1234-A')} />
                 </div>
                 
-                <button onClick={nextStep} disabled={!formData.vehiclePlate} className="w-full py-4 mt-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition">Continue to KYC</button>
+                <button onClick={nextStep} disabled={!formData.vehiclePlate} className="w-full py-4 mt-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition"> {t('continue_to_kyc', 'Continue to KYC')} </button>
               </div>
             )}
 
@@ -223,8 +225,8 @@ export function DriverRegistration() {
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center"><FileText size={24} /></div>
                   <div>
-                    <h2 className="font-bold text-gray-900 text-lg">KYC & Verification</h2>
-                    <p className="text-xs text-gray-500">Official Documents</p>
+                    <h2 className="font-bold text-gray-900 text-lg"> {t('kyc_verification', 'KYC & Verification')} </h2>
+                    <p className="text-xs text-gray-500"> {t('official_documents', 'Official Documents')} </p>
                   </div>
                 </div>
                 
@@ -240,7 +242,7 @@ export function DriverRegistration() {
                 </div>
 
                 <div className="pt-2">
-                   <p className="block text-sm font-medium text-gray-700 mb-2">Upload Driving License</p>
+                   <p className="block text-sm font-medium text-gray-700 mb-2"> {t('upload_driving_license', 'Upload Driving License')} </p>
                    <label className="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center text-gray-500 bg-gray-50 hover:bg-indigo-50 hover:border-indigo-300 cursor-pointer transition">
                       <Upload size={24} className="mb-2 text-indigo-400" />
                       <span className="text-xs font-medium text-center">
@@ -261,11 +263,10 @@ export function DriverRegistration() {
                  <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
                     <CheckCircle size={40} className="fill-current text-white" />
                  </div>
-                 <h2 className="text-2xl font-bold text-gray-900">Application Submitted!</h2>
-                 <p className="text-gray-500 max-w-xs">Your driver registration is under review. Our team will verify your KYC documents and vehicle information shortly.</p>
+                 <h2 className="text-2xl font-bold text-gray-900"> {t('application_submitted', 'Application Submitted!')} </h2>
+                 <p className="text-gray-500 max-w-xs"> {t('your_driver_registration_is_un', 'Your driver registration is under review. Our team will verify your KYC documents and vehicle information shortly.')} </p>
                  <button onClick={() => navigate('/delivery')} className="w-full py-4 mt-8 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition">
-                    Go to Dashboard
-                 </button>
+                     {t('go_to_dashboard', 'Go to Dashboard')} </button>
               </div>
             )}
          </div>

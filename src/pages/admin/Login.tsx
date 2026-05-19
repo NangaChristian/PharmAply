@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from '../../lib/firebase';
 import { auth, db } from "../../lib/firebase";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp } from '../../lib/firebase';
 import { MapPin, AlertCircle } from "lucide-react";
 import { useAuth } from "../../components/AuthProvider";
 import { useTranslation } from "react-i18next";
@@ -15,6 +15,7 @@ export function AdminLogin() {
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedRole, setSelectedRole] = useState<"admin" | "cashier">("admin");
@@ -27,6 +28,16 @@ export function AdminLogin() {
       else navigate("/pharmacist"); // Route cashier to pharmacist for now
     }
   }, [authLoading, user, role, navigate]);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("adminRememberEmail");
+    const savedPassword = localStorage.getItem("adminRememberPassword");
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+      if (savedPassword) setPassword(savedPassword);
+    }
+  }, []);
 
   if (!authLoading && user && (role === "admin" || role === "cashier")) {
     return null;
@@ -44,11 +55,15 @@ export function AdminLogin() {
       } catch (signInError: any) {
         // If sign in fails and it's the admin email, attempt to create it.
         // It's possible the user does not exist yet.
-        if (email === 'admin@pharmaply.com' && (signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/user-not-found')) {
+        const isAuthError = signInError.code === 'auth/invalid-credential' 
+                         || signInError.code === 'auth/user-not-found'
+                         || signInError.message?.includes('Invalid login credentials');
+                         
+        if (email === 'admin@pharmaply.com' && isAuthError) {
            try {
               userCredential = await createUserWithEmailAndPassword(auth, email, password);
            } catch (createError: any) {
-              if (createError.code === 'auth/email-already-in-use') {
+              if (createError.code === 'auth/email-already-in-use' || createError.message?.includes('already registered')) {
                  // The account exists, so the password was actually wrong or they used google.
                  throw new Error("Invalid password or you signed up with Google. Please reset password to use email login.");
               }
@@ -90,12 +105,23 @@ export function AdminLogin() {
             toast.error("You do not have Cashier privileges.");
             setError("You do not have Cashier privileges.");
          } else {
+           if (rememberMe) {
+             localStorage.setItem("adminRememberEmail", email);
+             localStorage.setItem("adminRememberPassword", password);
+           } else {
+             localStorage.removeItem("adminRememberEmail");
+             localStorage.removeItem("adminRememberPassword");
+           }
            toast.success("Successfully logged in!");
          }
          // Otherwise, allow authentication to succeed and AuthProvider to navigate
       }
     } catch (err: any) {
-      if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
+      const isAuthErr = err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.message?.includes('Invalid login credentials');
+      if (err.code === "auth/unverified-email") {
+         toast.error("Email not confirmed. Please check the create-admin.sql file.");
+         setError("Email not confirmed. Please run the create-admin.sql script in your Supabase SQL Editor to verify the admin account.");
+      } else if (isAuthErr) {
         toast.error("Invalid credentials.");
         setError("Invalid credentials.");
       } else {
@@ -134,7 +160,7 @@ export function AdminLogin() {
         </div>
 
         <div className="relative z-10">
-          <p className="text-teal-100/60 text-sm font-medium">{t("terms")} &nbsp;|&nbsp; {t("privacy")}</p>
+          <p className="text-teal-100/60 text-sm font-medium">{t("terms")}  {t('nbsp_nbsp', '&nbsp;|&nbsp;')} {t("privacy")}</p>
         </div>
       </div>
 
@@ -153,8 +179,8 @@ export function AdminLogin() {
              </button>
              {showLangMenu && (
                <div className="absolute right-0 mt-2 w-32 bg-white rounded-xl shadow-lg border border-gray-100 py-1 overflow-hidden">
-                 <button onClick={() => toggleLang('en')} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700">English</button>
-                 <button onClick={() => toggleLang('fr')} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700">Français</button>
+                 <button onClick={() => toggleLang('en')} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700"> {t('english', 'English')} </button>
+                 <button onClick={() => toggleLang('fr')} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700"> {t('fran_ais', 'Français')} </button>
                </div>
              )}
            </div>
@@ -198,7 +224,7 @@ export function AdminLogin() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-[#f8f9fa] border border-gray-200 py-3 px-4 rounded-xl text-sm focus:ring-2 focus:ring-teal-600 focus:border-transparent outline-none transition"
-                placeholder="admin@example.com"
+                placeholder={t('admin_example_com', 'admin@example.com')}
               />
             </div>
 
@@ -212,6 +238,17 @@ export function AdminLogin() {
                 className="w-full bg-[#f8f9fa] border border-gray-200 py-3 px-4 rounded-xl text-sm focus:ring-2 focus:ring-teal-600 focus:border-transparent outline-none transition"
                 placeholder="••••••••"
               />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500"
+              />
+              <label htmlFor="rememberMe" className="text-sm font-medium text-gray-700"> {t('remember_me', 'Remember me')} </label>
             </div>
 
             <button

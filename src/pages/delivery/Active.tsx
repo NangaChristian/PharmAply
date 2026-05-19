@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
 import { Package, MapPin, Phone, Camera, CheckCircle, Navigation } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, doc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
+import { formatCurrency } from '../../lib/utils';
+import { useTranslation } from "react-i18next";
 
 type DeliveryStatus = 'to_pharmacy' | 'at_pharmacy' | 'to_customer' | 'at_customer' | 'completed';
 
 export function DeliveryActive() {
+    const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [order, setOrder] = useState<any>(null);
@@ -78,28 +81,28 @@ export function DeliveryActive() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-sm text-gray-500">Loading active delivery...</div>;
-  if (!order) return <div className="flex-1 flex items-center justify-center bg-slate-50 text-gray-500">No active delivery</div>;
+  if (loading) return <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500"> {t('loading_active_delivery', 'Loading active delivery...')} </div>;
+  if (!order) return <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-black text-gray-500 dark:text-gray-400 dark:text-gray-500"> {t('no_active_delivery', 'No active delivery')} </div>;
 
   return (
-    <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
+    <div className="flex-1 bg-slate-50 dark:bg-black flex flex-col h-full overflow-hidden">
       <div className={`px-6 pt-12 pb-6 shadow-sm z-10 text-white rounded-b-[2rem] transition-colors ${status === 'completed' ? 'bg-green-600' : 'bg-indigo-600'}`}>
          <h1 className="font-bold text-xl mb-1">{getStatusText()}</h1>
-         <p className="text-white/80 text-sm">Order #{order.id.slice(0, 8)}</p>
+         <p className="text-white/80 text-sm"> {t('order', 'Order #')} {order.id.slice(0, 8)}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
          {/* Order details context */}
-         <div className="bg-white border-2 border-indigo-100 rounded-2xl p-5 shadow-sm shadow-indigo-100/50">
+         <div className="bg-white dark:bg-black border-2 border-indigo-100 rounded-2xl p-5 shadow-sm shadow-indigo-100/50">
             <div className="flex justify-between items-start mb-4 border-b border-gray-50 pb-4">
                <div>
                   <span className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md text-xs font-bold tracking-wide uppercase">
                     {status === 'to_pharmacy' || status === 'at_pharmacy' ? 'Pickup' : 'Drop-off'}
                   </span>
-                  <h2 className="font-bold text-gray-900 mt-2 line-clamp-1">
+                  <h2 className="font-bold text-gray-900 dark:text-white mt-2 line-clamp-1">
                     {status === 'to_pharmacy' || status === 'at_pharmacy' ? `Pharmacy: ${order.pharmacyId}` : `Customer: ${order.patientId}`}
                   </h2>
-                  <p className="text-gray-500 text-sm mt-1">
+                  <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm mt-1">
                     {status === 'to_pharmacy' || status === 'at_pharmacy' ? 'Local Pharmacy' : order.deliveryAddress}
                   </p>
                </div>
@@ -110,12 +113,12 @@ export function DeliveryActive() {
 
             <div className="space-y-4">
                <div className="flex gap-4">
-                  <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
-                     <Navigation size={16} className="text-gray-400" />
+                  <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-black flex items-center justify-center shrink-0">
+                     <Navigation size={16} className="text-gray-400 dark:text-gray-500" />
                   </div>
                   <div className="flex-1 flex justify-between items-center">
                      <div>
-                        <p className="font-bold text-gray-900 mt-0.5">Navigate</p>
+                        <p className="font-bold text-gray-900 dark:text-white mt-0.5"> {t('navigate', 'Navigate')} </p>
                      </div>
                      <button className="bg-indigo-100 text-indigo-700 p-2 rounded-full">
                         <Navigation size={16} className="fill-current" />
@@ -124,13 +127,13 @@ export function DeliveryActive() {
                </div>
                
                <div className="flex gap-4">
-                  <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
-                     <Phone size={16} className="text-gray-400" />
+                  <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-black flex items-center justify-center shrink-0">
+                     <Phone size={16} className="text-gray-400 dark:text-gray-500" />
                   </div>
                   <div className="flex-1 flex justify-between items-center">
                      <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Contact</p>
-                        <p className="font-bold text-gray-900 mt-0.5">Call System</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wide font-semibold"> {t('contact', 'Contact')} </p>
+                        <p className="font-bold text-gray-900 dark:text-white mt-0.5"> {t('call_system', 'Call System')} </p>
                      </div>
                      <button className="bg-green-100 text-green-700 p-2 rounded-full">
                         <Phone size={16} className="fill-current" />
@@ -142,34 +145,34 @@ export function DeliveryActive() {
 
          {/* Proof of Delivery (only at customer) */}
          {status === 'at_customer' && (
-           <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm text-center">
-             <h3 className="font-bold text-gray-900 mb-2">Proof of Delivery</h3>
-             <p className="text-xs text-gray-500 mb-4">Please take a photo of the package at the door.</p>
+           <div className="bg-white dark:bg-black rounded-2xl p-5 border border-gray-100 dark:border-zinc-800 shadow-sm text-center">
+             <h3 className="font-bold text-gray-900 dark:text-white mb-2"> {t('proof_of_delivery', 'Proof of Delivery')} </h3>
+             <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-4"> {t('please_take_a_photo_of_the_pac', 'Please take a photo of the package at the door.')} </p>
              
              {!proofUploaded ? (
                <button 
                  onClick={() => setProofUploaded(true)}
-                 className="w-full bg-gray-50 border-2 border-dashed border-gray-200 py-8 rounded-xl flex flex-col items-center gap-2 text-indigo-600 hover:bg-gray-100 transition"
+                 className="w-full bg-gray-50 dark:bg-black border-2 border-dashed border-gray-200 dark:border-zinc-800 py-8 rounded-xl flex flex-col items-center gap-2 text-indigo-600 hover:bg-gray-100 dark:bg-zinc-900 transition"
                >
                  <Camera size={32} />
-                 <span className="font-bold text-sm">Take Photo</span>
+                 <span className="font-bold text-sm"> {t('take_photo', 'Take Photo')} </span>
                </button>
              ) : (
                <div className="bg-green-50 text-green-700 border border-green-200 py-6 rounded-xl flex flex-col items-center gap-2">
                  <CheckCircle size={32} />
-                 <span className="font-bold text-sm">Proof Uploaded</span>
+                 <span className="font-bold text-sm"> {t('proof_uploaded', 'Proof Uploaded')} </span>
                </div>
              )}
            </div>
          )}
          
          {status === 'completed' && (
-            <div className="bg-white rounded-2xl p-8 border border-green-100 text-center flex flex-col items-center">
+            <div className="bg-white dark:bg-black rounded-2xl p-8 border border-green-100 text-center flex flex-col items-center">
               <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
                  <CheckCircle size={32} />
               </div>
-              <h2 className="text-xl font-bold text-gray-900">Delivery Successful!</h2>
-              <p className="text-gray-500 mt-2">You earned <span className="font-bold text-green-600">$3.00</span></p>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white"> {t('delivery_successful', 'Delivery Successful!')} </h2>
+              <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-2"> {t('you_earned', 'You earned')} <span className="font-bold text-green-600">{formatCurrency(3)}</span></p>
             </div>
          )}
 

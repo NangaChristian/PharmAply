@@ -67,6 +67,12 @@ import { Promotions } from './pages/admin/settings/Promotions';
 import { Compliance } from './pages/admin/settings/Compliance';
 import { SecurityRoles } from './pages/admin/settings/SecurityRoles';
 import { GlobalSettings } from './pages/admin/settings/GlobalSettings';
+import { FinancialSettings } from './pages/admin/settings/FinancialSettings';
+import { VendorSettings } from './pages/admin/settings/VendorSettings';
+import { CatalogSettings } from './pages/admin/settings/CatalogSettings';
+
+import { PatientSettings } from './pages/patient/Settings';
+import { PatientProfileDetails } from './pages/patient/ProfileDetails';
 
 function Placeholder({ title }: { title: string }) {
   return (
@@ -77,11 +83,17 @@ function Placeholder({ title }: { title: string }) {
   );
 }
 
+import { DarkModeProvider } from './components/DarkModeProvider';
+import { AppUpdater } from './components/AppUpdater';
+
 export default function App() {
   return (
-    <ThemeProvider>
-      <BrowserRouter>
-        <AppShell>
+    <DarkModeProvider>
+      <ThemeProvider>
+        <AppUpdater>
+        <BrowserRouter>
+          <AppShell>
+
           <Routes>
           <Route path="/" element={<Onboarding />} />
           <Route path="/forget-password" element={<ForgetPassword />} />
@@ -97,6 +109,8 @@ export default function App() {
             <Route path="profile" element={<PatientProfile />} />
             <Route path="search" element={<PatientSearch />} />
             <Route path="notifications" element={<PatientNotifications />} />
+            <Route path="settings" element={<PatientSettings />} />
+            <Route path="profile/details" element={<PatientProfileDetails />} />
             <Route path="prescriptions" element={<PatientPrescriptions />} />
             <Route path="product/:id" element={<PatientProductDetails />} />
             <Route path="pharmacy/:id" element={<PatientPharmacyDetails />} />
@@ -136,9 +150,10 @@ export default function App() {
             <Route index element={<AdminHome />} />
             <Route path="products" element={<AdminProducts />} />
             <Route path="categories" element={<AdminCategories />} />
-            <Route path="clients" element={<AdminUsers type="clients" />} />
-            <Route path="vendors" element={<AdminUsers type="vendors" />} />
-            <Route path="drivers" element={<AdminUsers type="drivers" />} />
+             <Route path="clients" element={<AdminUsers type="clients" />} />
+             <Route path="vendors" element={<AdminUsers type="vendors" />} />
+             <Route path="drivers" element={<AdminUsers type="drivers" />} />
+             <Route path="cashiers" element={<AdminUsers type="cashiers" />} />
             <Route path="orders" element={<AdminOrders />} />
             <Route path="finances" element={<AdminFinances />} />
             <Route path="reports" element={<AdminReports />} />
@@ -153,6 +168,9 @@ export default function App() {
             <Route path="settings/security" element={<SecurityRoles />} />
             <Route path="settings/global" element={<GlobalSettings />} />
             <Route path="settings/theme" element={<ThemeSettings />} />
+            <Route path="settings/financial" element={<FinancialSettings />} />
+            <Route path="settings/vendors" element={<VendorSettings />} />
+            <Route path="settings/catalog" element={<CatalogSettings />} />
             <Route path="support" element={<AdminSupport />} />
             <Route path="documentation" element={<AdminDocumentation />} />
             <Route path="changelog" element={<AdminChangelog />} />
@@ -160,7 +178,9 @@ export default function App() {
         </Routes>
       </AppShell>
       </BrowserRouter>
-    </ThemeProvider>
+      </AppUpdater>
+      </ThemeProvider>
+    </DarkModeProvider>
   );
 }
 

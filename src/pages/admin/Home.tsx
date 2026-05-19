@@ -1,10 +1,13 @@
 import { Users, TrendingUp, AlertTriangle, CheckCircle, Package, Store, Calendar, RotateCcw, MoreHorizontal, Search } from "lucide-react";
 import { useEffect, useState } from "react";
-import { collection, query, getDocs, onSnapshot, where } from "firebase/firestore";
+import { collection, query, getDocs, onSnapshot, where } from '../../lib/firebase';
 import { db } from "../../lib/firebase";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
+import { formatCurrency, parseDate } from "../../lib/utils";
+import { useTranslation } from "react-i18next";
 
 export function AdminHome() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState({
     activeOrders: 0,
     pharmaciesCount: 0,
@@ -64,7 +67,11 @@ export function AdminHome() {
         const totalRev = orders.reduce((acc, order) => acc + (Number(order.totalPrice) || 0), 0);
 
         // Sort orders by createdAt if available, otherwise just use latest
-        const sortedOrders = orders.sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
+        const sortedOrders = orders.sort((a, b) => {
+          const tA = parseDate(a.createdAt) ? parseDate(a.createdAt)!.getTime() : 0;
+          const tB = parseDate(b.createdAt) ? parseDate(b.createdAt)!.getTime() : 0;
+          return tB - tA;
+        });
         setRecentOrders(sortedOrders.slice(0, 5));
 
         setStats(prev => ({
@@ -104,12 +111,11 @@ export function AdminHome() {
     <div className="flex flex-col space-y-6">
       
       <div className="flex items-center justify-between">
-         <h1 className="text-2xl font-bold text-slate-800">Welcome Admin!</h1>
+         <h1 className="text-2xl font-bold text-slate-800">{t('admin_welcome_text', 'Welcome Admin!')}</h1>
          
          <div className="flex items-center gap-2">
             <button className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50 transition">
-              <Calendar size={16} /> This Month
-            </button>
+              <Calendar size={16} />  {t('this_month', 'This Month')} </button>
             <button className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center text-slate-500 hover:text-slate-900 transition">
               <RotateCcw size={16} />
             </button>
@@ -126,9 +132,9 @@ export function AdminHome() {
              <button className="text-black/40 hover:text-black/60"><MoreHorizontal size={20} /></button>
            </div>
            <div>
-             <p className="text-black/60 text-sm font-medium mb-1">Today's Revenue</p>
-             <h3 className="text-3xl font-bold text-black/80">${stats.todaySales.toFixed(2)}</h3>
-             <p className="text-[10px] text-green-700 font-bold mt-1">+2.5% This Month</p>
+             <p className="text-black/60 text-sm font-medium mb-1">{t('admin_today_revenue', "Today's Revenue")}</p>
+             <h3 className="text-3xl font-bold text-black/80">{formatCurrency(stats.todaySales)}</h3>
+             <p className="text-[10px] text-green-700 font-bold mt-1"> {t('2_5_this_month', '+2.5% This Month')} </p>
            </div>
            {/* Decorative bars */}
            <div className="absolute right-6 bottom-6 flex items-end gap-1 opacity-20">
@@ -146,9 +152,9 @@ export function AdminHome() {
              <button className="text-black/40 hover:text-black/60"><MoreHorizontal size={20} /></button>
            </div>
            <div>
-             <p className="text-black/60 text-sm font-medium mb-1">Pharmacies</p>
+             <p className="text-black/60 text-sm font-medium mb-1">{t('admin_pharmacies_count', "Pharmacies")}</p>
              <h3 className="text-3xl font-bold text-black/80">{stats.pharmaciesCount}</h3>
-             <p className="text-[10px] text-teal-800 font-bold mt-1">+2.5% This Month</p>
+             <p className="text-[10px] text-teal-800 font-bold mt-1"> {t('2_5_this_month', '+2.5% This Month')} </p>
            </div>
            <div className="absolute right-6 bottom-6 flex items-end gap-1 opacity-20">
              <div className="w-2 h-4 bg-black rounded-full"></div>
@@ -165,9 +171,9 @@ export function AdminHome() {
              <button className="text-black/40 hover:text-black/60"><MoreHorizontal size={20} /></button>
            </div>
            <div>
-             <p className="text-black/60 text-sm font-medium mb-1">Active Deliveries</p>
+             <p className="text-black/60 text-sm font-medium mb-1">{t('admin_active_deliveries', "Active Deliveries")}</p>
              <h3 className="text-3xl font-bold text-black/80">{stats.activeOrders}</h3>
-             <p className="text-[10px] text-red-800 font-bold mt-1">In progress right now</p>
+             <p className="text-[10px] text-red-800 font-bold mt-1"> {t('in_progress_right_now', 'In progress right now')} </p>
            </div>
            <div className="absolute right-6 bottom-6 flex items-end gap-1 opacity-20">
              <div className="w-2 h-6 bg-black rounded-full"></div>
@@ -184,9 +190,9 @@ export function AdminHome() {
              <button className="text-black/40 hover:text-black/60"><MoreHorizontal size={20} /></button>
            </div>
            <div>
-             <p className="text-black/60 text-sm font-medium mb-1">System Users</p>
+             <p className="text-black/60 text-sm font-medium mb-1">{t('admin_system_users', "System Users")}</p>
              <h3 className="text-3xl font-bold text-black/80">{stats.patientsCount + stats.driversCount + stats.pharmaciesCount}</h3>
-             <p className="text-[10px] text-indigo-800 font-bold mt-1">Total platform accounts</p>
+             <p className="text-[10px] text-indigo-800 font-bold mt-1"> {t('total_platform_accounts', 'Total platform accounts')} </p>
            </div>
            <div className="absolute right-6 bottom-6 flex items-end gap-1 opacity-20">
              <div className="w-2 h-10 bg-black rounded-full"></div>
@@ -200,7 +206,7 @@ export function AdminHome() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
          <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-slate-800">Order Status Report</h3>
+              <h3 className="font-bold text-slate-800">{t('admin_order_status_report', 'Order Status Report')}</h3>
               <button className="w-8 h-8 border border-gray-200 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600">
                  <MoreHorizontal size={16} />
               </button>
@@ -226,7 +232,7 @@ export function AdminHome() {
                  </PieChart>
                </ResponsiveContainer>
                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <p className="text-xs text-slate-400">Total Orders</p>
+                  <p className="text-xs text-slate-400"> {t('total_orders', 'Total Orders')} </p>
                   <p className="text-2xl font-bold text-slate-800">{stats.activeOrders + stats.pieData[0].value + stats.pieData[2].value + stats.pieData[3].value}</p>
                </div>
             </div>
@@ -243,7 +249,7 @@ export function AdminHome() {
 
          <div className="lg:col-span-3 bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-slate-800">Total Revenue Overview</h3>
+              <h3 className="font-bold text-slate-800">{t('admin_total_revenue_overview', 'Total Revenue Overview')}</h3>
               <button className="w-8 h-8 border border-gray-200 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600">
                  <MoreHorizontal size={16} />
               </button>
@@ -270,14 +276,14 @@ export function AdminHome() {
       {/* Recent Orders List */}
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-bold text-slate-800">Recent Platform Orders</h3>
+            <h3 className="font-bold text-slate-800">{t('admin_recent_platform_orders', 'Recent Platform Orders')}</h3>
             <div className="flex items-center gap-3">
                <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                  <input type="text" placeholder="Search..." className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-full text-xs outline-none focus:ring-2 focus:ring-slate-900" />
+                  <input type="text" placeholder={t('search', 'Search...')} className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-full text-xs outline-none focus:ring-2 focus:ring-slate-900" />
                </div>
                <button className="px-3 py-2 bg-slate-50 border border-slate-100 rounded-full text-xs font-medium text-slate-600 flex items-center gap-1">
-                 Filter <span className="text-[10px]">▼</span>
+                  {t('filter', 'Filter')} <span className="text-[10px]">▼</span>
                </button>
             </div>
          </div>
@@ -286,11 +292,11 @@ export function AdminHome() {
             <table className="w-full text-sm text-left">
                <thead className="text-xs text-slate-500 border-b border-gray-100">
                   <tr>
-                     <th className="pb-4 font-semibold px-4">Order ID</th>
-                     <th className="pb-4 font-semibold px-4">Pharmacy</th>
-                     <th className="pb-4 font-semibold px-4">Status</th>
-                     <th className="pb-4 font-semibold px-4">Total Price</th>
-                     <th className="pb-4 font-semibold px-4">Date</th>
+                     <th className="pb-4 font-semibold px-4"> {t('order_id', 'Order ID')} </th>
+                     <th className="pb-4 font-semibold px-4"> {t('pharmacy', 'Pharmacy')} </th>
+                     <th className="pb-4 font-semibold px-4"> {t('status', 'Status')} </th>
+                     <th className="pb-4 font-semibold px-4"> {t('total_price', 'Total Price')} </th>
+                     <th className="pb-4 font-semibold px-4"> {t('date', 'Date')} </th>
                   </tr>
                </thead>
                <tbody>
@@ -301,12 +307,12 @@ export function AdminHome() {
                         <td className="py-4 px-4">
                            <span className="px-2.5 py-1 bg-teal-50 text-teal-700 rounded-full text-[10px] font-bold uppercase">{order.status || 'Pending'}</span>
                         </td>
-                        <td className="py-4 px-4 text-slate-800 font-medium">${order.totalPrice || '0.00'}</td>
-                        <td className="py-4 px-4 text-slate-500 text-xs">Recently</td>
+                        <td className="py-4 px-4 text-slate-800 font-medium">{formatCurrency(Number(order.totalPrice || 0))}</td>
+                        <td className="py-4 px-4 text-slate-500 text-xs"> {t('recently', 'Recently')} </td>
                      </tr>
                   )) : (
                      <tr>
-                        <td colSpan={5} className="py-8 text-center text-slate-400 text-sm">No recent orders.</td>
+                        <td colSpan={5} className="py-8 text-center text-slate-400 text-sm"> {t('no_recent_orders', 'No recent orders.')} </td>
                      </tr>
                   )}
                </tbody>
@@ -314,12 +320,12 @@ export function AdminHome() {
          </div>
          
          <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-50">
-            <p className="text-xs text-slate-500">Showing recent orders</p>
+            <p className="text-xs text-slate-500"> {t('showing_recent_orders', 'Showing recent orders')} </p>
             <div className="flex items-center gap-1">
-               <button className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-700">Prev</button>
+               <button className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-700"> {t('prev', 'Prev')} </button>
                <button className="w-8 h-8 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center">1</button>
                <button className="w-8 h-8 rounded-full text-slate-500 text-xs font-bold flex items-center justify-center hover:bg-slate-100">2</button>
-               <button className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900">Next</button>
+               <button className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900"> {t('next', 'Next')} </button>
             </div>
          </div>
       </div>

@@ -285,9 +285,9 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                          filteredUsers.map((u) => {
                            const isSelected = selectedUsers.includes(u.id);
                            return (
-                             <tr key={u.id} className={`hover:bg-gray-50/50 transition-colors ${isSelected ? 'bg-indigo-50/30' : ''}`}>
+                             <tr key={u.id} onClick={() => toggleSelectUser(u.id)} className={`cursor-pointer hover:bg-gray-100/80 transition-colors even:bg-gray-50/30 ${isSelected ? 'bg-indigo-50/40 even:bg-indigo-50/40' : ''}`}>
                                 <td className="py-4 px-6">
-                                  <button onClick={() => toggleSelectUser(u.id)} className="block text-gray-400 hover:text-indigo-600">
+                                  <button onClick={(e) => { e.stopPropagation(); toggleSelectUser(u.id); }} className="block text-gray-400 hover:text-indigo-600">
                                     {isSelected ? <CheckSquare size={18} className="text-indigo-600" /> : <div className="w-[18px] h-[18px] border-2 border-gray-300 rounded-[4px]"></div>}
                                   </button>
                                 </td>
@@ -306,6 +306,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                                    <select 
                                      value={u.role || 'patient'} 
                                      onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                                     onClick={(e) => e.stopPropagation()}
                                      className="text-xs bg-white border border-gray-200 rounded-lg py-1.5 px-2 outline-none focus:ring-2 focus:ring-indigo-100"
                                    >
                                      <option value="patient">{t('role_patient', 'Patient')}</option>
@@ -324,7 +325,10 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                                 <td className="py-4 px-6 text-right">
                                   <div className="flex items-center justify-end gap-2">
                                      <button 
-                                       onClick={() => handleStatusChange(u.id, u.status === 'suspended' ? 'approved' : 'suspended')}
+                                       onClick={(e) => {
+                                         e.stopPropagation();
+                                         handleStatusChange(u.id, u.status === 'suspended' ? 'approved' : 'suspended');
+                                       }}
                                        className={`p-1.5 rounded-lg border transition-colors ${
                                          u.status === 'suspended' 
                                            ? 'text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-100' 

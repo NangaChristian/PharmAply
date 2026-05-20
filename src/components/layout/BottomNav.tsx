@@ -22,7 +22,7 @@ export function BottomNav({ role }: BottomNavProps) {
     { to: "/pharmacist", icon: Home, label: t('home', 'Home') },
     { to: "/pharmacist/orders", icon: ClipboardList, label: t('orders', 'Orders') },
     { to: "/pharmacist/inventory", icon: Package, label: t('inventory', 'Inventory') },
-    { to: "/pharmacist/reports", icon: FileText, label: t('reports', 'Reports') },
+    { to: "/pharmacist/prescriptions", icon: FileText, label: t('prescriptions', 'Prescriptions') },
     { to: "/pharmacist/profile", icon: User, label: t('profile', 'Profile') },
   ];
 

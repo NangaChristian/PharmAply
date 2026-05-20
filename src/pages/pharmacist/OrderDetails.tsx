@@ -116,7 +116,7 @@ export function PharmacistOrderDetails() {
          </div>
 
          {/* Prescription Review */}
-         {order.hasPrescription && (
+         {order.hasPrescription && order.prescriptionUrl && (
             <div className="bg-white dark:bg-black p-6 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-sm">
                <div className="flex items-center justify-between border-b border-gray-50 pb-4 mb-5">
                   <div className="flex items-center justify-between w-full">
@@ -125,11 +125,18 @@ export function PharmacistOrderDetails() {
                        <AlertTriangle size={12} />  {t('validation_required', 'Validation required')} </div>
                   </div>
                </div>
-               <div className="aspect-[4/3] bg-gray-50 dark:bg-black rounded-2xl overflow-hidden relative border border-gray-100 dark:border-zinc-800 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:bg-zinc-900 transition-colors group">
-                  <div className="absolute inset-0 flex items-center justify-center text-gray-400 dark:text-gray-500 flex-col gap-3 group-hover:text-gray-500 dark:text-gray-400 dark:text-gray-500 transition-colors">
-                     <FileImagePlaceholder />
-                     <span className="text-sm font-bold"> {t('prescription_scan_jpg', 'prescription_scan.jpg')} </span>
-                  </div>
+               <div 
+                 className="aspect-[4/3] bg-gray-50 dark:bg-black rounded-2xl overflow-hidden relative border border-gray-100 dark:border-zinc-800 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:bg-zinc-900 transition-colors group"
+                 onClick={() => window.open(order.prescriptionUrl, '_blank')}
+               >
+                  {/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(order.prescriptionUrl) ? (
+                    <img src={order.prescriptionUrl} alt="Prescription" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-gray-400 dark:text-gray-500 flex-col gap-3 group-hover:text-indigo-500 transition-colors">
+                       <FileImagePlaceholder />
+                       <span className="text-sm font-bold underline"> {t('view_prescription', 'View Prescription Document')} </span>
+                    </div>
+                  )}
                </div>
             </div>
          )}

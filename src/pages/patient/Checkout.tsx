@@ -64,6 +64,14 @@ export function PatientCheckout() {
           console.error("Upload failed", storageErr);
           throw storageErr;
         }
+        const prescriptionDoc = await addDoc(collection(db, 'prescriptions'), {
+           patientId: user.uid,
+           fileUrl: url,
+           fileName: file.name,
+           status: 'pending_review',
+           pharmacyId: product.pharmacyId, // If the product belongs to a specific pharmacy
+           createdAt: serverTimestamp()
+        });
         setPrescriptionUrl(url);
         setPrescriptionName(file.name);
       } catch (err: any) {

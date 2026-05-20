@@ -7,6 +7,7 @@ import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { useTheme } from '../../components/ThemeProvider';
 import { useTranslation } from "react-i18next";
+import { useNotifications } from "../../hooks/useNotifications";
 
 export function PatientHome() {
   const navigate = useNavigate();
@@ -17,6 +18,8 @@ export function PatientHome() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [pharmacies, setPharmacies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const { unreadCount } = useNotifications();
 
   const suggestions = [
     { type: 'category', text: 'Pain Relief' },
@@ -68,7 +71,7 @@ export function PatientHome() {
       {/* Header Profile Section */}
       <div className="bg-white dark:bg-black px-6 pt-12 pb-4 rounded-b-[2rem] shadow-sm z-20 flex flex-col gap-4 relative">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/patient/profile')}>
             <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden border-2 border-indigo-100 flex items-center justify-center text-xl text-gray-500 dark:text-gray-400 font-bold uppercase shrink-0">
                {user?.photoURL ? (
                  <img src={user.photoURL} alt={user.displayName || 'User'} className="w-full h-full object-cover" />
@@ -85,7 +88,11 @@ export function PatientHome() {
           </div>
           <button onClick={() => navigate('/patient/notifications')} className="relative w-10 h-10 flex items-center justify-center bg-gray-50 dark:bg-black rounded-full cursor-pointer hover:bg-gray-100 dark:bg-zinc-900 transition">
             <Bell size={20} className="text-gray-600" />
-            <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 flex items-center justify-center min-w-4 min-h-4 px-1 bg-red-500 rounded-full text-[10px] font-bold text-white border border-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </button>
         </div>
 
@@ -198,7 +205,13 @@ export function PatientHome() {
               {loading ? (
               <div className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 py-4"> {t('loading_pharmacies', 'Loading pharmacies...')} </div>
             ) : pharmacies.length === 0 ? (
-              <div className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 py-4"> {t('no_pharmacies_available_admin_', 'No pharmacies available. Admin must add them.')} </div>
+              <div className="col-span-1 md:col-span-2 flex flex-col items-center justify-center py-10 px-4 text-center bg-gray-50 dark:bg-zinc-900/50 rounded-2xl border border-dashed border-gray-200 dark:border-zinc-800">
+                <Store size={40} className="text-gray-300 dark:text-gray-600 mb-3" />
+                <h4 className="text-gray-900 dark:text-white font-medium mb-1">{t('no_pharmacies_nearby', 'No pharmacies nearby')}</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-[250px]">
+                  {t('no_pharmacies_available_admin_', 'We are expanding our network. New pharmacies will be available soon.')}
+                </p>
+              </div>
             ) : (
               pharmacies.map((pharmacy) => (
                 <div key={pharmacy.id} onClick={() => navigate(`/patient/pharmacy/${pharmacy.id}`)} className="cursor-pointer w-full bg-white dark:bg-black rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-zinc-800 hover:shadow-md transition">

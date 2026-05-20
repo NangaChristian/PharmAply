@@ -3,6 +3,7 @@ import { ArrowLeft, CheckCircle, Package, Download, X, AlertTriangle, RefreshCcw
 import { useNavigate, useParams } from "react-router-dom";
 import { doc, getDoc, updateDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
+import { sendEmail } from '../../lib/email';
 import { useAuth } from '../../components/AuthProvider';
 import { formatCurrency } from '../../lib/utils';
 import { useTranslation } from "react-i18next";
@@ -47,6 +48,20 @@ export function PharmacistOrderDetails() {
       await updateDoc(doc(db, 'orders', order.id), updateData);
       setOrder({ ...order, status: newStatus, cancellationReason: newStatus === 'rejected' ? rejectReason : order.cancellationReason });
       setIsRejecting(false);
+
+      // fetch patient to get email
+      if (order.patientId) {
+         try {
+           const patientDoc = await getDoc(doc(db, 'users', order.patientId));
+           if (patientDoc.exists() && patientDoc.data().email) {
+             await sendEmail({
+               to: patientDoc.data().email,
+               subject: `Order Update: ${newStatus}`,
+               html: `<p>Your order status has been updated to: <strong>${newStatus}</strong>.</p>`
+             });
+           }
+         } catch(e) { console.error('Failed to notify patient', e); }
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'orders');
     } finally {

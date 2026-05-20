@@ -29,6 +29,8 @@ const ONBOARDING_SLIDES = [
   }
 ];
 
+import { sendEmail } from '../../lib/email';
+
 export function Onboarding() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
@@ -170,6 +172,14 @@ export function Onboarding() {
         }
 
         await setDoc(userDocRef, userData);
+        
+        // Send Welcome email
+        await sendEmail({
+          to: result.user.email,
+          subject: "Welcome to Pharmap!",
+          html: `<h1>Welcome ${name || 'User'} to Pharmap!</h1><p>We are glad to have you on board. Explore pharmacies around you and order medications with ease.</p>`
+        });
+        
         toast.success("Successfully signed up!");
       } else {
         result = await signInWithEmailAndPassword(auth, email, password);

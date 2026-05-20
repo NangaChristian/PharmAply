@@ -14,6 +14,7 @@ export function Messages() {
   const { t } = useTranslation();
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
+  const [tableError, setTableError] = useState(false);
 
   useEffect(() => {
     if (!user || !id) return;
@@ -24,8 +25,18 @@ export function Messages() {
         orderBy('createdAt', 'asc')
     );
 
-    const unsub = onSnapshot(q, (snapshot) => {
-        setMessages(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    const unsub = onSnapshot(q, (snapshot: any) => {
+        setMessages(snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+        setTableError(false);
+    }, (error: any) => {
+        if (error?.message?.includes('Could not find the table')) {
+             setTableError(true);
+             // Fallback to local storage
+             const localMsgs = localStorage.getItem(`local_messages_${id}`);
+             if (localMsgs) {
+                setMessages(JSON.parse(localMsgs));
+             }
+        }
     });
 
     return () => unsub();
@@ -38,6 +49,22 @@ export function Messages() {
     setInput("");
 
     try {
+        if (tableError) {
+             const newLocalMsg = {
+                  id: Math.random().toString(36).substring(7),
+                  orderId: id,
+                  patientId: user.uid,
+                  senderId: user.uid,
+                  senderType: 'patient',
+                  text: msgText,
+                  createdAt: new Date().toISOString()
+             };
+             const updatedMsgs = [...messages, newLocalMsg];
+             setMessages(updatedMsgs);
+             localStorage.setItem(`local_messages_${id}`, JSON.stringify(updatedMsgs));
+             return;
+        }
+
         await addDoc(collection(db, 'messages'), {
             orderId: id,
             patientId: user.uid,
@@ -66,6 +93,24 @@ export function Messages() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4 pb-24">
+         {tableError && (
+              <div className="bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 text-yellow-800 dark:text-yellow-400 p-4 rounded-xl text-sm mb-4">
+                 <strong>Database Setup Required:</strong> The <code>messages</code> table is missing in Supabase. You are currently using <strong>local offline storage</strong> for this chat.
+                 <br className="mb-2"/>
+                 To enable cloud sync, execute the following SQL in your Supabase SQL Editor:
+                 <pre className="mt-2 p-3 bg-yellow-100 dark:bg-yellow-500/20 rounded font-mono text-[11px] overflow-x-auto text-yellow-900 dark:text-yellow-200">
+{`CREATE TABLE public.messages (
+  id TEXT PRIMARY KEY,
+  patientId TEXT NOT NULL,
+  senderId TEXT NOT NULL,
+  senderType TEXT NOT NULL,
+  orderId TEXT NOT NULL,
+  text TEXT NOT NULL,
+  createdAt TIMESTAMPTZ DEFAULT now()
+);`}
+                 </pre>
+              </div>
+          )}
          {messages.length === 0 ? (
              <div className="text-center text-gray-400 dark:text-gray-500 mt-10">
                  {t('no_messages_yet', 'No messages yet. Say hi!')}

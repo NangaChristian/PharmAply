@@ -50,23 +50,42 @@ export function BottomNav({ role }: BottomNavProps) {
       : adminLinks;
 
   return (
-    <div className="h-16 bg-white dark:bg-black border-t border-gray-100 dark:border-zinc-800 flex items-center justify-between px-6 z-50 transition-colors shrink-0">
+    <div className="h-[4.5rem] bg-white/90 dark:bg-black/90 backdrop-blur-xl border-t border-gray-100 dark:border-zinc-800 flex items-center justify-around px-2 sm:px-6 z-50 pb-[env(safe-area-inset-bottom)] transition-colors shrink-0">
       {links.map((link) => {
         const Icon = link.icon;
         return (
           <NavLink
             key={link.to}
             to={link.to}
-            end={link.to === "/patient" || link.to === "/pharmacist" || link.to === "/delivery"}
+            end={link.to === "/patient" || link.to === "/pharmacist" || link.to === "/delivery" || link.to === "/admin"}
             className={({ isActive }) =>
               cn(
-                "flex flex-col items-center gap-1 text-xs transition-colors",
-                isActive ? "text-indigo-600 dark:text-white" : "text-gray-400 dark:text-white/40"
+                "group relative flex flex-col items-center justify-center w-16 h-full transition-all duration-300",
+                isActive 
+                  ? "text-indigo-600 dark:text-indigo-400" 
+                  : "text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300"
               )
             }
           >
-            <Icon size={20} strokeWidth={2.5} />
-            <span className="font-medium">{link.label}</span>
+            {({ isActive }) => (
+              <>
+                <div className={cn(
+                  "flex items-center justify-center transition-all duration-300 rounded-2xl relative z-10",
+                  isActive ? "h-8 w-14 bg-indigo-50 dark:bg-indigo-500/15 mb-1" : "h-8 w-8 mb-0.5 group-hover:bg-gray-50 dark:group-hover:bg-zinc-800"
+                )}>
+                   <Icon size={isActive ? 20 : 20} strokeWidth={isActive ? 2.5 : 2} className={cn("transition-all duration-300", isActive ? "scale-110" : "scale-100")} />
+                </div>
+                <span className={cn(
+                  "font-headline transition-all duration-300", 
+                  isActive ? "text-[11px] font-semibold tracking-wide" : "text-[10px] font-medium"
+                )}>
+                  {link.label}
+                </span>
+                {isActive && (
+                  <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-indigo-500 rounded-b-full shadow-[0_2px_8px_rgba(99,102,241,0.5)] opacity-0" />
+                )}
+              </>
+            )}
           </NavLink>
         );
       })}

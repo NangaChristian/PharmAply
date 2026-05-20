@@ -1,58 +1,17 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, Bell, Star, Tag, Clock, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { collection, query, where, orderBy, onSnapshot } from '../../lib/firebase';
-import { db } from '../../lib/firebase';
-import { useAuth } from '../../components/AuthProvider';
 import { useTranslation } from "react-i18next";
-import { parseDate } from '../../lib/utils';
+import { useNotifications } from "../../hooks/useNotifications";
 
 type TabType = 'All' | 'Offers' | 'Medicine Reminders' | 'Rating';
 
 export function PatientNotifications() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>('All');
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [flashSales, setFlashSales] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    // Fetch rating requests (orders waiting for rating)
-    const ratingQ = query(collection(db, 'orders'), where('patientId', '==', user.uid), where('status', '==', 'delivered'));
-    const unsubRating = onSnapshot(ratingQ, (snapshot) => {
-      // In a real app we would check if it's already rated
-      const ratedOrders = snapshot.docs.map(d => ({ id: d.id, type: 'rating', ...d.data() }));
-      // We'll combine this later
-    });
-
-    // Fetch flash sales (Offers)
-    const salesQ = query(collection(db, 'flash_sales'), orderBy('createdAt', 'desc'));
-    const unsubSales = onSnapshot(salesQ, (snapshot) => {
-      setFlashSales(snapshot.docs.map(d => ({ id: d.id, type: 'offer', ...d.data() })));
-    });
-
-    // We can also fetch generic 'notifications' collection here if needed
-    const notifQ = query(collection(db, 'notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
-    const unsubNotif = onSnapshot(notifQ, (snapshot) => {
-      setNotifications(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-
-    return () => {
-      unsubRating();
-      unsubSales();
-      unsubNotif();
-    };
-  }, [user]);
-
-  // Combine data
-  const allItems = [...notifications, ...flashSales].sort((a, b) => {
-    const timeA = parseDate(a.createdAt) ? parseDate(a.createdAt)!.getTime() : Date.now();
-    const timeB = parseDate(b.createdAt) ? parseDate(b.createdAt)!.getTime() : Date.now();
-    return timeB - timeA;
-  });
+  
+  const { items: allItems, readIds, markAllAsRead, markAsRead } = useNotifications();
 
   const getFilteredItems = () => {
     switch (activeTab) {
@@ -68,6 +27,14 @@ export function PatientNotifications() {
   const handleTabClick = (tabKey: string) => {
     setActiveTab(tabKey as TabType);
   };
+
+  // Mark viewed notifications as read automatically or keep it explicit
+  useEffect(() => {
+    // When visiting the page, mark all currently visible items in the `filteredItems` array as read?
+    // Wait, let's mark them as read if they are clicked, or maybe just mark them all read when "mark all as read" is clicked.
+    // The prompt says "decreases in number according to the number of read or opened notification (marked read)".
+    // So you can either click the element to mark reading or click the "Mark as read" button.
+  }, []);
 
   const tabs: { key: TabType, label: string }[] = [
     { key: 'All', label: t('all', 'All') },
@@ -103,7 +70,7 @@ export function PatientNotifications() {
       <div className="flex-1 overflow-y-auto p-6">
          <div className="flex justify-between items-center mb-6">
             <h2 className="font-bold text-gray-900 dark:text-white">{t('all_notification', 'All Notification')}</h2>
-            <button className="text-xs text-indigo-600 font-bold">{t('mark_as_read', 'Mark as read')}</button>
+            <button onClick={markAllAsRead} className="text-xs text-indigo-600 font-bold">{t('mark_as_read', 'Mark as read')}</button>
          </div>
 
          <div className="space-y-4">
@@ -117,8 +84,8 @@ export function PatientNotifications() {
                </div>
             ) : (
                filteredItems.map(item => (
-                  <div key={item.id} className="bg-white dark:bg-black p-4 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-sm relative">
-                     <div className="absolute top-4 right-4 w-2 h-2 bg-green-500 rounded-full"></div>
+                  <div key={item.id} onClick={() => markAsRead(item.id)} className={`bg-white dark:bg-black p-4 rounded-3xl border ${readIds.includes(item.id) ? 'border-gray-50 dark:border-zinc-900' : 'border-indigo-100 dark:border-indigo-900/50'} shadow-sm relative cursor-pointer transition`}>
+                     {!readIds.includes(item.id) && <div className="absolute top-4 right-4 w-2 h-2 bg-red-500 rounded-full"></div>}
                      {item.type === 'offer' && (
                         <div className="flex gap-4">
                            <div className="mt-1 w-10 h-10 bg-indigo-50 flex items-center justify-center rounded-2xl shrink-0 text-indigo-600 border border-indigo-100">

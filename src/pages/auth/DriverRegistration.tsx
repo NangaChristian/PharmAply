@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, UserCircle, Car, FileText, CheckCircle, Upload } from 'lucide-react';
 import { auth, db, storage } from '../../lib/firebase';
-import { createUserWithEmailAndPassword } from '../../lib/firebase';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from '../../lib/firebase';
 import { doc, setDoc, serverTimestamp } from '../../lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from '../../lib/firebase';
 
@@ -55,8 +55,23 @@ export function DriverRegistration() {
     setError('');
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      const user = userCredential.user;
+      let user;
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+        user = userCredential.user;
+      } catch (authErr: any) {
+        if (authErr.code === 'auth/email-already-in-use' || authErr.message?.includes('email-already-in-use')) {
+          // Try to sign in instead to resume registration
+          try {
+            const signInCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+            user = signInCredential.user;
+          } catch (signInErr: any) {
+            throw new Error("This email is already registered, but password was incorrect. Please log in first.");
+          }
+        } else {
+          throw authErr;
+        }
+      }
 
       let idCardUrl = '';
       let drivingLicenseUrl = '';

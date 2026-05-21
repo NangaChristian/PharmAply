@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect, FormEvent, useRef } from "react";
 import { collection, query, where, getDocs, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, deleteDoc } from '../../lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from '../../lib/firebase';
+import { sendEmail } from '../../lib/email';
 import { db, storage, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { ProductCard } from '../../components/ProductCard';
@@ -96,14 +97,24 @@ export function PharmacistInventory() {
     if (!editingProduct) return;
     setUploading(true);
     try {
+      const newStock = parseInt(editingProduct.stock);
       await updateDoc(doc(db, 'products', editingProduct.id), {
         name: editingProduct.name,
         dosage: editingProduct.dosage,
         category: editingProduct.category,
         brand: editingProduct.brand,
         price: parseFloat(editingProduct.price),
-        stock: parseInt(editingProduct.stock),
+        stock: newStock,
       });
+
+      if (newStock < 10) {
+        await sendEmail({
+          to: user?.email || '',
+          subject: 'Low Stock Alert',
+          html: `<h1>Low Stock Alert</h1><p>Your product <b>${editingProduct.name}</b> is running low on stock. Current stock level: ${newStock}.</p>`
+        });
+      }
+
       setEditingProduct(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `products/${editingProduct.id}`);

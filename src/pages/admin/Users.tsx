@@ -1,15 +1,17 @@
-import { Search, Store, ShieldCheck, User, ShieldAlert, CheckCircle, Truck, Ban, Trash2, Filter, CheckSquare, CircleDollarSign, X, FileText } from "lucide-react";
+import { Search, Store, ShieldCheck, User, ShieldAlert, CheckCircle, Truck, Ban, Trash2, Filter, CheckSquare, CircleDollarSign, X, FileText, VenetianMask } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
-import { collection, query, getDocs, doc, updateDoc, where, onSnapshot } from '../../lib/firebase';
+import { collection, query, getDocs, doc, updateDoc, where, onSnapshot, deleteDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { format } from 'date-fns';
 import { parseDate } from '../../lib/utils';
+import { useNavigate } from "react-router-dom";
 
 export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'drivers' | 'all' | 'cashiers' }) {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, impersonateUser } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState<any[]>([]);
   const [pharmacies, setPharmacies] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -97,6 +99,28 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
     }
   };
 
+  const handleDeleteUser = async (userId: string) => {
+    if (!window.confirm(t('confirm_delete_user', 'Are you sure you want to permanently delete this user?'))) return;
+    try {
+      await deleteDoc(doc(db, 'users', userId));
+      setUsers(users.filter(u => u.id !== userId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'users');
+    }
+  };
+
+  const handleImpersonate = (u: any) => {
+    const targetUser = {
+      uid: u.id,
+      email: u.email,
+      emailVerified: true,
+      displayName: u.name,
+      photoURL: null,
+    };
+    impersonateUser(targetUser, u.role || 'patient');
+    navigate('/');
+  };
+
   const handleBulkAction = async (action: 'approve' | 'suspend' | 'delete' | 'make_cashier') => {
     if (!selectedUsers.length) return;
     
@@ -127,6 +151,16 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
          }
        }
        setUsers(users.map(u => selectedUsers.includes(u.id) ? { ...u, role: 'cashier' } : u));
+    } else if (action === 'delete') {
+       if (!window.confirm(t('confirm_bulk_delete_user', 'Are you sure you want to continuously delete selected users?'))) return;
+       for (const uId of selectedUsers) {
+         try {
+           await deleteDoc(doc(db, 'users', uId));
+         } catch (e) {
+           console.error("Bulk delete failed for", uId);
+         }
+       }
+       setUsers(users.filter(u => !selectedUsers.includes(u.id)));
     }
     setSelectedUsers([]);
   };
@@ -258,6 +292,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                     <button onClick={() => handleBulkAction('approve')} className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg transition" title={t('approve', 'Approve')}><CheckCircle size={18} /></button>
                     <button onClick={() => handleBulkAction('suspend')} className="p-1.5 text-amber-600 hover:bg-amber-100 rounded-lg transition" title={t('suspend', 'Suspend')}><Ban size={18} /></button>
                     <button onClick={() => handleBulkAction('make_cashier')} className="p-1.5 text-indigo-600 hover:bg-indigo-100 rounded-lg transition" title={t('make_cashier', 'Make Cashier')}><CircleDollarSign size={18} /></button>
+                    <button onClick={() => handleBulkAction('delete')} className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition" title={t('delete', 'Delete')}><Trash2 size={18} /></button>
                  </div>
                )}
              </div>
@@ -327,6 +362,16 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                                      <button 
                                        onClick={(e) => {
                                          e.stopPropagation();
+                                         handleImpersonate(u);
+                                       }}
+                                       className="p-1.5 rounded-lg border transition-colors text-indigo-600 bg-indigo-50 border-indigo-100 hover:bg-indigo-100"
+                                       title={t('impersonate', 'Impersonate')}
+                                     >
+                                       <VenetianMask size={16} />
+                                     </button>
+                                     <button 
+                                       onClick={(e) => {
+                                         e.stopPropagation();
                                          handleStatusChange(u.id, u.status === 'suspended' ? 'approved' : 'suspended');
                                        }}
                                        className={`p-1.5 rounded-lg border transition-colors ${
@@ -337,6 +382,16 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                                        title={u.status === 'suspended' ? "Unsuspend" : "Suspend"}
                                      >
                                        {u.status === 'suspended' ? <CheckCircle size={16} /> : <Ban size={16} />}
+                                     </button>
+                                     <button 
+                                       onClick={(e) => {
+                                         e.stopPropagation();
+                                         handleDeleteUser(u.id);
+                                       }}
+                                       className="p-1.5 rounded-lg border transition-colors text-red-600 bg-red-50 border-red-100 hover:bg-red-100"
+                                       title={t('delete', 'Delete')}
+                                     >
+                                       <Trash2 size={16} />
                                      </button>
                                   </div>
                                 </td>

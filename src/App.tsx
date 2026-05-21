@@ -135,6 +135,7 @@ export default function App() {
           </Route>
           
           <Route path="/pharmacist/order/:id" element={<PharmacistOrderDetails />} />
+          <Route path="/pharmacist/messages/:id" element={<Messages />} />
 
           {/* Delivery Routes */}
           <Route path="/delivery" element={<RoleLayout role="delivery" />}>
@@ -145,6 +146,7 @@ export default function App() {
           </Route>
           
           <Route path="/delivery/order/:id" element={<DeliveryOrderDetails />} />
+          <Route path="/delivery/messages/:id" element={<Messages />} />
 
           {/* Admin Routes */}
           <Route path="/admin-login" element={<AdminLogin />} />

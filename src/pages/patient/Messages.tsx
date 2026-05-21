@@ -10,7 +10,7 @@ import { parseDate } from "../../lib/utils";
 export function Messages() {
   const navigate = useNavigate();
   const { id } = useParams(); // assuming this is orderId for chat
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { t } = useTranslation();
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
@@ -53,9 +53,9 @@ export function Messages() {
              const newLocalMsg = {
                   id: Math.random().toString(36).substring(7),
                   orderId: id,
-                  patientId: user.uid,
+                  patientId: role === 'patient' ? user.uid : 'client-id',
                   senderId: user.uid,
-                  senderType: 'patient',
+                  senderType: role || 'unknown',
                   text: msgText,
                   createdAt: new Date().toISOString()
              };
@@ -67,9 +67,9 @@ export function Messages() {
 
         await addDoc(collection(db, 'messages'), {
             orderId: id,
-            patientId: user.uid,
-            senderId: user.uid, // assuming patient sent it
-            senderType: 'patient',
+            patientId: role === 'patient' ? user.uid : '',
+            senderId: user.uid,
+            senderType: role || 'unknown',
             text: msgText,
             createdAt: serverTimestamp()
         });

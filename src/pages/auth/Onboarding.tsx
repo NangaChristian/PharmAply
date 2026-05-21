@@ -95,6 +95,14 @@ export function Onboarding() {
            setLoading(false);
            return;
         }
+
+        if (selectedRole === 'pharmacy' || selectedRole === 'driver') {
+           toast.error(`Google Signup is not available for ${selectedRole === 'pharmacy' ? 'Pharmacists' : 'Drivers'}. Please sign up using email and password.`);
+           setErrorText(`Google Signup is not available for ${selectedRole === 'pharmacy' ? 'Pharmacists' : 'Drivers'}. Please sign up using email and password.`);
+           setLoading(false);
+           return;
+        }
+
         const userData: any = {
           email: result.user?.email || 'unknown',
           name: result.user?.displayName || result.user?.email?.split('@')[0] || 'Unknown User',
@@ -156,6 +164,8 @@ export function Onboarding() {
 
     try {
       let result;
+      let finalRole = selectedRole;
+
       if (authMode === 'signup') {
         result = await createUserWithEmailAndPassword(auth, email, password);
         const userDocRef = doc(db, 'users', result.user.uid);
@@ -192,8 +202,9 @@ export function Onboarding() {
            setLoading(false);
            return;
          }
-         const uRole = result.user.email === 'admin@pharmaply.com' ? 'admin' : userDoc.data()?.role;
-         if (uRole !== selectedRole && uRole !== 'admin') {
+         const dbRole = userDoc.data()?.role;
+         finalRole = result.user.email === 'admin@pharmaply.com' ? 'admin' : dbRole;
+         if (selectedRole && finalRole !== selectedRole && finalRole !== 'admin') {
             toast.error("Invalid role for this account.");
             setErrorText("Invalid role for this account.");
             setLoading(false);
@@ -202,10 +213,9 @@ export function Onboarding() {
          toast.success("Successfully logged in!");
       }
 
-      const uRole = result.user.email === 'admin@pharmaply.com' ? 'admin' : selectedRole;
-      if (uRole === 'admin') navigate("/admin");
-      else if (uRole === 'pharmacy') navigate("/pharmacist");
-      else if (uRole === 'driver') navigate("/delivery");
+      if (finalRole === 'admin') navigate("/admin");
+      else if (finalRole === 'pharmacy') navigate("/pharmacist");
+      else if (finalRole === 'driver') navigate("/delivery");
       else navigate("/patient");
 
     } catch (error: any) {

@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { auth, storage, db } from "../../lib/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from '../../lib/firebase';
 import { updateProfile } from '../../lib/firebase';
-import { doc, updateDoc } from '../../lib/firebase';
+import { doc, updateDoc, signOut } from '../../lib/firebase';
 import { useDarkMode } from "../../components/DarkModeProvider";
 
 export function PatientProfile() {
@@ -53,8 +53,8 @@ export function PatientProfile() {
     }
   };
 
-  const handleLogout = () => {
-    auth.signOut();
+  const handleLogout = async () => {
+    await signOut(auth);
     navigate('/');
   };
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, CheckCircle, Package, Download, X, AlertTriangle, RefreshCcw } from "lucide-react";
+import { ArrowLeft, CheckCircle, Package, Download, X, AlertTriangle, RefreshCcw, MessageCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { doc, getDoc, updateDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
@@ -126,6 +126,11 @@ export function PharmacistOrderDetails() {
                <div className="flex justify-between items-start">
                   <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm font-medium"> {t('delivery_address', 'Delivery Address')} </span>
                   <span className="font-bold text-gray-900 dark:text-white text-sm text-right max-w-[200px] leading-relaxed">{order.deliveryAddress}</span>
+               </div>
+               <div className="pt-4 border-t border-gray-50 dark:border-zinc-800">
+                 <button onClick={() => navigate(`/pharmacist/messages/${order.id}`)} className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors">
+                   <MessageCircle size={18} /> {t('message_patient', 'Message Patient')}
+                 </button>
                </div>
             </div>
          </div>

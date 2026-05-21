@@ -3,7 +3,7 @@ import { ArrowLeft, Edit2, User, Clock, ShieldCheck, LogOut, FileText, Globe, Ca
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { auth, db } from "../../lib/firebase";
-import { doc, getDoc, updateDoc } from '../../lib/firebase';
+import { doc, getDoc, updateDoc, signOut } from '../../lib/firebase';
 import toast from "react-hot-toast";
 
 export function DeliveryProfile() {
@@ -32,8 +32,8 @@ export function DeliveryProfile() {
     fetchDriver();
   }, [activeMenu]);
 
-  const handleLogout = () => {
-    auth.signOut();
+  const handleLogout = async () => {
+    await signOut(auth);
     navigate('/');
   };
 

@@ -3,7 +3,26 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || 'placeholder';
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+const customFetch = (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
+  if (supabaseUrl === 'https://placeholder.supabase.co') {
+    console.warn(`[Supabase Mock] Intercepted fetch to ${url}`);
+    
+    // Provide a basic mock response for session/auth checks so the app doesn't crash completely.
+    if (typeof url === 'string' && url.includes('/auth/v1/user')) {
+       return Promise.resolve(new Response(JSON.stringify({ user: null }), { status: 200, headers: {'Content-Type': 'application/json'} }));
+    }
+    
+    // For other requests, fail gracefully.
+    return Promise.resolve(new Response(JSON.stringify({ error: "Supabase not configured locally." }), { status: 400, headers: {'Content-Type': 'application/json'} }));
+  }
+  return fetch(url, options);
+};
+
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  global: {
+    fetch: customFetch
+  }
+});
 export const initializeApp = () => supabase;
 
 export type User = any;

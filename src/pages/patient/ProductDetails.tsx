@@ -51,8 +51,12 @@ export function PatientProductDetails() {
 
       <div className="flex-1 overflow-y-auto pb-24">
          {/* Product Image */}
-         <div className="h-64 bg-slate-50 dark:bg-black flex items-center justify-center p-6 mx-6 rounded-3xl mb-6 mt-2 relative">
-            <Pill size={80} className="text-indigo-200" />
+         <div className="h-64 bg-slate-50 dark:bg-black flex items-center justify-center p-6 mx-6 rounded-3xl mb-6 mt-2 relative overflow-hidden">
+            {(product.imageUrl || product.ImageURL || product.image || product.Image) ? (
+               <img src={product.imageUrl || product.ImageURL || product.image || product.Image} alt={product.name} className="w-full h-full object-contain" />
+            ) : (
+               <Pill size={80} className="text-indigo-200" />
+            )}
             <div className="absolute top-4 right-4 bg-white dark:bg-black/80 backdrop-blur-md px-2 py-1 rounded-lg flex items-center gap-1 text-xs font-bold text-gray-700 shadow-sm">
                <Star size={12} className="text-yellow-400 fill-current" />
                {product.rating || "5.0"}

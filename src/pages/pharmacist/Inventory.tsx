@@ -217,8 +217,8 @@ export function PharmacistInventory() {
                
                <div className="relative p-6 flex flex-col items-center mt-2">
                   <div className="w-24 h-24 bg-gray-50 dark:bg-black rounded-[1.5rem] border border-gray-100 dark:border-zinc-800 shadow-sm flex items-center justify-center overflow-hidden mb-5 relative z-10">
-                    {editingProduct.imageUrl ? (
-                       <img src={editingProduct.imageUrl} alt={editingProduct.name} className="w-full h-full object-cover" />
+                    {(editingProduct.imageUrl || editingProduct.ImageURL || editingProduct.image || editingProduct.Image) ? (
+                       <img src={editingProduct.imageUrl || editingProduct.ImageURL || editingProduct.image || editingProduct.Image} alt={editingProduct.name} className="w-full h-full object-cover" />
                     ) : (
                        <Package size={40} className="text-gray-300"/>
                     )}

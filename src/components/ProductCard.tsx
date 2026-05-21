@@ -35,8 +35,8 @@ export function ProductCard({ product, basePath, onClick, showSaleBadge = false 
           <div className="absolute top-2 left-2 bg-emerald-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10">
              {t('25_off', '25% Off')} </div>
         )}
-        {product.imageUrl ? (
-          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
+        {(product.imageUrl || product.ImageURL || product.image || product.Image) ? (
+          <img src={product.imageUrl || product.ImageURL || product.image || product.Image} alt={product.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
         ) : (
           <Activity size={32} className="text-gray-300" />
         )}

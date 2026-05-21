@@ -375,8 +375,8 @@ export function AdminProducts() {
                               <td className="py-4 px-6">
                                  <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                                       {p.imageUrl ? (
-                                         <img src={p.imageUrl} className="w-full h-full object-cover rounded-xl" alt="" />
+                                       {(p.imageUrl || p.ImageURL || p.image || p.Image) ? (
+                                         <img src={p.imageUrl || p.ImageURL || p.image || p.Image} className="w-full h-full object-cover rounded-xl" alt="" />
                                        ) : (
                                          <Tag className="text-slate-400" size={18} />
                                        )}
@@ -444,8 +444,8 @@ export function AdminProducts() {
               <h2 className="text-lg font-bold text-slate-900 mb-6">{editingId ? "Edit Product" : "Add New Product"}</h2>
               <div className="grid grid-cols-2 gap-4">
                  <div className="col-span-2 flex items-center gap-4 mb-2">
-                    {formData.imageUrl ? (
-                       <img src={formData.imageUrl} className="w-16 h-16 rounded-xl object-cover border border-slate-200" alt="Preview"/>
+                    {(formData.imageUrl || formData.ImageURL || formData.image || formData.Image) ? (
+                       <img src={formData.imageUrl || formData.ImageURL || formData.image || formData.Image} className="w-16 h-16 rounded-xl object-cover border border-slate-200" alt="Preview"/>
                     ) : (
                        <div className="w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center">
                           <ImageIcon className="text-slate-400" size={24} />

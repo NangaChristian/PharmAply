@@ -80,7 +80,6 @@ export function PatientPharmacyDetails() {
                  )}
               </div>
               <div className="flex items-center text-white/80 text-sm gap-4">
-                 <div className="flex items-center gap-1"><Star size={14} className="text-yellow-400 fill-yellow-400" /> {pharmacy.rating || 5.0} {t('references', 'references')}</div>
                  <div className="flex items-center gap-1"><MapPin size={14} /> {t('local', 'Local')}</div>
               </div>
            </div>

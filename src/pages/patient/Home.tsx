@@ -8,6 +8,7 @@ import { useAuth } from '../../components/AuthProvider';
 import { useTheme } from '../../components/ThemeProvider';
 import { useTranslation } from "react-i18next";
 import { useNotifications } from "../../hooks/useNotifications";
+import { PharmacyCard } from "../../components/PharmacyCard";
 
 export function PatientHome() {
   const navigate = useNavigate();
@@ -214,36 +215,8 @@ export function PatientHome() {
               </div>
             ) : (
               pharmacies.map((pharmacy) => (
-                <div key={pharmacy.id} onClick={() => navigate(`/patient/pharmacy/${pharmacy.id}`)} className="cursor-pointer w-full bg-white dark:bg-black rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-zinc-800 hover:shadow-md transition">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500 overflow-hidden">
-                       {pharmacy.imageUrl ? (
-                           <img src={pharmacy.imageUrl} alt={pharmacy.name} className="w-full h-full object-cover" />
-                       ) : theme.defaultPharmacyLogo ? (
-                           <img src={theme.defaultPharmacyLogo} alt={pharmacy.name} className="w-full h-full object-cover" />
-                       ) : (
-                           <Store size={20} />
-                       )}
-                    </div>
-                    <div className="flex items-center bg-green-50 text-green-600 px-2 py-1 rounded-lg text-xs font-bold gap-1">
-                      <Star size={12} className="fill-current text-yellow-400" />
-                      {pharmacy.rating || 5.0}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-gray-900 dark:text-white">{pharmacy.name}</h4>
-                    {pharmacy.status === 'approved' ? (
-                      <span className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-green-200">
-                        <CheckCircle size={10} />  {t('verified', 'Verified')} </span>
-                    ) : (
-                      <span className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-amber-200">
-                        <Clock size={10} />  {t('pending_kyc', 'Pending KYC')} </span>
-                    )}
-                  </div>
-                  <div className="flex items-center text-gray-400 dark:text-gray-500 text-xs mt-1 mb-3">
-                    <MapPin size={12} className="mr-1" />
-                    {pharmacy.address}
-                  </div>
+                <div key={pharmacy.id}>
+                  <PharmacyCard pharmacy={pharmacy} theme={theme} />
                 </div>
               ))
             )}

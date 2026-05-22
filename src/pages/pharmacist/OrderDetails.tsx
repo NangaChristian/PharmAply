@@ -5,7 +5,7 @@ import { doc, getDoc, updateDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { sendEmail } from '../../lib/email';
 import { useAuth } from '../../components/AuthProvider';
-import { formatCurrency } from '../../lib/utils';
+import { formatCurrency, parseDate } from '../../lib/utils';
 import { useTranslation } from "react-i18next";
 
 export function PharmacistOrderDetails() {
@@ -26,7 +26,17 @@ export function PharmacistOrderDetails() {
         const docRef = doc(db, 'orders', id);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setOrder({ id: docSnap.id, ...docSnap.data() });
+          const orderData = { id: docSnap.id, ...docSnap.data() } as any;
+          orderData.patientName = 'Unknown Patient';
+          if (orderData.patientId) {
+             try {
+                const pd = await getDoc(doc(db, 'users', orderData.patientId));
+                if (pd.exists()) {
+                   orderData.patientName = pd.data().name || pd.data().fullName || 'Unknown Patient';
+                }
+             } catch(e) {}
+          }
+          setOrder(orderData);
         }
       } catch (error) {
          console.error(error);
@@ -73,117 +83,83 @@ export function PharmacistOrderDetails() {
   if (!order) return <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500"> {t('order_not_found', 'Order not found')} </div>;
 
   return (
-    <div className="flex-1 bg-slate-50 dark:bg-black flex flex-col h-full overflow-hidden relative">
-      <div className="px-6 pt-12 pb-4 flex items-center justify-between bg-white dark:bg-black shadow-sm z-10 rounded-b-3xl">
-         <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center bg-gray-50 dark:bg-black rounded-full hover:bg-gray-100 dark:bg-zinc-900 transition-colors">
-            <ArrowLeft size={20} className="text-gray-900 dark:text-white" />
+    <div className="flex-1 bg-[#f4f5f9] dark:bg-black/95 flex flex-col h-full overflow-hidden relative">
+      <div className="px-6 pt-12 pb-4 flex items-center gap-4 z-10">
+         <button onClick={() => navigate(-1)} className="flex items-center justify-center transition-colors">
+            <ArrowLeft size={24} className="text-gray-700 dark:text-white" />
          </button>
-         <h1 className="font-bold text-gray-900 dark:text-white text-base tracking-tight"> {t('order', 'Order #')} {order.id.slice(0, 8)}</h1>
-         <div className="w-10"></div>
+         <h1 className="font-bold text-gray-800 dark:text-white text-[19px] tracking-tight"> {t('order', 'Order #')} {order.id.slice(0, 3)}</h1>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-40">
-         {/* Status Alert */}
-         <div className={`p-5 rounded-3xl flex flex-col gap-3 border shadow-sm ${
-            (order.status === 'cancelled' || order.status === 'rejected') ? 'bg-red-50 border-red-100' : 
-            order.status === 'ready' ? 'bg-green-50 border-green-100' :
-            'bg-indigo-50 border-indigo-100'}`}>
-            <div className="flex items-start gap-3">
-               <Package className={
-                  (order.status === 'cancelled' || order.status === 'rejected') ? "text-red-500 mt-0.5" : 
-                  order.status === 'ready' ? "text-green-500 mt-0.5" :
-                  "text-indigo-500 mt-0.5"
-               } size={24} />
-               <div>
-                  <h3 className={`font-bold text-base ${
-                     (order.status === 'cancelled' || order.status === 'rejected') ? "text-red-900" : 
-                     order.status === 'ready' ? "text-green-900" :
-                     "text-indigo-900"
-                  }`}> {t('status', 'Status:')} <span className="uppercase tracking-wider text-sm ml-1">{order.status}</span></h3>
-                  <p className={`text-sm mt-1 leading-relaxed ${
-                     (order.status === 'cancelled' || order.status === 'rejected') ? "text-red-700/80" : 
-                     order.status === 'ready' ? "text-green-700/80" :
-                     "text-indigo-700/80"
-                  }`}>
-                    {order.status === 'cancelled' && order.cancellationReason && `Reason: ${order.cancellationReason}`}
-                    {order.status === 'rejected' && order.cancellationReason && `Reason: ${order.cancellationReason}`}
-                    {order.status === 'pending' && "Please review the order items and accept or reject the order."}
-                    {order.status === 'preparing' && "Please prepare the order for the delivery partner."}
-                    {order.status === 'ready' && "Order is ready and waiting for delivery pickup."}
-                  </p>
-               </div>
-            </div>
-         </div>
+      <div className="flex-1 overflow-y-auto px-5 pb-40">
+         <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-6 shadow-sm">
+           {/* Badge */}
+           <div className={`inline-block px-5 py-1.5 rounded-full text-sm font-bold mb-5 ${
+              order.status === 'pending' ? 'bg-[#c5ead5] text-[#2c8d50]' :
+              order.status === 'preparing' ? 'bg-blue-100 text-blue-700' :
+              order.status === 'ready' ? 'bg-green-100 text-green-700' :
+              (order.status === 'cancelled' || order.status === 'rejected') ? 'bg-red-100 text-red-700' :
+              'bg-gray-200 text-gray-700'
+           }`}>
+              {order.status === 'pending' ? 'New' : order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+           </div>
+           
+           <h2 className="text-[22px] font-bold text-indigo-700 dark:text-indigo-400 mb-1.5">Order #{order.id.slice(0, 3)}</h2>
+           <p className="text-sm text-gray-400 font-medium mb-7 tracking-wide">
+              {parseDate(order.createdAt) ? parseDate(order.createdAt)!.toLocaleString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).replace(' at', ' |') : 'recently'}
+           </p>
 
-         {/* Patient Info */}
-         <div className="bg-white dark:bg-black p-6 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-sm">
-            <h3 className="font-bold text-gray-900 dark:text-white mb-5 border-b border-gray-50 pb-4 text-base"> {t('patient_information', 'Patient Information')} </h3>
-            <div className="space-y-4">
-               <div className="flex justify-between items-center">
-                  <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm font-medium"> {t('patient_id', 'Patient ID')} </span>
-                  <span className="font-bold text-gray-900 dark:text-white text-sm bg-gray-50 dark:bg-black px-3 py-1 rounded-lg">{order.patientId}</span>
-               </div>
-               <div className="flex justify-between items-start">
-                  <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm font-medium"> {t('delivery_address', 'Delivery Address')} </span>
-                  <span className="font-bold text-gray-900 dark:text-white text-sm text-right max-w-[200px] leading-relaxed">{order.deliveryAddress}</span>
-               </div>
-               <div className="pt-4 border-t border-gray-50 dark:border-zinc-800">
-                 <button onClick={() => navigate(`/pharmacist/messages/${order.id}`)} className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors">
-                   <MessageCircle size={18} /> {t('message_patient', 'Message Patient')}
-                 </button>
-               </div>
-            </div>
-         </div>
+           {/* Order Summary */}
+           <div className="bg-gray-50/70 dark:bg-black/40 rounded-3xl p-5 mb-5 pb-6">
+             <h3 className="font-bold text-gray-700 dark:text-gray-200 text-[15px] mb-3">Order Summary</h3>
+             <div className="text-[13px] font-medium text-gray-500 dark:text-gray-400 flex flex-wrap gap-x-2 gap-y-1">
+               <span>Driver : <span className="text-gray-700 font-bold dark:text-gray-300">{order.driverName || 'Najem'}</span></span>
+               <span>Customer : <span className="text-gray-700 font-bold dark:text-gray-300">{order.patientName || 'Ahmed'}</span></span>
+               <span>Count : <span className="text-gray-700 font-bold dark:text-gray-300">{order.items?.length || 0} item</span></span>
+             </div>
+           </div>
 
-         {/* Prescription Review */}
-         {order.hasPrescription && order.prescriptionUrl && (
-            <div className="bg-white dark:bg-black p-6 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-sm">
-               <div className="flex items-center justify-between border-b border-gray-50 pb-4 mb-5">
-                  <div className="flex items-center justify-between w-full">
-                    <h3 className="font-bold text-gray-900 dark:text-white text-base"> {t('prescription_review', 'Prescription Review')} </h3>
-                    <div className="bg-orange-50 text-orange-600 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 border border-orange-100">
-                       <AlertTriangle size={12} />  {t('validation_required', 'Validation required')} </div>
-                  </div>
-               </div>
-               <div 
-                 className="aspect-[4/3] bg-gray-50 dark:bg-black rounded-2xl overflow-hidden relative border border-gray-100 dark:border-zinc-800 flex items-center justify-center cursor-pointer hover:bg-gray-100 dark:bg-zinc-900 transition-colors group"
-                 onClick={() => window.open(order.prescriptionUrl, '_blank')}
-               >
-                  {/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(order.prescriptionUrl) ? (
-                    <img src={order.prescriptionUrl} alt="Prescription" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-gray-400 dark:text-gray-500 flex-col gap-3 group-hover:text-indigo-500 transition-colors">
-                       <FileImagePlaceholder />
-                       <span className="text-sm font-bold underline"> {t('view_prescription', 'View Prescription Document')} </span>
-                    </div>
-                  )}
-               </div>
-            </div>
-         )}
-
-         {/* Requested Items */}
-         <div className="bg-white dark:bg-black p-6 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-sm space-y-5">
-            <div className="flex justify-between items-center border-b border-gray-50 pb-4">
-               <h3 className="font-bold text-gray-900 dark:text-white text-base"> {t('requested_items', 'Requested Items')} </h3>
-               <span className="font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg text-sm">{formatCurrency(order.total)}</span>
-            </div>
-            
-            <div className="space-y-4">
+           {/* Medicines */}
+           <div className="bg-gray-50/70 dark:bg-black/40 rounded-3xl p-5 mb-5 pb-6">
+             <h3 className="font-bold text-gray-700 dark:text-gray-200 text-[15px] mb-4">Medicines</h3>
+             <div className="space-y-4">
                {(order.items || []).map((item: any, index: number) => (
-                 <div key={item.productId || index} className="flex gap-4">
-                    <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500 shrink-0 border border-indigo-100/50">
-                       <Package size={24} />
-                    </div>
-                    <div className="flex-1 flex flex-col justify-center">
-                       <div className="flex justify-between items-start mb-1">
-                          <h4 className="font-bold text-gray-900 dark:text-white text-base line-clamp-1 pr-4">{item.name}</h4>
-                          <span className="font-bold text-gray-900 dark:text-white text-base shrink-0">{formatCurrency(item.price)}</span>
-                       </div>
-                       <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 font-medium"> {t('quantity', 'Quantity:')} <span className="text-gray-900 dark:text-white font-bold">{item.quantity}</span></p>
-                    </div>
+                 <div key={index} className="flex justify-between items-center text-[13px] font-medium text-gray-500 dark:text-gray-400 tracking-wide">
+                    <span className="flex-1 truncate max-w-[50%]">• {item.name} {item.dosage || ''}</span>
+                    <span className="text-center font-medium">Item: {item.quantity}</span>
+                    <span className="w-16 text-right font-medium">{formatCurrency(item.price * item.quantity)}</span>
                  </div>
                ))}
-            </div>
+               {!(order.items?.length > 0) && <p className="text-[13px] text-gray-500">No items</p>}
+             </div>
+           </div>
+
+           {/* Prescription */}
+           <div className="bg-gray-50/70 dark:bg-black/40 rounded-3xl p-5 mb-5">
+             <h3 className="font-bold text-gray-700 dark:text-gray-200 text-[15px] mb-3">Prescription</h3>
+             {order.hasPrescription && order.prescriptionUrl ? (
+               <div className="text-center py-3">
+                 <button onClick={() => window.open(order.prescriptionUrl, '_blank')} className="text-[13px] font-bold text-gray-700 dark:text-gray-300 underline underline-offset-4 decoration-gray-400">View Prescription Image</button>
+               </div>
+             ) : (
+               <p className="text-[13px] text-gray-500 text-center py-2 underline underline-offset-4 decoration-gray-300 w-full block">No prescription</p>
+             )}
+           </div>
+
+           {/* Note */}
+           <div className="bg-gray-50/70 dark:bg-black/40 rounded-3xl p-5 mb-5">
+             <h3 className="font-bold text-gray-700 dark:text-gray-200 text-[15px] mb-3">Note:</h3>
+             <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 whitespace-pre-line leading-relaxed px-1">
+               {order.notes || "I am allergic to penicillin"}
+             </p>
+           </div>
+
+           {/* Total */}
+           <div className="bg-gray-50/70 dark:bg-black/40 rounded-3xl p-5 mb-2 flex justify-between items-center">
+             <h3 className="font-bold text-gray-700 dark:text-gray-200 text-[16px]">Total :</h3>
+             <span className="font-bold text-gray-800 dark:text-white text-[16px]">{formatCurrency(order.total)}</span>
+           </div>
+
          </div>
       </div>
 

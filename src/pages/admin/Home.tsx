@@ -5,9 +5,11 @@ import { db } from "../../lib/firebase";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import { formatCurrency, parseDate } from "../../lib/utils";
 import { useTranslation } from "react-i18next";
+import { useAuth } from '../../components/AuthProvider';
 
 export function AdminHome() {
   const { t } = useTranslation();
+  const { user, userData } = useAuth();
   const [stats, setStats] = useState({
     activeOrders: 0,
     pharmaciesCount: 0,
@@ -111,7 +113,7 @@ export function AdminHome() {
     <div className="flex flex-col space-y-6">
       
       <div className="flex items-center justify-between">
-         <h1 className="text-2xl font-bold text-slate-800">{t('admin_welcome_text', 'Welcome Admin!')}</h1>
+         <h1 className="text-2xl font-bold text-slate-800">{userData?.name || user?.displayName || t('admin_welcome_text', 'Admin')}</h1>
          
          <div className="flex items-center gap-2">
             <button className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50 transition">

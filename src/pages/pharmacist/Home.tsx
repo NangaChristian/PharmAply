@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 export function PharmacistHome() {
     const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const theme = useTheme();
   
   const [orders, setOrders] = useState<any[]>([]);
@@ -111,7 +111,7 @@ export function PharmacistHome() {
                )}
                <div>
                   <h1 className="font-bold text-xl text-white leading-tight flex items-center gap-2">
-                    {theme.dashboardWelcomeText}
+                    {userData?.name || user?.displayName || pharmacy?.name || 'Pharmacien'}
                     {pharmacy?.status === 'approved' && (
                       <span className="bg-green-500/20 text-green-100 text-[10px] px-2 py-0.5 rounded-full border border-green-500/30 flex items-center gap-1 font-medium mt-0.5">
                          <CheckCircle size={10} />  {t('verified', 'Verified')} </span>

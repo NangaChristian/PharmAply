@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Home, ClipboardList, User, Package, Bell, FileText, Settings, History, MapPin, Calendar, ShoppingCart } from "lucide-react";
+import { Home, ClipboardList, User, Package, Bell, FileText, Settings, History, MapPin, Calendar, ShoppingCart, BarChart2 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { useTranslation } from "react-i18next";
 
@@ -22,7 +22,7 @@ export function BottomNav({ role }: BottomNavProps) {
     { to: "/pharmacist", icon: Home, label: t('home', 'Home') },
     { to: "/pharmacist/orders", icon: ClipboardList, label: t('orders', 'Orders') },
     { to: "/pharmacist/inventory", icon: Package, label: t('inventory', 'Inventory') },
-    { to: "/pharmacist/prescriptions", icon: FileText, label: t('prescriptions', 'Prescriptions') },
+    { to: "/pharmacist/reports", icon: BarChart2, label: t('reports', 'Reports') },
     { to: "/pharmacist/profile", icon: User, label: t('profile', 'Profile') },
   ];
 

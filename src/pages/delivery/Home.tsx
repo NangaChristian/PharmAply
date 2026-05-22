@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
 export function DeliveryHome() {
     const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const [isOnline, setIsOnline] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [currentRequest, setCurrentRequest] = useState<any>(null);
@@ -105,7 +105,7 @@ export function DeliveryHome() {
                )}
             </div>
             <div>
-               <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight">{user?.displayName || 'Driver'}</p>
+               <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight">{userData?.name || user?.displayName || t('driver', 'Driver')}</p>
                <p className="text-[10px] text-gray-500 font-medium"> {formatCurrency(124.50)} {t('today_s_earnings', 'Today\'s earnings')} </p>
             </div>
          </div>

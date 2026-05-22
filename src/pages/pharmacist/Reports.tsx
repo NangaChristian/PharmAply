@@ -1,20 +1,27 @@
-import { BarChart3, TrendingUp, DollarSign, Package } from "lucide-react";
 import { useState, useEffect } from "react";
-import { collection, query, where, getDocs, onSnapshot } from '../../lib/firebase';
-import { db } from '../../lib/firebase';
-import { useAuth } from '../../components/AuthProvider';
-import { formatCurrency } from '../../lib/utils';
-import dayjs from "dayjs";
+import { ArrowLeft, Search, Mic, TrendingUp, ShieldAlert, BarChart2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
+import { formatCurrency } from "../../lib/utils";
+import { collection, query, where, getDocs, onSnapshot, orderBy, db } from "../../lib/firebase";
+import { useAuth } from "../../components/AuthProvider";
+import dayjs from "dayjs";
 
 export function PharmacistReports() {
-    const { t } = useTranslation();
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const [orders, setOrders] = useState<any[]>([]);
+  
+  const [activeView, setActiveView] = useState('main'); // 'main', 'sales', 'stock', 'usage'
+  const [insightTab, setInsightTab] = useState('This Week');
   const [loading, setLoading] = useState(true);
+  
+  const [orders, setOrders] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
 
   useEffect(() => {
     let unsubscribeOrders: () => void;
+    let unsubscribeProducts: () => void;
     
     const fetchContext = async () => {
       if (!user) return;
@@ -28,96 +35,280 @@ export function PharmacistReports() {
         }
 
         const ordersQuery = query(collection(db, 'orders'), where('pharmacyId', '==', pharmacyId));
-        unsubscribeOrders = onSnapshot(ordersQuery, (oSnap) => {
-          setOrders(oSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        unsubscribeOrders = onSnapshot(ordersQuery, (oSnap: any) => {
+          setOrders(oSnap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+        });
+
+        const productsQuery = query(collection(db, 'products'), where('pharmacyId', '==', pharmacyId));
+        unsubscribeProducts = onSnapshot(productsQuery, (pSnap: any) => {
+          setProducts(pSnap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
           setLoading(false);
         });
         
       } catch (error) {
-        console.error(error);
+        console.error("Error fetching reports data:", error);
         setLoading(false);
       }
     };
     fetchContext();
     return () => {
       if (unsubscribeOrders) unsubscribeOrders();
+      if (unsubscribeProducts) unsubscribeProducts();
     };
   }, [user]);
 
-  const completedOrders = orders.filter(o => o.status === 'ready' || o.status === 'delivered');
-  const totalRevenue = completedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-  const availableWithdrawal = totalRevenue * 0.9; // 10% platform fee assumed for display
+  if (activeView === 'usage') {
+    // Process order items to get top medicines
+    const medicineCounts: Record<string, { count: number, name: string }> = {};
+    let totalItems = 0;
+    
+    // Filter orders based on insightTab (Today, This Week, This Month)
+    let filteredOrders = orders;
+    const now = dayjs();
+    
+    if (insightTab === 'Today') {
+      filteredOrders = orders.filter(o => o.createdAt && dayjs(o.createdAt).isSame(now, 'day'));
+    } else if (insightTab === 'This Week') {
+      filteredOrders = orders.filter(o => o.createdAt && dayjs(o.createdAt).isSame(now, 'week'));
+    } else if (insightTab === 'This Month') {
+      filteredOrders = orders.filter(o => o.createdAt && dayjs(o.createdAt).isSame(now, 'month'));
+    }
 
+    filteredOrders.forEach(o => {
+      if (o.items && Array.isArray(o.items)) {
+        o.items.forEach((item: any) => {
+           const id = item.productId || item.id || item.name;
+           if (!medicineCounts[id]) medicineCounts[id] = { count: 0, name: item.name };
+           medicineCounts[id].count += (item.quantity || 1);
+           totalItems += (item.quantity || 1);
+        });
+      }
+    });
+
+    const topMedicines = Object.values(medicineCounts)
+       .sort((a, b) => b.count - a.count)
+       .slice(0, 3);
+       
+    // Synthetic data for the chart, ideally this would aggregate by day of week
+    const defaultData = [52, 35, 29, 28];
+
+    return (
+      <div className="flex-1 bg-[#f4f5f9] dark:bg-black/95 flex flex-col h-full overflow-hidden relative">
+        <div className="px-5 pt-12 pb-4 flex items-center gap-4 z-10 bg-[#f4f5f9] dark:bg-black">
+          <button onClick={() => setActiveView('main')} className="flex items-center justify-center transition-colors">
+            <ArrowLeft size={24} className="text-gray-700 dark:text-gray-200" />
+          </button>
+          <h1 className="font-bold text-gray-800 dark:text-white text-[19px] tracking-tight">Medicine Usage Insights</h1>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto pb-40 px-5">
+           <div className="flex bg-[#eef0f5] dark:bg-zinc-900 rounded-full p-1 mb-6 mt-2 shadow-sm">
+             {['Today', 'This Week', 'This Month'].map(tab => (
+               <button 
+                 key={tab}
+                 onClick={() => setInsightTab(tab)}
+                 className={`flex-1 text-[13px] font-bold py-2.5 rounded-full transition-all ${insightTab === tab ? 'bg-[#3b4c9b] text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
+               >
+                 {tab}
+               </button>
+             ))}
+           </div>
+
+           <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-6 shadow-sm mb-6 pb-2">
+             <h3 className="font-bold text-[#3b4c9b] dark:text-indigo-400 text-[15px] mb-6">Top Date of future</h3>
+             <div className="relative h-44 mb-8">
+               <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                 <div className="border-b border-dashed border-indigo-100 dark:border-indigo-900/30 w-full h-[1px]"></div>
+                 <div className="border-b border-dashed border-indigo-100 dark:border-indigo-900/30 w-full h-[1px]"></div>
+                 <div className="border-b border-dashed border-indigo-100 dark:border-indigo-900/30 w-full h-[1px]"></div>
+                 <div className="border-b border-dashed border-indigo-100 dark:border-indigo-900/30 w-full h-[1px]"></div>
+               </div>
+               <div className="absolute inset-0 flex justify-between items-end px-3 z-10 h-full">
+                 {defaultData.map((val, i) => (
+                    <div key={i} className="flex flex-col items-center justify-end h-full">
+                      <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 mb-2">{val}</span>
+                      <div className="w-4 bg-[#3b4c9b] rounded-t-md" style={{ height: `${(val / 60) * 100}%`}}></div>
+                    </div>
+                 ))}
+               </div>
+               <div className="absolute -bottom-7 w-full flex justify-between px-2">
+                 <span className="text-[10px] font-bold text-gray-400 tracking-wider">MON</span>
+                 <span className="text-[10px] font-bold text-gray-400 tracking-wider">TUE</span>
+                 <span className="text-[10px] font-bold text-gray-400 tracking-wider">WED</span>
+                 <span className="text-[10px] font-bold text-gray-400 tracking-wider">SUN</span>
+               </div>
+             </div>
+           </div>
+
+           <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-6 shadow-sm">
+             <h3 className="font-bold text-gray-900 dark:text-white text-[17px] mb-5">Top Medicines</h3>
+             <div className="space-y-4">
+               {topMedicines.length > 0 ? topMedicines.map((item, index) => {
+                  const percentage = totalItems > 0 ? Math.round((item.count / totalItems) * 100) : 0;
+                  return (
+                    <div key={index} className={`flex items-center justify-between ${index !== topMedicines.length - 1 ? 'pb-4 border-b border-gray-100 dark:border-zinc-800' : 'pb-1'}`}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-600 dark:bg-gray-400 mb-2.5"></div>
+                        <div>
+                          <h4 className="font-bold text-gray-800 dark:text-gray-200 text-[14px] max-w-[150px] truncate">{item.name}</h4>
+                          <p className="text-[11px] text-gray-400 font-medium">{percentage}% Share</p>
+                        </div>
+                      </div>
+                      <div className="text-right flex flex-col items-end">
+                        <span className="font-bold text-[#3b4c9b] text-[13px] mb-1">{item.count} Items</span>
+                        <div className="w-12 h-[3px] bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-[#3b4c9b] rounded-full" style={{ width: `${Math.max(10, percentage)}%` }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+               }) : (
+                 <p className="text-sm text-gray-500 text-center py-4">No data available</p>
+               )}
+             </div>
+           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (activeView === 'stock') {
+    const lowStockProducts = products.filter(p => p.stock !== undefined && p.stock < 10).sort((a, b) => (a.stock || 0) - (b.stock || 0));
+    const emptyStock = lowStockProducts.filter(p => !p.stock || p.stock === 0);
+    const lowNotEmtpy = lowStockProducts.filter(p => p.stock && p.stock > 0);
+    const sortedLowStock = [...emptyStock, ...lowNotEmtpy];
+
+    return (
+      <div className="flex-1 bg-[#f4f5f9] dark:bg-black/95 flex flex-col h-full overflow-hidden relative">
+        <div className="px-5 pt-12 pb-4 flex items-center gap-4 z-10 bg-[#f4f5f9] dark:bg-black">
+          <button onClick={() => setActiveView('main')} className="flex items-center justify-center transition-colors">
+            <ArrowLeft size={24} className="text-gray-700 dark:text-gray-200" />
+          </button>
+          <h1 className="font-bold text-gray-800 dark:text-white text-[19px] tracking-tight">Low Stock Trends</h1>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto pb-40 px-5">
+           {sortedLowStock.length > 0 && (
+             <div className="bg-gradient-to-r from-[#445bba] to-[#8fa5db] text-white rounded-[24px] p-5 mb-8 shadow-sm flex items-center justify-between mt-2">
+               <div className="flex items-start gap-3">
+                 <ShieldAlert size={20} className="text-white mt-1 shrink-0" />
+                 <div>
+                   <h3 className="font-bold text-[15px] leading-tight mb-2 pr-6">
+                     {sortedLowStock[0].name} is {!sortedLowStock[0].stock ? 'out of stock' : 'running low'}
+                   </h3>
+                   <p className="text-[12px] opacity-90 font-medium">You might want to restock soon.</p>
+                 </div>
+               </div>
+             </div>
+           )}
+
+           <div className="flex items-center justify-between mb-5">
+             <h2 className="font-bold text-gray-900 dark:text-white text-[17px]">Low Stock Alerts</h2>
+             <span className="text-[12px] font-bold text-[#3b4c9b] bg-indigo-50 px-2 py-1 rounded-md">{sortedLowStock.length} Items</span>
+           </div>
+           
+           <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-5 shadow-sm space-y-0">
+             {sortedLowStock.length > 0 ? sortedLowStock.map((item, index) => (
+               <div key={item.id} className={`flex items-center justify-between py-4 ${index !== sortedLowStock.length - 1 ? 'border-b border-gray-100 dark:border-zinc-800' : ''}`}>
+                 <div>
+                   <h4 className="font-bold text-gray-800 dark:text-gray-200 text-[14.5px] tracking-tight mb-1 truncate max-w-[150px]">{item.name}</h4>
+                   {(!item.stock || item.stock === 0) ? (
+                     <div className="inline-block bg-[#feebea] text-[#d65f57] font-bold text-[11px] px-2 py-1 rounded-md">
+                       Out of Stock
+                     </div>
+                   ) : (
+                     <div className="inline-block bg-[#fff9ea] text-[#b08b3c] font-bold text-[11px] px-2 py-1 rounded-md">
+                       Low Stock
+                     </div>
+                   )}
+                 </div>
+                 <div className="flex items-center gap-5">
+                   <div className="text-center">
+                     <div className="font-bold text-gray-800 dark:text-gray-200 text-[14px]">{item.stock || 0}</div>
+                     <div className="text-[10px] text-gray-400 font-medium">items</div>
+                   </div>
+                   <div className="w-5 h-5 border-l-2 border-b-2 border-gray-700 mb-1 flex items-end justify-end p-0.5">
+                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700 transform rotate-45 mb-0.5"><path d="m5 12 7 7 7-7"/></svg>
+                   </div>
+                 </div>
+               </div>
+             )) : (
+                <div className="py-8 text-center">
+                  <p className="text-gray-500 font-medium text-sm">All products are well stocked.</p>
+                </div>
+             )}
+           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Active View Main
   return (
-    <div className="flex-1 bg-slate-50 dark:bg-black flex flex-col h-full overflow-hidden">
-      <div className="px-6 pt-12 pb-4 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-black shadow-sm z-10 rounded-b-3xl">
-         <h1 className="font-bold text-gray-900 dark:text-white text-2xl tracking-tight"> {t('reports_analytics', 'Reports & Analytics')} </h1>
+    <div className="flex-1 bg-[#f4f5f9] dark:bg-black/95 flex flex-col h-full overflow-hidden relative">
+      <div className="px-5 pt-12 pb-4 flex items-center gap-4 z-10 bg-[#f4f5f9] dark:bg-black">
+         <button onClick={() => navigate(-1)} className="flex items-center justify-center transition-colors">
+            <ArrowLeft size={24} className="text-gray-700 dark:text-gray-200" />
+         </button>
+         <h1 className="font-bold text-gray-800 dark:text-white text-[19px] tracking-tight">Report</h1>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-         {/* Summary Cards */}
-         <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white dark:bg-black p-5 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow">
-               <div className="w-12 h-12 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center mb-4">
-                  <DollarSign size={24} />
-               </div>
-               <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 font-medium"> {t('total_revenue', 'Total Revenue')} </p>
-               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(totalRevenue)}</h3>
-               {completedOrders.length > 0 && <p className="text-xs text-green-600 bg-green-50 inline-block px-2 py-1 rounded-full mt-3 font-bold"> {t('updated_just_now', 'Updated Just Now')} </p>}
-            </div>
-            
-            <div className="bg-white dark:bg-black p-5 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow">
-               <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4">
-                  <Package size={24} />
-               </div>
-               <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 font-medium"> {t('orders_completed', 'Orders Completed')} </p>
-               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{completedOrders.length}</h3>
-               {completedOrders.length > 0 && <p className="text-xs text-indigo-600 bg-indigo-50 inline-block px-2 py-1 rounded-full mt-3 font-bold"> {t('updated_just_now', 'Updated Just Now')} </p>}
-            </div>
+      <div className="flex-1 overflow-y-auto pb-40 px-5">
+         <div className="relative mb-6 mt-2">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input 
+              type="text" 
+              placeholder="Search Reports" 
+              className="w-full bg-white dark:bg-zinc-900 rounded-[20px] py-4 pl-12 pr-12 text-sm font-medium shadow-sm outline-none placeholder:text-gray-400 text-gray-800 dark:text-gray-200 border border-transparent focus:border-indigo-100"
+            />
          </div>
 
-         {/* Chart Placeholder */}
-         <div className="bg-white dark:bg-black p-6 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex justify-between items-center mb-8">
-               <h3 className="font-bold text-gray-900 dark:text-white text-base"> {t('sales_overview', 'Sales Overview')} </h3>
-               <select className="bg-gray-50 dark:bg-black text-xs text-gray-600 font-bold py-2 px-3 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-indigo-100">
-                  <option> {t('this_week', 'This Week')} </option>
-                  <option> {t('this_month', 'This Month')} </option>
-               </select>
+         <div className="space-y-4">
+            {/* Sales Overview */}
+            <div onClick={() => setActiveView('sales')} className="bg-white dark:bg-zinc-900 p-5 rounded-[24px] shadow-sm flex items-center justify-between cursor-pointer hover:shadow-md transition-all active:scale-[0.98]">
+              <div className="flex items-start gap-4">
+                <TrendingUp size={24} className="text-gray-600 dark:text-gray-400 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-[16px] mb-1">Sales Overview</h3>
+                  <p className="text-[13px] text-gray-400 font-medium">Monitor revenue and sales metrics</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400 shrink-0" />
             </div>
-            <div className="h-48 flex items-end gap-3 justify-between px-2">
-               {/* Synthetic bars */}
-               <div className="w-1/6 bg-indigo-50 hover:bg-indigo-100 transition-colors rounded-t-xl h-16 relative group cursor-pointer"><div className="absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] font-bold text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{formatCurrency(120)}</div></div>
-               <div className="w-1/6 bg-indigo-50 hover:bg-indigo-100 transition-colors rounded-t-xl h-24 relative group cursor-pointer"><div className="absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] font-bold text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{formatCurrency(240)}</div></div>
-               <div className="w-1/6 bg-indigo-50 hover:bg-indigo-100 transition-colors rounded-t-xl h-20 relative group cursor-pointer"><div className="absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] font-bold text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{formatCurrency(160)}</div></div>
-               <div className="w-1/6 bg-indigo-600 rounded-t-xl h-40 relative shadow-lg shadow-indigo-200 cursor-pointer"><div className="absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] font-bold text-indigo-600 whitespace-nowrap">{formatCurrency(320)}</div></div>
-               <div className="w-1/6 bg-indigo-50 hover:bg-indigo-100 transition-colors rounded-t-xl h-28 relative group cursor-pointer"><div className="absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] font-bold text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{formatCurrency(200)}</div></div>
-               <div className="w-1/6 bg-indigo-50 hover:bg-indigo-100 transition-colors rounded-t-xl h-12 relative group cursor-pointer"><div className="absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] font-bold text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{formatCurrency(100)}</div></div>
-            </div>
-            <div className="flex justify-between text-xs font-bold text-gray-400 dark:text-gray-500 mt-4 px-2 uppercase tracking-wider">
-               <span> {t('mon', 'Mon')} </span>
-               <span> {t('tue', 'Tue')} </span>
-               <span> {t('wed', 'Wed')} </span>
-               <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md"> {t('thu', 'Thu')} </span>
-               <span> {t('fri', 'Fri')} </span>
-               <span> {t('sat', 'Sat')} </span>
-            </div>
-         </div>
 
-         {/* Withdrawals */}
-         <div className="bg-white dark:bg-black p-6 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-green-50 rounded-full -mr-10 -mt-10 blur-2xl pointer-events-none"></div>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
-               <div>
-                  <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-1 text-gray-500 dark:text-gray-400 dark:text-gray-500"> {t('available_for_withdrawal', 'Available for Withdrawal')} </h3>
-                  <p className="font-bold text-green-600 text-3xl tracking-tight">{formatCurrency(availableWithdrawal)}</p>
-               </div>
-               <button className="w-full sm:w-auto bg-gray-900 hover:bg-gray-800 text-white text-sm font-bold px-6 py-3 rounded-2xl transition-colors shadow-lg shadow-gray-200 active:scale-95"> {t('withdraw_funds', 'Withdraw Funds')} </button>
+            {/* Low Stock Alert Trends */}
+            <div onClick={() => setActiveView('stock')} className="bg-gradient-to-r from-[#445bba] to-[#8fa5db] p-5 rounded-[24px] shadow-sm flex items-center justify-between cursor-pointer hover:shadow-md transition-all active:scale-[0.98]">
+              <div className="flex items-start gap-4">
+                <ShieldAlert size={24} className="text-white shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-bold text-white text-[16px] mb-1">Low Stock Alert Trends</h3>
+                  <p className="text-[13px] text-white/80 font-medium">Track stock level alerts overtime</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-white/80 shrink-0" />
+            </div>
+
+            {/* Medicine Usage Insights */}
+            <div onClick={() => setActiveView('usage')} className="bg-white dark:bg-zinc-900 p-5 rounded-[24px] shadow-sm flex items-center justify-between cursor-pointer hover:shadow-md transition-all active:scale-[0.98]">
+              <div className="flex items-start gap-4">
+                <BarChart2 size={24} className="text-gray-600 dark:text-gray-400 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-[16px] mb-1">Medicine Usage Insights</h3>
+                  <p className="text-[13px] text-gray-400 font-medium">Analyze popular medication and usage</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400 shrink-0" />
             </div>
          </div>
-         
-         <div className="h-20"></div>
       </div>
     </div>
+  );
+}
+
+function ChevronRight({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+       <path d="m9 18 6-6-6-6"/>
+    </svg>
   );
 }

@@ -3,19 +3,26 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || 'placeholder';
 
-const customFetch = (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
+const customFetch = async (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
   if (supabaseUrl === 'https://placeholder.supabase.co') {
     console.warn(`[Supabase Mock] Intercepted fetch to ${url}`);
     
     // Provide a basic mock response for session/auth checks so the app doesn't crash completely.
     if (typeof url === 'string' && url.includes('/auth/v1/user')) {
-       return Promise.resolve(new Response(JSON.stringify({ user: null }), { status: 200, headers: {'Content-Type': 'application/json'} }));
+       return new Response(JSON.stringify({ user: null }), { status: 200, headers: {'Content-Type': 'application/json'} });
     }
     
     // For other requests, fail gracefully.
-    return Promise.resolve(new Response(JSON.stringify({ error: "Supabase not configured locally." }), { status: 400, headers: {'Content-Type': 'application/json'} }));
+    return new Response(JSON.stringify({ error: "Supabase not configured locally." }), { status: 400, headers: {'Content-Type': 'application/json'} });
   }
-  return fetch(url, options);
+  
+  try {
+    return await fetch(url, options);
+  } catch (error) {
+    console.error(`[Firebase/Supabase] Fetch failed gracefully for ${url}:`, error);
+    // Return a mocked dummy response so it doesn't leave an uncaught promise
+    return new Response(JSON.stringify({ error: 'Network fetch failed' }), { status: 503, headers: {'Content-Type': 'application/json'} });
+  }
 };
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {

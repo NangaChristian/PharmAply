@@ -12,7 +12,7 @@ import { PharmacyCard } from "../../components/PharmacyCard";
 
 export function PatientHome() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const theme = useTheme();
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
@@ -81,7 +81,7 @@ export function PatientHome() {
                )}
             </div>
             <div>
-              <p className="text-lg font-bold text-gray-900 dark:text-white leading-tight">{user?.displayName || 'User'}</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-white leading-tight">{userData?.name || user?.displayName || t('user', 'User')}</p>
               <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm mt-0.5">
                 {theme.dashboardSubtitleText || <><MapPin size={14} className="text-indigo-600 mr-1" /> {t('select_address', 'Select Address')} </>}
               </div>

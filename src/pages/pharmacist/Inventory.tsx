@@ -17,11 +17,11 @@ export function PharmacistInventory() {
   const [globalProducts, setGlobalProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
   
   const [selectedGlobalProduct, setSelectedGlobalProduct] = useState("");
   const [newProductPrice, setNewProductPrice] = useState("");
   const [newProductStock, setNewProductStock] = useState("");
+  const [newProductExpiry, setNewProductExpiry] = useState("");
   const [uploading, setUploading] = useState(false);
   const [pharmacyId, setPharmacyId] = useState<string | null>(null);
 
@@ -79,13 +79,14 @@ export function PharmacistInventory() {
         brand: selectedProduct.brand || 'Generic',
         price: parseFloat(newProductPrice),
         stock: parseInt(newProductStock),
+        expiryDate: newProductExpiry,
         needsPrescription: false,
         pharmacyId: pharmacyId,
         imageUrl: selectedProduct.imageUrl,
         createdAt: serverTimestamp(),
       });
       setShowAdd(false);
-      setSelectedGlobalProduct(""); setNewProductPrice(""); setNewProductStock("");
+      setSelectedGlobalProduct(""); setNewProductPrice(""); setNewProductStock(""); setNewProductExpiry("");
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'products');
     } finally {
@@ -188,7 +189,11 @@ export function PharmacistInventory() {
                     </div>
                     <div className="flex-1">
                       <label className="text-xs font-bold text-gray-600 mb-1 block"> {t('initial_stock', 'Initial Stock')} </label>
-                      <input required type="number" placeholder="0" value={newProductStock} onChange={e => setNewProductStock(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-800 p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition" />
+                      <input required type="number" placeholder="0" min="0" value={newProductStock} onChange={e => setNewProductStock(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-800 p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs font-bold text-gray-600 mb-1 block"> expiry date </label>
+                      <input required type="date" value={newProductExpiry} onChange={e => setNewProductExpiry(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-800 p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition" />
                     </div>
                  </div>
                )}
@@ -204,67 +209,13 @@ export function PharmacistInventory() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {products.map(item => (
                 <div key={item.id}>
-                   <ProductCard product={item} onClick={() => setEditingProduct(item)} showSaleBadge={false} />
+                   <ProductCard product={item} onClick={() => navigate(`/pharmacist/inventory/${item.id}`)} showSaleBadge={false} />
                 </div>
             ))}
           </div>
          }
       </div>
 
-      {editingProduct && (
-         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center bg-slate-900/40 backdrop-blur-sm p-4">
-            <div className="bg-white dark:bg-black w-full max-w-md rounded-[2rem] overflow-hidden shadow-2xl animate-in fade-in slide-in-from-bottom-8 sm:zoom-in-95 duration-200">
-               
-               <div className="relative p-6 flex flex-col items-center mt-2">
-                  <div className="w-24 h-24 bg-gray-50 dark:bg-black rounded-[1.5rem] border border-gray-100 dark:border-zinc-800 shadow-sm flex items-center justify-center overflow-hidden mb-5 relative z-10">
-                    {(editingProduct.imageUrl || editingProduct.ImageURL || editingProduct.image || editingProduct.Image) ? (
-                       <img src={editingProduct.imageUrl || editingProduct.ImageURL || editingProduct.image || editingProduct.Image} alt={editingProduct.name} className="w-full h-full object-cover" />
-                    ) : (
-                       <Package size={40} className="text-gray-300"/>
-                    )}
-                  </div>
-                  <h3 className="font-extrabold text-gray-900 dark:text-white text-2xl text-center leading-tight tracking-tight">{editingProduct.name}</h3>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1.5">{editingProduct.category}</p>
-                  
-                  <button onClick={() => setEditingProduct(null)} className="absolute top-4 right-4 bg-gray-100 dark:bg-zinc-900 hover:bg-gray-200 text-gray-600 rounded-full p-2.5 transition-colors">
-                     <X size={20} />
-                  </button>
-               </div>
-               
-               <div className="px-6 pb-6 space-y-6 max-h-[60vh] overflow-y-auto overflow-x-hidden hide-scrollbar">
-                  <div className="bg-slate-50 dark:bg-black rounded-3xl p-5 md:p-6 border border-slate-100 dark:border-zinc-800 space-y-4">
-                     <div>
-                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2 px-1 text-left"> {t('dosage_form', 'Dosage / Form')} </label>
-                        <input type="text" value={editingProduct.dosage || ''} onChange={e => setEditingProduct({...editingProduct, dosage: e.target.value})} className="w-full bg-white dark:bg-black border border-slate-200 dark:border-zinc-800 p-3.5 rounded-2xl text-sm font-medium outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" />
-                     </div>
-                     <div>
-                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2 px-1 text-left"> {t('brand', 'Brand')} </label>
-                        <input type="text" value={editingProduct.brand || ''} onChange={e => setEditingProduct({...editingProduct, brand: e.target.value})} className="w-full bg-white dark:bg-black border border-slate-200 dark:border-zinc-800 p-3.5 rounded-2xl text-sm font-medium outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" />
-                     </div>
-                     
-                     <div className="flex gap-4">
-                        <div className="flex-1">
-                           <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2 px-1 text-left"> {t('price', 'Price')} </label>
-                           <input type="number" value={editingProduct.price || 0} onChange={e => setEditingProduct({...editingProduct, price: e.target.value})} className="w-full bg-white dark:bg-black border border-slate-200 dark:border-zinc-800 p-3.5 rounded-2xl text-sm font-medium outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" />
-                        </div>
-                        <div className="flex-1">
-                           <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2 px-1 text-left"> {t('stock', 'Stock')} </label>
-                           <input type="number" value={editingProduct.stock || 0} onChange={e => setEditingProduct({...editingProduct, stock: e.target.value})} className="w-full bg-white dark:bg-black border border-slate-200 dark:border-zinc-800 p-3.5 rounded-2xl text-sm font-medium outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" />
-                        </div>
-                     </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                     <button onClick={handleDeleteProduct} disabled={uploading} className="bg-red-50 hover:bg-red-100 text-red-600 px-5 py-4 rounded-2xl font-bold text-sm transition-colors flex items-center justify-center">
-                         {t('remove', 'Remove')} </button>
-                     <button onClick={handleSaveEdit} disabled={uploading} className="flex-1 bg-gray-900 hover:bg-black text-white rounded-2xl py-4 font-bold text-sm shadow-xl shadow-gray-900/20 transition-all flex justify-center items-center gap-2">
-                        {uploading ? <Loader2 size={18} className="animate-spin" /> : <><Save size={18} />  {t('save_changes', 'Save Changes')} </>}
-                     </button>
-                  </div>
-               </div>
-            </div>
-         </div>
-      )}
     </div>
   );
 }

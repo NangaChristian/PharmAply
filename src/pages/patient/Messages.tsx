@@ -21,21 +21,25 @@ export function Messages() {
     
     const q = query(
         collection(db, 'messages'),
-        where('orderId', '==', id),
-        orderBy('createdAt', 'asc')
+        where('orderId', '==', id)
     );
 
     const unsub = onSnapshot(q, (snapshot: any) => {
-        setMessages(snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+        const fetchedMessages = snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+        // Sort in memory to avoid needing composite indexes
+        fetchedMessages.sort((a: any, b: any) => {
+           const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : Date.now()));
+           const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : Date.now()));
+           return timeA - timeB;
+        });
+        setMessages(fetchedMessages);
         setTableError(false);
     }, (error: any) => {
-        if (error?.message?.includes('Could not find the table')) {
-             setTableError(true);
-             // Fallback to local storage
-             const localMsgs = localStorage.getItem(`local_messages_${id}`);
-             if (localMsgs) {
-                setMessages(JSON.parse(localMsgs));
-             }
+        console.error("Messages sync error: ", error);
+        setTableError(true); // Fallback on ANY error (RLS, missing table, etc)
+        const localMsgs = localStorage.getItem(`local_messages_${id}`);
+        if (localMsgs) {
+            setMessages(JSON.parse(localMsgs));
         }
     });
 
@@ -50,19 +54,7 @@ export function Messages() {
 
     try {
         if (tableError) {
-             const newLocalMsg = {
-                  id: Math.random().toString(36).substring(7),
-                  orderId: id,
-                  patientId: role === 'patient' ? user.uid : 'client-id',
-                  senderId: user.uid,
-                  senderType: role || 'unknown',
-                  text: msgText,
-                  createdAt: new Date().toISOString()
-             };
-             const updatedMsgs = [...messages, newLocalMsg];
-             setMessages(updatedMsgs);
-             localStorage.setItem(`local_messages_${id}`, JSON.stringify(updatedMsgs));
-             return;
+             throw new Error("Table error fallback active");
         }
 
         await addDoc(collection(db, 'messages'), {
@@ -74,7 +66,20 @@ export function Messages() {
             createdAt: serverTimestamp()
         });
     } catch (error) {
-        console.error("Error sending message", error);
+        console.error("Error sending message, using local fallback: ", error);
+        setTableError(true);
+        const newLocalMsg = {
+             id: Math.random().toString(36).substring(7),
+             orderId: id,
+             patientId: role === 'patient' ? user.uid : 'client-id',
+             senderId: user.uid,
+             senderType: role || 'unknown',
+             text: msgText,
+             createdAt: new Date().toISOString()
+        };
+        const updatedMsgs = [...messages, newLocalMsg];
+        setMessages(updatedMsgs);
+        localStorage.setItem(`local_messages_${id}`, JSON.stringify(updatedMsgs));
     }
   };
 
@@ -86,7 +91,9 @@ export function Messages() {
                <ArrowLeft size={20} className="text-gray-900 dark:text-white" />
             </button>
             <div>
-               <h1 className="font-bold text-gray-900 dark:text-white text-sm">{t('contact_driver', 'Contact Driver')}</h1>
+               <h1 className="font-bold text-gray-900 dark:text-white text-sm">
+                  {role === 'pharmacist' || role === 'delivery' ? t('contact_patient', 'Contact Patient') : t('contact_driver', 'Contact Driver')}
+               </h1>
                <p className="text-xs text-green-500 font-medium tracking-wide">{t('online', 'Online')}</p>
             </div>
          </div>

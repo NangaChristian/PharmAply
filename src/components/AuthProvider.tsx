@@ -5,6 +5,7 @@ import { auth, db, supabase } from '../lib/firebase';
 
 interface AuthContextType {
   user: User | null;
+  userData: any | null;
   role: string | null;
   loading: boolean;
   refreshUser: () => void;
@@ -17,6 +18,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({ 
   user: null, 
+  userData: null,
   role: null, 
   loading: true, 
   refreshUser: () => {},
@@ -30,9 +32,11 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [actualUser, setActualUser] = useState<User | null>(null);
   const [actualRole, setActualRole] = useState<string | null>(null);
+  const [actualUserData, setActualUserData] = useState<any | null>(null);
   
   const [impersonatedUser, setImpersonatedUser] = useState<User | null>(null);
   const [impersonatedRole, setImpersonatedRole] = useState<string | null>(null);
+  const [impersonatedUserData, setImpersonatedUserData] = useState<any | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [refreshToggle, setRefreshToggle] = useState(false);
@@ -45,6 +49,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const parsed = JSON.parse(stored);
         setImpersonatedUser(parsed.user);
         setImpersonatedRole(parsed.role);
+        setImpersonatedUserData(parsed.userData || null);
       }
     } catch (e) {
       console.warn('Failed to parse impersonation state');
@@ -57,18 +62,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
           if (userDoc.exists()) {
             setActualRole(userDoc.data().role);
+            setActualUserData(userDoc.data());
           } else {
             setActualRole(null);
+            setActualUserData(null);
           }
         } catch (error) {
           console.error("Error fetching user role", error);
           setActualRole(null);
+          setActualUserData(null);
         }
       } else {
         setActualRole(null);
+        setActualUserData(null);
         // Clear impersonation if actual auth drops
         setImpersonatedUser(null);
         setImpersonatedRole(null);
+        setImpersonatedUserData(null);
         localStorage.removeItem('impersonation_state');
       }
       setLoading(false);
@@ -94,22 +104,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const impersonateUser = (targetUser: User | null, targetRole: string | null) => {
+  const impersonateUser = (targetUser: User | null, targetRole: string | null, targetUserData: any | null = null) => {
     setImpersonatedUser(targetUser);
     setImpersonatedRole(targetRole);
+    setImpersonatedUserData(targetUserData);
     if (targetUser && targetRole) {
-      localStorage.setItem('impersonation_state', JSON.stringify({ user: targetUser, role: targetRole }));
+      localStorage.setItem('impersonation_state', JSON.stringify({ user: targetUser, role: targetRole, userData: targetUserData }));
     } else {
       localStorage.removeItem('impersonation_state');
     }
   };
 
   const stopImpersonating = () => {
-    impersonateUser(null, null);
+    impersonateUser(null, null, null);
   };
 
   const activeUser = impersonatedUser || actualUser;
   const activeRole = impersonatedUser ? impersonatedRole : actualRole;
+  const activeUserData = impersonatedUser ? impersonatedUserData : actualUserData;
   
   if (auth) {
      auth.currentUser = activeUser;
@@ -118,6 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AuthContext.Provider value={{ 
       user: activeUser, 
+      userData: activeUserData,
       role: activeRole, 
       loading, 
       refreshUser,

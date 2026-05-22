@@ -1,7 +1,7 @@
 import { Activity, Clock, Search, Filter } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { collection, query, where, getDocs, onSnapshot } from '../../lib/firebase';
+import { collection, query, where, getDocs, onSnapshot, doc, getDoc } from '../../lib/firebase';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { formatCurrency, parseDate } from '../../lib/utils';
@@ -31,8 +31,24 @@ export function PharmacistOrders() {
         }
 
         const ordersQuery = query(collection(db, 'orders'), where('pharmacyId', '==', pharmacyId));
-        unsubscribeOrders = onSnapshot(ordersQuery, (oSnap) => {
-          setOrders(oSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        unsubscribeOrders = onSnapshot(ordersQuery, async (oSnap) => {
+          const ordersData = oSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          
+          // Fetch patient names
+          const patientsCache: Record<string, string> = {};
+          for (let order of ordersData) {
+              if (order.patientId && !patientsCache[order.patientId]) {
+                 try {
+                     const pd = await getDoc(doc(db, 'users', order.patientId));
+                     if (pd.exists()) {
+                         patientsCache[order.patientId] = pd.data().name || 'Unknown Patient';
+                     }
+                 } catch(e) {}
+              }
+              order.patientName = patientsCache[order.patientId] || 'Unknown Patient';
+          }
+          
+          setOrders(ordersData);
           setLoading(false);
         });
         
@@ -98,36 +114,39 @@ export function PharmacistOrders() {
              <div 
                key={order.id} 
                onClick={() => navigate(`/pharmacist/order/${order.id}`)}
-               className="bg-white dark:bg-black p-5 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-sm flex flex-col gap-4 cursor-pointer hover:shadow-md hover:border-indigo-50 transition-all active:scale-[0.98]"
+               className="bg-white dark:bg-black p-5 rounded-[24px] border border-gray-100 dark:border-zinc-800 shadow-sm flex flex-col gap-3 cursor-pointer hover:shadow-md hover:border-indigo-50 transition-all active:scale-[0.98]"
              >
                 <div className="flex justify-between items-start">
-                   <div>
-                      <p className="font-bold text-gray-900 dark:text-white text-base"> {t('order', 'Order #')} {order.id.slice(0, 8)}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 font-medium mt-0.5">{order.items?.length || 0}  {t('items', 'items •')} {formatCurrency(order.total)}</p>
-                   </div>
-                   <span className={`text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider ${
-                      order.status === 'pending' ? 'bg-orange-50 text-orange-600' :
-                      order.status === 'preparing' ? 'bg-blue-50 text-blue-600' :
-                      order.status === 'ready' ? 'bg-green-50 text-green-600' :
-                      (order.status === 'cancelled' || order.status === 'rejected') ? 'bg-red-50 text-red-600' :
-                      'bg-gray-50 dark:bg-black text-gray-600'
+                   <p className="font-bold text-indigo-700 dark:text-indigo-400 text-lg"> {t('order', 'Order #')} {order.id.slice(0, 3)}</p>
+                   <span className={`text-[12px] font-bold px-4 py-1.5 rounded-full ${
+                      order.status === 'pending' ? 'bg-[#c5ead5] text-[#2c8d50]' :
+                      order.status === 'preparing' ? 'bg-blue-100 text-blue-700' :
+                      order.status === 'ready' ? 'bg-green-100 text-green-700' :
+                      (order.status === 'cancelled' || order.status === 'rejected') ? 'bg-red-100 text-red-700' :
+                      'bg-gray-200 dark:bg-zinc-800 text-gray-700 dark:text-gray-300'
                    }`}>
-                      {order.status}
+                      {order.status === 'pending' ? 'New' : order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                    </span>
                 </div>
+                
+                <div>
+                   <p className="font-bold text-gray-800 dark:text-white text-[15px] mb-1 leading-snug">{order.patientName}</p>
+                   <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{order.items?.length || 0} {t('items', 'Items')}</p>
+                </div>
+
+                <div className="border-t border-gray-200 dark:border-zinc-800 pt-3 flex items-center text-sm font-bold text-gray-800 dark:text-white mt-1">
+                   <span>{formatCurrency(order.total)}</span>
+                   <span className="mx-2 text-gray-400 dark:text-gray-600">•</span>
+                   <span className="text-gray-500 dark:text-gray-400 font-medium text-xs">
+                     {parseDate(order.createdAt) ? parseDate(order.createdAt)!.toLocaleDateString() : 'recently'}
+                   </span>
+                </div>
+
                 {(order.status === 'cancelled' || order.status === 'rejected') && order.cancellationReason && (
-                   <div className="text-xs text-red-600 bg-red-50/50 p-3 rounded-xl border border-red-100/50">
+                   <div className="text-xs text-red-600 bg-red-50/50 p-3 rounded-xl border border-red-100/50 mt-1">
                       <span className="font-bold"> {t('reason', 'Reason:')} </span> {order.cancellationReason}
                    </div>
                 )}
-                <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 border-t border-gray-50 pt-3 mt-1">
-                   <div className="flex items-center gap-1.5">
-                      <Clock size={14} className={order.status === 'pending' ? "text-orange-500" : "text-gray-400 dark:text-gray-500"} />
-                      <span className={`${order.status === 'pending' ? "text-orange-600 font-bold" : "text-gray-500 dark:text-gray-400 dark:text-gray-500 font-medium"}`}>
-                         {parseDate(order.createdAt) ? parseDate(order.createdAt)!.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'recently'}
-                      </span>
-                   </div>
-                </div>
              </div>
           ))}
           <div className="h-20"></div>

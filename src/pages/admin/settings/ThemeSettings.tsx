@@ -125,9 +125,9 @@ export function ThemeSettings() {
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
          <div>
-             <h1 className="font-bold text-gray-900 text-2xl mb-1 flex items-center gap-2"><Palette size={24} />  {t('theme_visuals', 'Theme & Visuals')} </h1>
+             <h1 className="font-bold text-gray-900 dark:text-white text-2xl mb-1 flex items-center gap-2"><Palette size={24} />  {t('theme_visuals', 'Theme & Visuals')} </h1>
              <p className="text-gray-500 text-sm"> {t('configure_app_visuals_and_text', 'Configure app visuals and text for user dashboards')} </p>
          </div>
          <button 
@@ -140,8 +140,8 @@ export function ThemeSettings() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 max-w-3xl space-y-8">
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h2 className="text-lg font-bold text-slate-900 mb-6"> {t('user_dashboard_texts', 'User Dashboard Texts')} </h2>
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6"> {t('user_dashboard_texts', 'User Dashboard Texts')} </h2>
             <div className="space-y-4">
                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1"> {t('welcome_text', 'Welcome Text')} </label>
@@ -166,8 +166,8 @@ export function ThemeSettings() {
             </div>
          </div>
 
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h2 className="text-lg font-bold text-slate-900 mb-6"> {t('colors_branding', 'Colors & Branding')} </h2>
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6"> {t('colors_branding', 'Colors & Branding')} </h2>
             <div className="space-y-4">
                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Primary App Color (Hex)</label>
@@ -192,18 +192,18 @@ export function ThemeSettings() {
                   <label className="block text-sm font-medium text-slate-700 mb-3"> {t('app_logo', 'App Logo')} </label>
                   <div className="flex items-center gap-6">
                     {settings.logoUrl ? (
-                      <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center">
+                      <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 dark:bg-zinc-900 flex items-center justify-center">
                         <img src={settings.logoUrl} alt="App Logo" className="w-full h-full object-contain" />
                         <button 
                           type="button"
                           onClick={() => setSettings(prev => ({ ...prev, logoUrl: "" }))}
-                          className="absolute top-1 right-1 bg-white/80 p-1 rounded-full text-gray-700 hover:text-red-600 transition shadow-sm backdrop-blur-sm"
+                          className="absolute top-1 right-1 bg-white dark:bg-zinc-950/80 p-1 rounded-full text-gray-700 hover:text-red-600 transition shadow-sm backdrop-blur-sm"
                         >
                           <X size={14} />
                         </button>
                       </div>
                     ) : (
-                      <div className="w-20 h-20 rounded-xl border border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center text-gray-400">
+                      <div className="w-20 h-20 rounded-xl border border-dashed border-gray-300 bg-gray-50 dark:bg-zinc-900 flex flex-col items-center justify-center text-gray-400">
                         <Upload size={20} className="mb-1" />
                         <span className="text-[10px] font-medium"> {t('no_logo', 'No Logo')} </span>
                       </div>
@@ -220,7 +220,7 @@ export function ThemeSettings() {
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploadingLogo}
-                        className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition shadow-sm disabled:opacity-50"
+                        className="bg-white dark:bg-zinc-950 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:bg-zinc-900 transition shadow-sm disabled:opacity-50"
                       >
                         {uploadingLogo ? "Uploading..." : "Upload Logo Image"}
                       </button>
@@ -232,18 +232,18 @@ export function ThemeSettings() {
                   <label className="block text-sm font-medium text-slate-700 mb-3"> {t('default_pharmacy_logo', 'Default Pharmacy Logo')} </label>
                   <div className="flex items-center gap-6">
                     {settings.defaultPharmacyLogo ? (
-                      <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center">
+                      <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 dark:bg-zinc-900 flex items-center justify-center">
                         <img src={settings.defaultPharmacyLogo} alt="Default Pharmacy Logo" className="w-full h-full object-contain" />
                         <button 
                           type="button"
                           onClick={() => setSettings(prev => ({ ...prev, defaultPharmacyLogo: "" }))}
-                          className="absolute top-1 right-1 bg-white/80 p-1 rounded-full text-gray-700 hover:text-red-600 transition shadow-sm backdrop-blur-sm"
+                          className="absolute top-1 right-1 bg-white dark:bg-zinc-950/80 p-1 rounded-full text-gray-700 hover:text-red-600 transition shadow-sm backdrop-blur-sm"
                         >
                           <X size={14} />
                         </button>
                       </div>
                     ) : (
-                      <div className="w-20 h-20 rounded-xl border border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center text-gray-400">
+                      <div className="w-20 h-20 rounded-xl border border-dashed border-gray-300 bg-gray-50 dark:bg-zinc-900 flex flex-col items-center justify-center text-gray-400">
                         <Upload size={20} className="mb-1" />
                         <span className="text-[10px] font-medium"> {t('no_logo', 'No Logo')} </span>
                       </div>
@@ -260,7 +260,7 @@ export function ThemeSettings() {
                         type="button"
                         onClick={() => pharmacyLogoInputRef.current?.click()}
                         disabled={uploadingPharmacyLogo}
-                        className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition shadow-sm disabled:opacity-50"
+                        className="bg-white dark:bg-zinc-950 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:bg-zinc-900 transition shadow-sm disabled:opacity-50"
                       >
                         {uploadingPharmacyLogo ? "Uploading..." : "Upload Pharmacy Logo"}
                       </button>

@@ -52,11 +52,11 @@ export function AppUpdater({ children }: { children: React.ReactNode }) {
   if (needsUpdate) {
      return (
        <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#F0F5F2] p-6 text-center">
-          <div className="bg-white p-8 rounded-3xl shadow-sm max-w-md w-full flex flex-col items-center">
+          <div className="bg-white dark:bg-zinc-950 p-8 rounded-3xl shadow-sm max-w-md w-full flex flex-col items-center">
              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-6">
                 <AlertTriangle size={32} />
              </div>
-             <h1 className="text-2xl font-bold text-gray-900 mb-2"> {t('update_required', 'Update Required')} </h1>
+             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2"> {t('update_required', 'Update Required')} </h1>
              <p className="text-gray-500 mb-8">
                 {t('your_current_version_of_the_ap', 'Your current version of the app is outdated. Please update to the latest version to safely continue using PharmAply.')} </p>
              <button className="w-full bg-slate-900 text-white font-bold rounded-xl py-3.5 flex items-center justify-center gap-2 hover:bg-slate-800 transition shadow-sm">

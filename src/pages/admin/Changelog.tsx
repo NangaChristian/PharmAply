@@ -40,8 +40,8 @@ export function AdminChangelog() {
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0">
-         <h1 className="font-bold text-gray-900 text-2xl mb-1"> {t('changelog', 'Changelog')} </h1>
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0">
+         <h1 className="font-bold text-gray-900 dark:text-white text-2xl mb-1"> {t('changelog', 'Changelog')} </h1>
          <p className="text-gray-500 text-sm"> {t('platform_updates_and_release_n', 'Platform updates and release notes')} </p>
       </div>
 
@@ -59,11 +59,11 @@ export function AdminChangelog() {
                     {ver.type === 'major' && <Rocket size={16} />}
                  </div>
                  
-                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                 <div className="bg-white dark:bg-zinc-950 p-6 rounded-2xl shadow-sm border border-slate-100">
                     <div className="flex items-center justify-between mb-4">
-                       <h3 className="text-lg font-bold text-slate-800">{ver.title}</h3>
+                       <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{ver.title}</h3>
                        <div className="text-right">
-                          <span className="font-mono text-sm font-bold text-slate-900">{ver.version}</span>
+                          <span className="font-mono text-sm font-bold text-slate-900 dark:text-white">{ver.version}</span>
                           <p className="text-xs text-slate-500">{ver.date}</p>
                        </div>
                     </div>

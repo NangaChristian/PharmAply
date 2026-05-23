@@ -59,11 +59,11 @@ export function AdminSupport() {
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
          <div className="flex items-center gap-4">
              <div>
                  <div className="flex items-center gap-3 mb-1">
-                   <h1 className="font-bold text-gray-900 text-2xl"> {t('customer_support', 'Customer Support')} </h1>
+                   <h1 className="font-bold text-gray-900 dark:text-white text-2xl"> {t('customer_support', 'Customer Support')} </h1>
                    {openCount > 0 && (
                      <span className="bg-red-100 text-red-600 px-2.5 py-0.5 rounded-full text-xs font-bold shadow-sm">
                        {openCount}  {t('open', 'Open')} </span>
@@ -84,7 +84,7 @@ export function AdminSupport() {
                      placeholder={t('search_subject_or_user_id', 'Search subject or user ID...')} 
                      value={search}
                      onChange={(e) => setSearch(e.target.value)}
-                     className="w-full bg-white border border-slate-200 py-2.5 pl-12 pr-4 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none transition"
+                     className="w-full bg-white dark:bg-zinc-950 border border-slate-200 py-2.5 pl-12 pr-4 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none transition"
                    />
                 </div>
                 <div className="relative">
@@ -92,7 +92,7 @@ export function AdminSupport() {
                    <select 
                      value={statusFilter} 
                      onChange={(e) => setStatusFilter(e.target.value)}
-                     className="bg-white border border-slate-200 py-2.5 pl-10 pr-8 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none appearance-none transition text-slate-700 font-medium"
+                     className="bg-white dark:bg-zinc-950 border border-slate-200 py-2.5 pl-10 pr-8 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none appearance-none transition text-slate-700 font-medium"
                    >
                      <option value="all"> {t('all_status', 'All Status')} </option>
                      <option value="open"> {t('open', 'Open')} </option>
@@ -102,7 +102,7 @@ export function AdminSupport() {
              </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-white dark:bg-zinc-950 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
              {loading ? (
                 <div className="p-8 text-center text-slate-500"> {t('loading_queries', 'Loading queries...')} </div>
              ) : (
@@ -128,7 +128,7 @@ export function AdminSupport() {
                                  </div>
                               </td>
                               <td className="py-4 px-6">
-                                 <p className="font-bold text-slate-800">{q.subject || 'No Subject'}</p>
+                                 <p className="font-bold text-slate-800 dark:text-slate-100">{q.subject || 'No Subject'}</p>
                                  <p className="text-xs text-slate-500 truncate max-w-[300px]">{q.message}</p>
                               </td>
                               <td className="py-4 px-6">
@@ -171,10 +171,10 @@ export function AdminSupport() {
 
       {selectedQuery && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-           <div className="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-xl flex flex-col">
+           <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 w-full max-w-2xl shadow-xl flex flex-col">
               <div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-4">
                  <div>
-                    <h2 className="text-xl font-bold text-slate-900">{selectedQuery.subject || 'No Subject'}</h2>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">{selectedQuery.subject || 'No Subject'}</h2>
                     <div className="flex gap-4 mt-2 text-xs text-slate-500">
                       <span> {t('user_id', 'User ID:')} <span className="font-mono font-bold">{selectedQuery.userId}</span></span>
                       {parseDate(selectedQuery.createdAt) && (
@@ -197,7 +197,7 @@ export function AdminSupport() {
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
                       placeholder={t('add_an_internal_note_or_reply', 'Add an internal note or reply...')}
-                      className="w-full border border-slate-200 rounded-xl p-3 bg-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none h-32"
+                      className="w-full border border-slate-200 rounded-xl p-3 bg-white dark:bg-zinc-950 text-sm focus:ring-2 focus:ring-indigo-500 outline-none h-32"
                     ></textarea>
                  </div>
               </div>

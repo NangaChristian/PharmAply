@@ -79,7 +79,7 @@ import { PatientProfileDetails } from './pages/patient/ProfileDetails';
 function Placeholder({ title }: { title: string }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-50 text-center text-gray-500 overflow-y-auto">
-      <h2 className="text-xl font-bold text-gray-900 mb-2">{title}</h2>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
       <p>This screen is mapped out for future implementation.</p>
     </div>
   );
@@ -117,6 +117,7 @@ export default function App() {
             <Route path="product/:id" element={<PatientProductDetails />} />
             <Route path="pharmacy/:id" element={<PatientPharmacyDetails />} />
             <Route path="checkout/:id" element={<PatientCheckout />} />
+            <Route path="checkout" element={<PatientCheckout />} />
             <Route path="tracking/:id" element={<PatientTracking />} />
             <Route path="messages/:id" element={<Messages />} />
             <Route path="prescription-upload" element={<PatientPrescriptionUpload />} />

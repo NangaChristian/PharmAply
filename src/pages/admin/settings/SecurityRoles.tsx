@@ -55,11 +55,11 @@ export function SecurityRoles() {
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
          <div>
-             <button onClick={() => navigate("/admin/settings")} className="flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 mb-2">
+             <button onClick={() => navigate("/admin/settings")} className="flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-slate-100 mb-2">
                <ArrowLeft size={16} className="mr-1" />  {t('back_to_settings', 'Back to Settings')} </button>
-             <h1 className="font-bold text-gray-900 text-2xl mb-1"> {t('security_roles', 'Security & Roles')} </h1>
+             <h1 className="font-bold text-gray-900 dark:text-white text-2xl mb-1"> {t('security_roles', 'Security & Roles')} </h1>
              <p className="text-gray-500 text-sm"> {t('system_wide_security_policies_', 'System-wide security policies and role management')} </p>
          </div>
          <button 
@@ -72,13 +72,13 @@ export function SecurityRoles() {
 
       <div className="flex-1 overflow-y-auto p-8 max-w-4xl space-y-6">
          {/* Authentication Settings */}
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
             <div className="flex items-center gap-3 mb-6 block border-b border-gray-50 pb-4">
               <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
                  <Shield size={20} />
               </div>
               <div>
-                 <h2 className="text-lg font-bold text-gray-900"> {t('authentication_policies', 'Authentication Policies')} </h2>
+                 <h2 className="text-lg font-bold text-gray-900 dark:text-white"> {t('authentication_policies', 'Authentication Policies')} </h2>
                  <p className="text-sm text-slate-500"> {t('configure_how_administrators_a', 'Configure how administrators authenticate.')} </p>
               </div>
             </div>
@@ -92,7 +92,7 @@ export function SecurityRoles() {
                     className="w-5 h-5 text-indigo-600 rounded mt-0.5"
                   />
                   <div>
-                    <h3 className="font-bold text-gray-900 text-sm block">Require Two-Factor Authentication (2FA)</h3>
+                    <h3 className="font-bold text-gray-900 dark:text-white text-sm block">Require Two-Factor Authentication (2FA)</h3>
                     <p className="text-xs text-slate-500 mt-1"> {t('force_all_admin_users_to_enrol', 'Force all admin users to enroll in 2FA via authenticator app or SMS before accessing the dashboard.')} </p>
                   </div>
                </label>
@@ -100,13 +100,13 @@ export function SecurityRoles() {
          </div>
 
          {/* Access Control */}
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
             <div className="flex items-center gap-3 mb-6 block border-b border-gray-50 pb-4">
               <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
                  <Server size={20} />
               </div>
               <div>
-                 <h2 className="text-lg font-bold text-gray-900"> {t('network_access_control', 'Network Access Control')} </h2>
+                 <h2 className="text-lg font-bold text-gray-900 dark:text-white"> {t('network_access_control', 'Network Access Control')} </h2>
                  <p className="text-sm text-slate-500"> {t('restrict_where_admin_dashboard', 'Restrict where admin dashboard can be accessed from.')} </p>
               </div>
             </div>
@@ -120,7 +120,7 @@ export function SecurityRoles() {
                     className="w-5 h-5 text-emerald-600 rounded mt-0.5"
                   />
                   <div>
-                    <h3 className="font-bold text-gray-900 text-sm block"> {t('enable_ip_whitelisting', 'Enable IP Whitelisting')} </h3>
+                    <h3 className="font-bold text-gray-900 dark:text-white text-sm block"> {t('enable_ip_whitelisting', 'Enable IP Whitelisting')} </h3>
                     <p className="text-xs text-slate-500 mt-1"> {t('only_allow_dashboard_access_fr', 'Only allow dashboard access from specific, pre-authorized IP addresses or CIDR ranges.')} </p>
                   </div>
                </label>
@@ -141,13 +141,13 @@ export function SecurityRoles() {
          </div>
          
          {/* Role Management */}
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center gap-3 mb-6 block border-b border-gray-50 pb-4">
               <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
                  <Users size={20} />
               </div>
               <div>
-                 <h2 className="text-lg font-bold text-gray-900"> {t('role_management', 'Role Management')} </h2>
+                 <h2 className="text-lg font-bold text-gray-900 dark:text-white"> {t('role_management', 'Role Management')} </h2>
                  <p className="text-sm text-slate-500"> {t('define_access_rules_and_permis', 'Define access rules and permissions for different user roles.')} </p>
               </div>
             </div>
@@ -161,7 +161,7 @@ export function SecurityRoles() {
                   <div key={i} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl">
                      <div>
                         <div className="flex items-center gap-2 mb-1">
-                           <h3 className="font-bold text-gray-900">{r.role}</h3>
+                           <h3 className="font-bold text-gray-900 dark:text-white">{r.role}</h3>
                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${r.badge}`}> {t('system', 'System')} </span>
                         </div>
                         <p className="text-sm text-slate-500">{r.desc}</p>

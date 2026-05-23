@@ -77,11 +77,11 @@ export function Promotions() {
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
          <div>
-             <button onClick={() => navigate("/admin/settings")} className="flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 mb-2">
+             <button onClick={() => navigate("/admin/settings")} className="flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-slate-100 mb-2">
                <ArrowLeft size={16} className="mr-1" /> Back to Settings </button>
-             <h1 className="font-bold text-gray-900 text-2xl mb-1"> Marketing & Promotions </h1>
+             <h1 className="font-bold text-gray-900 dark:text-white text-2xl mb-1"> Marketing & Promotions </h1>
              <p className="text-gray-500 text-sm"> Deal of the Day, notifications, discount campaigns </p>
          </div>
          <button 
@@ -93,8 +93,8 @@ export function Promotions() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 max-w-4xl space-y-6">
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900 mb-4"> Active Promo Codes </h2>
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4"> Active Promo Codes </h2>
             
             <div className="flex gap-4 mb-6">
               <input 
@@ -143,8 +143,8 @@ export function Promotions() {
          </div>
 
          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-               <h2 className="text-lg font-bold text-gray-900 mb-4"> Deal of the Day </h2>
+            <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-gray-100">
+               <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4"> Deal of the Day </h2>
                <div className="space-y-4">
                   <label className="flex items-start gap-4 p-4 border border-gray-100 rounded-xl hover:bg-slate-50 transition cursor-pointer">
                      <input 
@@ -155,7 +155,7 @@ export function Promotions() {
                        className="w-5 h-5 text-indigo-600 rounded mt-0.5"
                      />
                      <div>
-                       <h3 className="font-bold text-gray-900 text-sm block">Enable Deal of the Day</h3>
+                       <h3 className="font-bold text-gray-900 dark:text-white text-sm block">Enable Deal of the Day</h3>
                        <p className="text-xs text-slate-500 mt-1">Automatically highlight one discounted item daily.</p>
                      </div>
                   </label>
@@ -167,14 +167,14 @@ export function Promotions() {
                        value={settings.dealOfTheDayDiscount} 
                        onChange={handleChange}
                        disabled={!settings.dealOfTheDayEnabled}
-                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none disabled:bg-gray-100 disabled:opacity-50"
+                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none disabled:bg-gray-100 dark:bg-zinc-800 disabled:opacity-50"
                      />
                   </div>
                </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-               <h2 className="text-lg font-bold text-gray-900 mb-4"> Notification Templates </h2>
+            <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-gray-100">
+               <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4"> Notification Templates </h2>
                <div className="space-y-4">
                   <div>
                      <label className="block text-sm font-medium text-gray-700 mb-1"> Order Status Push Note </label>

@@ -6,6 +6,7 @@ import { db } from '../../lib/firebase';
 import { formatCurrency } from '../../lib/utils';
 import { useTranslation } from "react-i18next";
 import { ProductCard } from '../../components/ProductCard';
+import { getCategoryIcon } from '../../lib/icons';
 
 export function PatientSearch() {
   const navigate = useNavigate();
@@ -81,8 +82,9 @@ export function PatientSearch() {
                 <button 
                   key={cat.id} 
                   onClick={() => setSearchQuery(cat.name)}
-                  className="bg-white dark:bg-black border border-indigo-100 px-3 py-2 rounded-full text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+                  className="bg-white dark:bg-black border border-indigo-100 px-3 py-2 rounded-full text-xs font-medium text-indigo-700 hover:bg-indigo-50 flex items-center gap-1.5 transition-colors"
                 >
+                  <div className="opacity-70">{getCategoryIcon(cat.name, 14, "")}</div>
                   {cat.name}
                 </button>
               ))}

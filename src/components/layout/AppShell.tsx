@@ -18,7 +18,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return (
       <div className="bg-red-500 text-white text-xs font-bold py-2 px-4 shadow flex items-center justify-between shrink-0 z-50 absolute top-0 w-full left-0">
         <span>Viewing as: {user?.email || 'User'}</span>
-        <button onClick={handleStop} className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded transition">Stop Impersonating</button>
+        <button onClick={handleStop} className="bg-white dark:bg-zinc-950/20 hover:bg-white dark:bg-zinc-950/30 px-3 py-1 rounded transition">Stop Impersonating</button>
       </div>
     );
   };

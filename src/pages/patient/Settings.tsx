@@ -113,7 +113,7 @@ export function PatientSettings() {
                   onClick={() => setSettings(s => ({ ...s, notificationsEnabled: !s.notificationsEnabled }))}
                   className={`w-[46px] h-[26px] rounded-full transition-colors relative flex items-center shrink-0 ${settings.notificationsEnabled ? 'bg-[#5c4fff]' : 'bg-gray-200 dark:bg-zinc-700'}`}
                 >
-                   <div className={`w-5 h-5 bg-white rounded-full transition-transform shadow-sm ${settings.notificationsEnabled ? 'translate-x-[22px]' : 'translate-x-[3px]'}`}></div>
+                   <div className={`w-5 h-5 bg-white dark:bg-zinc-950 rounded-full transition-transform shadow-sm ${settings.notificationsEnabled ? 'translate-x-[22px]' : 'translate-x-[3px]'}`}></div>
                 </button>
              </div>
              
@@ -126,7 +126,7 @@ export function PatientSettings() {
                   onClick={() => setSettings(s => ({ ...s, emailAlerts: !s.emailAlerts }))}
                   className={`w-[46px] h-[26px] rounded-full transition-colors relative flex items-center shrink-0 ${settings.emailAlerts ? 'bg-[#5c4fff]' : 'bg-gray-200 dark:bg-zinc-700'}`}
                 >
-                   <div className={`w-5 h-5 bg-white rounded-full transition-transform shadow-sm ${settings.emailAlerts ? 'translate-x-[22px]' : 'translate-x-[3px]'}`}></div>
+                   <div className={`w-5 h-5 bg-white dark:bg-zinc-950 rounded-full transition-transform shadow-sm ${settings.emailAlerts ? 'translate-x-[22px]' : 'translate-x-[3px]'}`}></div>
                 </button>
              </div>
              
@@ -139,7 +139,7 @@ export function PatientSettings() {
                   onClick={() => setSettings(s => ({ ...s, smsAlerts: !s.smsAlerts }))}
                   className={`w-[46px] h-[26px] rounded-full transition-colors relative flex items-center shrink-0 ${settings.smsAlerts ? 'bg-[#5c4fff]' : 'bg-[#e5e7eb] dark:bg-zinc-700'}`}
                 >
-                   <div className={`w-5 h-5 bg-white rounded-full transition-transform shadow-[0_1px_2px_rgba(0,0,0,0.1)] ${settings.smsAlerts ? 'translate-x-[22px]' : 'translate-x-[3px]'}`}></div>
+                   <div className={`w-5 h-5 bg-white dark:bg-zinc-950 rounded-full transition-transform shadow-[0_1px_2px_rgba(0,0,0,0.1)] ${settings.smsAlerts ? 'translate-x-[22px]' : 'translate-x-[3px]'}`}></div>
                 </button>
              </div>
           </div>

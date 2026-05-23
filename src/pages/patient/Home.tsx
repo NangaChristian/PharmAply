@@ -9,6 +9,8 @@ import { useTheme } from '../../components/ThemeProvider';
 import { useTranslation } from "react-i18next";
 import { useNotifications } from "../../hooks/useNotifications";
 import { PharmacyCard } from "../../components/PharmacyCard";
+import { ProductCard } from "../../components/ProductCard";
+import { getCategoryIcon } from "../../lib/icons";
 
 export function PatientHome() {
   const navigate = useNavigate();
@@ -19,6 +21,7 @@ export function PatientHome() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [pharmacies, setPharmacies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<any[]>([]);
   
   const { unreadCount } = useNotifications();
 
@@ -62,9 +65,21 @@ export function PatientHome() {
         console.error("Failed to fetch categories", error);
       }
     };
+    
+    const fetchProducts = async () => {
+      try {
+        const pq = query(collection(db, 'products'), limit(6));
+        const snapshot = await getDocs(pq);
+        const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setProducts(fetched);
+      } catch (error) {
+        console.error("Failed to fetch products", error);
+      }
+    }
 
     fetchPharmacies();
     fetchCategories();
+    fetchProducts();
   }, []);
 
   return (
@@ -136,62 +151,49 @@ export function PatientHome() {
       <div className="flex-1 overflow-y-auto hide-scrollbar p-6 space-y-8">
         
         {/* Upload Prescription Card */}
-        <div className="bg-gradient-to-r from-indigo-600 to-blue-500 rounded-3xl p-5 text-white flex items-center justify-between shadow-lg shadow-indigo-200 relative overflow-hidden">
-          <div className="absolute right-0 top-0 w-32 h-32 bg-white dark:bg-black/10 rounded-full translate-x-8 -translate-y-8 blur-2xl"></div>
-          <div className="max-w-[65%] z-10">
-            <h3 className="font-bold text-lg mb-1">{t('upload_prescription', 'Upload Prescription')}</h3>
-            <p className="text-indigo-100 text-xs mb-3 leading-relaxed">{t('upload_desc', 'A licensed pharmacist will review it and process your order')}</p>
-            <button onClick={() => navigate('/patient/prescription-upload')} className="bg-white dark:bg-slate-950 text-indigo-600 text-xs font-bold py-2 px-4 rounded-xl shadow-sm hover:bg-gray-50 dark:bg-black">
-              {t('upload_now', 'Upload Now')}
-            </button>
-          </div>
-          <div className="z-10 w-16 h-16 bg-white dark:bg-black/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/30">
-            <UploadCloud size={32} className="text-white" />
-          </div>
-        </div>
-
-        {/* Categories */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900 dark:text-white">{t('categories', 'Categories')}</h3>
-            <button className="text-indigo-600 text-xs font-semibold">{t('see_all', 'See all')}</button>
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-              {categories.map((cat) => (
-              <div 
-                key={cat.id} 
-                onClick={() => navigate(`/patient/search?q=${encodeURIComponent(cat.name)}`)}
-                className="flex flex-col items-center gap-2 cursor-pointer group"
+        <div className="bg-[#1f3775] rounded-[1.75rem] p-5 text-white flex items-center justify-between shadow-sm relative overflow-hidden">
+          <div className="flex gap-4 items-center">
+            <div className="w-20 h-20 bg-indigo-200/20 rounded-2xl flex items-center justify-center shrink-0 -m-1 ml-0">
+               {/* Bag illustration icon replacement */}
+               <Pill size={40} className="text-white drop-shadow-md" />
+            </div>
+            <div className="z-10 py-1">
+              <h3 className="font-bold text-lg mb-1">{t('upload_prescription', 'Upload Prescription')}</h3>
+              <p className="text-white/80 text-xs mb-3 leading-snug font-medium max-w-[200px]">{t('upload_desc', 'Get medicines by uploading prescriptions to pharmacist')}</p>
+              <button 
+                onClick={() => navigate('/patient/prescription-upload')} 
+                className="bg-white text-indigo-900 text-[13px] font-bold py-2.5 px-4 rounded-xl shadow-sm hover:bg-gray-50 flex items-center justify-between gap-4 w-full"
               >
-                  <div className="w-full aspect-square rounded-2xl bg-white dark:bg-black shadow-sm flex items-center justify-center text-indigo-500 border border-gray-100 dark:border-zinc-800 group-hover:shadow-md transition overflow-hidden">
-                    {cat.imageUrl ? (
-                      <img src={cat.imageUrl} alt={cat.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <Activity size={28} />
-                    )}
-                  </div>
-                <span className="text-[11px] font-medium text-gray-600 text-center">{cat.name}</span>
-              </div>
-            ))}
+                <span>{t('upload_now', 'Upload Prescription')}</span>
+                <ChevronRight size={14} className="opacity-70" />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Pharmacy Offers */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900 dark:text-white">{t('pharmacy_offers', 'Pharmacy Offers')}</h3>
-            <button className="text-indigo-600 text-xs font-semibold">{t('see_all', 'See all')}</button>
+            <h3 className="font-bold text-gray-900 dark:text-white text-[19px] tracking-tight">{t('pharmacy_offers', 'Pharmacy Offers')}</h3>
+            <button onClick={() => navigate('/patient/search')} className="text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full text-xs font-semibold">{t('see_all', 'see all')} <ChevronRight size={12} className="inline opacity-70" /></button>
           </div>
-          <div className="bg-red-50 rounded-2xl p-4 border border-red-100 flex items-center justify-between">
-            <div>
-              <div className="text-red-500 font-bold text-lg flex items-center gap-2">
-                <Tag size={20} className="fill-current" />
-                 {t('20_discount', '20% Discount')} </div>
-              <p className="text-red-900 font-bold text-xl leading-tight"> {t('first_aid', 'First Aid')} </p>
-              <p className="text-red-700/80 text-xs mt-1"> {t('everything_you_need_in_kit', 'Everything you need in kit!')} </p>
+          <div className="bg-[#fef4f4] dark:bg-red-950/20 rounded-[1.75rem] py-6 px-5 flex items-center">
+            <div className="flex-1 pr-2">
+              <div className="text-[#d84040] font-bold text-xl flex items-center gap-2 tracking-tight">
+                 {t('20_discount', '20% Discount')} 
+              </div>
+              <p className="text-[#3b2b2b] dark:text-gray-200 font-bold text-xl leading-tight tracking-tight mb-2"> {t('first_aid', 'First Aid')} </p>
+              <p className="text-gray-500 dark:text-gray-400 text-xs font-medium max-w-[180px]"> {t('everything_you_need_in_kit', 'Everything you need to act fast in emergencies')} </p>
             </div>
-            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center">
-              <Activity className="text-red-500" size={32} />
+            <div className="w-24 h-24 flex items-center justify-center shrink-0 relative">
+               <div className="absolute inset-0 bg-red-100 rounded-3xl blur-xl opacity-60"></div>
+               {/* A red brief-case cross icon representation */}
+               <div className="w-20 h-16 bg-[#d84040] rounded-2xl relative z-10 flex items-center justify-center shadow-lg transform rotate-[-5deg]">
+                  <div className="absolute -top-3 w-8 h-4 border-4 border-[#a32a2a] rounded-t-lg"></div>
+                  <div className="w-6 h-6 bg-white/20 flex items-center justify-center">
+                     <span className="text-white text-2xl font-bold leading-none -mt-1">+</span>
+                  </div>
+               </div>
             </div>
           </div>
         </div>
@@ -199,27 +201,69 @@ export function PatientHome() {
         {/* Nearby Pharmacies */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900 dark:text-white">{t('nearby_pharmacies', 'Nearby pharmacies')}</h3>
-            <button className="text-indigo-600 text-xs font-semibold">{t('see_all', 'See all')}</button>
+            <h3 className="font-bold text-gray-900 dark:text-white text-[19px] tracking-tight">{t('nearby_pharmacies', 'Nearby pharmacies')}</h3>
+            <button onClick={() => navigate('/patient/search')} className="text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full text-xs font-semibold">{t('see_all', 'see all')} <ChevronRight size={12} className="inline opacity-70" /></button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-2">
+          <div className="flex overflow-x-auto gap-4 hide-scrollbar -mx-6 px-6 pb-2 snap-x">
               {loading ? (
-              <div className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 py-4"> {t('loading_pharmacies', 'Loading pharmacies...')} </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 py-4 w-full"> {t('loading_pharmacies', 'Loading pharmacies...')} </div>
             ) : pharmacies.length === 0 ? (
-              <div className="col-span-1 md:col-span-2 flex flex-col items-center justify-center py-10 px-4 text-center bg-gray-50 dark:bg-zinc-900/50 rounded-2xl border border-dashed border-gray-200 dark:border-zinc-800">
+              <div className="flex-none w-[280px] flex flex-col items-center justify-center py-10 px-4 text-center bg-gray-50 dark:bg-zinc-900/50 rounded-2xl border border-dashed border-gray-200 dark:border-zinc-800">
                 <Store size={40} className="text-gray-300 dark:text-gray-600 mb-3" />
                 <h4 className="text-gray-900 dark:text-white font-medium mb-1">{t('no_pharmacies_nearby', 'No pharmacies nearby')}</h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-[250px]">
-                  {t('no_pharmacies_available_admin_', 'We are expanding our network. New pharmacies will be available soon.')}
-                </p>
               </div>
             ) : (
               pharmacies.map((pharmacy) => (
-                <div key={pharmacy.id}>
+                <div key={pharmacy.id} className="flex-none w-[280px] snap-center">
                   <PharmacyCard pharmacy={pharmacy} theme={theme} />
                 </div>
               ))
             )}
+          </div>
+        </div>
+        
+        {/* Categories */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-gray-900 dark:text-white text-[19px] tracking-tight">{t('categories', 'Categories')}</h3>
+            <button onClick={() => navigate('/patient/search')} className="text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full text-xs font-semibold">{t('see_all', 'see all')} <ChevronRight size={12} className="inline opacity-70" /></button>
+          </div>
+          <div className="flex overflow-x-auto gap-4 hide-scrollbar -mx-6 px-6 pb-2 snap-x">
+              {categories.map((cat) => (
+              <div 
+                key={cat.id} 
+                onClick={() => navigate(`/patient/search?q=${encodeURIComponent(cat.name)}`)}
+                className="flex flex-col flex-none w-[170px] cursor-pointer group bg-[#f5f6fc] dark:bg-zinc-900/50 p-5 rounded-2xl items-start snap-center"
+              >
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center text-indigo-500 mb-3 bg-white dark:bg-zinc-800 shadow-sm border border-gray-100 dark:border-zinc-700">
+                    {cat.imageUrl ? (
+                      <img src={cat.imageUrl} alt={cat.name} className="w-10 h-10 object-contain" />
+                    ) : (
+                      getCategoryIcon(cat.name, 28)
+                    )}
+                  </div>
+                <span className="text-[14px] font-bold text-[#1f3775] dark:text-indigo-100 leading-tight mb-1">{cat.name}</span>
+                <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 leading-tight">{t('various_products', 'Various products')}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Most Sales */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+             <h3 className="font-bold text-gray-900 dark:text-white text-[19px] tracking-tight">{t('most_sales', 'Most Sales')}</h3>
+             <button onClick={() => navigate('/patient/search')} className="text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full text-xs font-semibold">{t('see_all', 'see all')} <ChevronRight size={12} className="inline opacity-70" /></button>
+          </div>
+          <div className="flex overflow-x-auto gap-4 hide-scrollbar -mx-6 px-6 pb-2 snap-x">
+            {products.length === 0 && !loading && (
+               <div className="text-sm text-gray-500 dark:text-gray-400 py-4 w-full text-center"> {t('no_products', 'No products found')} </div>
+            )}
+            {products.map(p => (
+               <div key={p.id} className="flex-none w-[180px] snap-center">
+                  <ProductCard product={p} onClick={() => navigate(`/patient/product/${p.id}`)} showSaleBadge={true} />
+               </div>
+            ))}
           </div>
         </div>
 

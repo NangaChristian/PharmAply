@@ -108,8 +108,8 @@ export function AdminAuditLogs() {
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0">
-         <h1 className="font-bold text-gray-900 text-2xl mb-1"> {t('audit_security_logs', 'Audit & Security Logs')} </h1>
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0">
+         <h1 className="font-bold text-gray-900 dark:text-white text-2xl mb-1"> {t('audit_security_logs', 'Audit & Security Logs')} </h1>
          <p className="text-gray-500 text-sm mb-6"> {t('trace_application_activity_rol', 'Trace application activity, role changes, and alerts')} </p>
          
          <div className="flex flex-col lg:flex-row gap-4 lg:items-center w-full">
@@ -120,12 +120,12 @@ export function AdminAuditLogs() {
                  value={inputValue}
                  onChange={handleSearchChange}
                  placeholder={t('search_by_id_user_action', 'Search by ID, User, Action...')} 
-                 className="w-full bg-gray-50 border border-gray-200 py-2.5 pl-10 pr-4 rounded-xl text-sm focus:outline-none focus:border-slate-400" 
+                 className="w-full bg-gray-50 dark:bg-zinc-900 border border-gray-200 py-2.5 pl-10 pr-4 rounded-xl text-sm focus:outline-none focus:border-slate-400" 
               />
            </div>
            
            <div className="flex items-center gap-2">
-             <div className="flex items-center border border-gray-200 rounded-xl bg-gray-50 overflow-hidden">
+             <div className="flex items-center border border-gray-200 rounded-xl bg-gray-50 dark:bg-zinc-900 overflow-hidden">
                 <input 
                   type="date" 
                   value={startDate}
@@ -141,7 +141,7 @@ export function AdminAuditLogs() {
                 />
              </div>
              
-             <button className="w-10 h-10 flex items-center justify-center bg-gray-100 border border-gray-200 hover:bg-gray-200 rounded-xl text-gray-600 transition">
+             <button className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-zinc-800 border border-gray-200 hover:bg-gray-200 rounded-xl text-gray-600 transition">
                 <Filter size={18} />
              </button>
            </div>
@@ -161,7 +161,7 @@ export function AdminAuditLogs() {
                   {t('no_logs_found_matching_your_fi', 'No logs found matching your filters.')} </div>
          ) : (
              filteredLogs.map((log, i) => (
-                <div key={log.id || i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-start gap-4 hover:shadow-md transition">
+                <div key={log.id || i} className="bg-white dark:bg-zinc-950 rounded-2xl p-4 shadow-sm border border-gray-100 flex items-start gap-4 hover:shadow-md transition">
                    <div className="flex-1">
                        <div className="flex justify-between items-start mb-2">
                           <div className="flex items-center gap-2">
@@ -171,7 +171,7 @@ export function AdminAuditLogs() {
                                   'bg-blue-100 text-blue-700'}`}>
                                 {log.level}
                              </span>
-                             <span className="text-xs font-bold text-gray-900">{log.action}</span>
+                             <span className="text-xs font-bold text-gray-900 dark:text-white">{log.action}</span>
                           </div>
                           <span className="text-[10px] text-gray-500 font-medium">{log.time}</span>
                        </div>
@@ -179,7 +179,7 @@ export function AdminAuditLogs() {
                        <p className="text-sm text-gray-600 mb-3">{log.details}</p>
                        
                        <div className="flex items-center justify-between border-t border-gray-50 pt-3 text-xs text-gray-500">
-                          <div className="flex items-center gap-1.5 font-medium bg-gray-50 px-2 py-1 rounded-md">
+                          <div className="flex items-center gap-1.5 font-medium bg-gray-50 dark:bg-zinc-900 px-2 py-1 rounded-md">
                              <User size={12} /> {log.user}
                           </div>
                           <span className="font-mono text-[10px]">{log.id}</span>

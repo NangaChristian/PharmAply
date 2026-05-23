@@ -8,10 +8,12 @@ import { formatCurrency } from "../../lib/utils";
 import { useTranslation } from "react-i18next";
 
 import { seedData } from '../../seed_data';
+import { getCategoryIcon } from '../../lib/icons';
 
 export function AdminProducts() {
   const { t } = useTranslation();
   const [products, setProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [seeding, setSeeding] = useState(false);
@@ -25,7 +27,7 @@ export function AdminProducts() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-     name: "", dosage: "", category: "", brand: "", price: "", stock: "", imageUrl: "", requiresPrescription: false
+     name: "", dosage: "", category: "", brand: "", price: "", stock: "", imageUrl: "", requiresPrescription: false, description: "", effects: "", directions: ""
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -41,7 +43,12 @@ export function AdminProducts() {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    const catQ = query(collection(db, "categories"));
+    const catUnsub = onSnapshot(catQ, (snapshot) => {
+       setCategories(snapshot.docs.map(d => ({ id: d.id, ...d.data()})));
+    });
+
+    return () => { unsubscribe(); catUnsub(); };
   }, []);
 
   const handleSeed = async () => {
@@ -89,6 +96,33 @@ export function AdminProducts() {
      } finally {
         setSeeding(false);
      }
+  };
+
+  const handleGenerateInfo = async () => {
+    if (!window.confirm("Are you sure you want to generate description, effects, and directions for all products that are missing them?")) return;
+    toast.loading("Generating product information...", { id: 'gen_info' });
+    try {
+        let updatedCount = 0;
+        const promises = products.map(async (p) => {
+           if (!p.description || !p.effects || !p.directions) {
+               const description = p.description || `${p.name} is a high-quality pharmaceutical product available in ${p.dosage} format. It is commonly recommended within the ${p.category} category. Ensure to follow professional medical advice when using this product.`;
+               const effects = p.effects || `Provides reliable relief and treatment associated with ${p.category?.toLowerCase() || 'general conditions'}. May cause mild drowsiness, stomach upset, or dizziness in some instances.`;
+               const directions = p.directions || `For oral use: Take exactly as prescribed. Do not exceed the recommended dose. Take with a full glass of water. If applied topically or injected, ensure it is administered by a qualified professional or according to the leaflet instructions.`;
+               
+               await updateDoc(doc(db, "products", p.id), {
+                   description,
+                   effects,
+                   directions
+               });
+               updatedCount++;
+           }
+        });
+        await Promise.all(promises);
+        toast.success(`Successfully updated ${updatedCount} products with detailed information!`, { id: 'gen_info' });
+    } catch (e) {
+        toast.error("Error generating information", { id: 'gen_info' });
+        console.error("Info gen error:", e);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -184,7 +218,10 @@ export function AdminProducts() {
        price: product.price?.toString() || "0",
        stock: product.stock?.toString() || "0",
        imageUrl: product.imageUrl || "",
-       requiresPrescription: !!product.requiresPrescription
+       requiresPrescription: !!product.requiresPrescription,
+       description: product.description || "",
+       effects: product.effects || "",
+       directions: product.directions || ""
     });
     setShowModal(true);
   };
@@ -215,7 +252,7 @@ export function AdminProducts() {
       }
       setShowModal(false);
       setEditingId(null);
-      setFormData({ name: "", dosage: "", category: "", brand: "", price: "", stock: "", imageUrl: "", requiresPrescription: false });
+      setFormData({ name: "", dosage: "", category: "", brand: "", price: "", stock: "", imageUrl: "", requiresPrescription: false, description: "", effects: "", directions: "" });
     } catch (e) {
       handleFirestoreError(e, editingId ? OperationType.UPDATE : OperationType.CREATE, `products`);
     }
@@ -275,9 +312,9 @@ export function AdminProducts() {
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden relative">
-      <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
          <div>
-             <h1 className="font-bold text-gray-900 text-2xl mb-1">{t('admin_products', 'Products')}</h1>
+             <h1 className="font-bold text-gray-900 dark:text-white text-2xl mb-1">{t('admin_products', 'Products')}</h1>
              <p className="text-gray-500 text-sm">{t('admin_products_desc', 'View and manage all medications across the platform')}</p>
          </div>
       </div>
@@ -292,13 +329,13 @@ export function AdminProducts() {
                       placeholder={t('search_placeholder', 'Search name, brand, category...')}
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="w-full bg-white border border-slate-200 py-2.5 pl-12 pr-4 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none transition"
+                      className="w-full bg-white dark:bg-zinc-950 border border-slate-200 py-2.5 pl-12 pr-4 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none transition"
                     />
                  </div>
                  <select 
                     value={rxFilter}
                     onChange={(e) => setRxFilter(e.target.value as any)}
-                    className="bg-white border border-slate-200 py-2.5 px-4 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none transition"
+                    className="bg-white dark:bg-zinc-950 border border-slate-200 py-2.5 px-4 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none transition"
                  >
                     <option value="all">{t('all_products', 'All Products')}</option>
                     <option value="rx">{t('rx_only', 'Prescription Only (Rx)')}</option>
@@ -324,13 +361,17 @@ export function AdminProducts() {
                />
                <button 
                   onClick={() => fileInputRef.current?.click()}
-                  className="bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50 transition flex items-center gap-2"
+                  className="bg-white dark:bg-zinc-950 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50 transition flex items-center gap-2"
                >
                   <Upload size={18} /> {t('csv_import', 'CSV Import')}
                </button>
                <button onClick={handleSeed} disabled={seeding} className="bg-slate-100 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-200 transition flex items-center gap-2">
                   <Database size={18} />
                   {seeding ? t('seeding', "Seeding...") : t('seed_db', "Seed Global Database")}
+               </button>
+               <button onClick={handleGenerateInfo} className="bg-orange-100 text-orange-700 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-orange-200 transition flex items-center gap-2">
+                  <Package size={18} />
+                  Generate Info
                </button>
                <button 
                   onClick={openAddModal}
@@ -342,7 +383,7 @@ export function AdminProducts() {
              </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-white dark:bg-zinc-950 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
              {loading ? (
                 <div className="p-8 text-center text-slate-500">{t('loading_products', 'Loading products...')}</div>
              ) : (
@@ -382,7 +423,7 @@ export function AdminProducts() {
                                        )}
                                     </div>
                                     <div>
-                                       <p className="font-bold text-slate-900">{p.name || 'Unnamed Product'}</p>
+                                       <p className="font-bold text-slate-900 dark:text-white">{p.name || 'Unnamed Product'}</p>
                                        <p className="text-xs text-slate-500">{p.dosage || 'No dosage info'}</p>
                                     </div>
                                  </div>
@@ -391,7 +432,8 @@ export function AdminProducts() {
                                  <span className="text-slate-700">{p.brand || 'Generic'}</span>
                               </td>
                               <td className="py-4 px-6">
-                                 <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium">
+                                 <span className="flex w-fit items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium">
+                                   <span className="opacity-70">{getCategoryIcon(p.category, 14)}</span>
                                    {p.category || 'Uncategorized'}
                                  </span>
                               </td>
@@ -440,8 +482,8 @@ export function AdminProducts() {
 
       {showModal && (
         <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-           <div className="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-xl border border-slate-100 max-h-[90vh] overflow-y-auto">
-              <h2 className="text-lg font-bold text-slate-900 mb-6">{editingId ? "Edit Product" : "Add New Product"}</h2>
+           <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 w-full max-w-2xl shadow-xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6">{editingId ? "Edit Product" : "Add New Product"}</h2>
               <div className="grid grid-cols-2 gap-4">
                  <div className="col-span-2 flex items-center gap-4 mb-2">
                     {(formData.imageUrl || formData.ImageURL || formData.image || formData.Image) ? (
@@ -476,7 +518,16 @@ export function AdminProducts() {
                  </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1"> {t('category', 'Category')} </label>
-                    <input type="text" value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none" />
+                    <select
+                      value={formData.category}
+                      onChange={(e) => setFormData({...formData, category: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+                    >
+                      <option value="">{t('select_category', 'Select Category...')}</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                      ))}
+                    </select>
                  </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1"> {t('image_url', 'Image URL')} </label>
@@ -490,6 +541,20 @@ export function AdminProducts() {
                     <label className="block text-sm font-medium text-gray-700 mb-1"> {t('initial_stock', 'Initial Stock')} </label>
                     <input type="number" value={formData.stock} onChange={(e) => setFormData({...formData, stock: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none" />
                  </div>
+
+                 <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} rows={2} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none" placeholder="Product details..."></textarea>
+                 </div>
+                 <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Effects</label>
+                    <textarea value={formData.effects} onChange={(e) => setFormData({...formData, effects: e.target.value})} rows={2} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none" placeholder="Side effects or main benefits..."></textarea>
+                 </div>
+                 <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Directions</label>
+                    <textarea value={formData.directions} onChange={(e) => setFormData({...formData, directions: e.target.value})} rows={2} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none" placeholder="How to use the product..."></textarea>
+                 </div>
+
                  <div className="col-span-2 flex items-center gap-3">
                     <input type="checkbox" id="rx" checked={formData.requiresPrescription} onChange={(e) => setFormData({...formData, requiresPrescription: e.target.checked})} className="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500" />
                     <label htmlFor="rx" className="text-sm font-medium text-gray-700"> {t('requires_prescription', 'Requires Prescription')} </label>

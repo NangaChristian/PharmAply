@@ -36,19 +36,19 @@ export function AdminDocumentation() {
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0">
-         <h1 className="font-bold text-gray-900 text-2xl mb-1"> {t('documentation', 'Documentation')} </h1>
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0">
+         <h1 className="font-bold text-gray-900 dark:text-white text-2xl mb-1"> {t('documentation', 'Documentation')} </h1>
          <p className="text-gray-500 text-sm"> {t('system_architecture_api_docs_a', 'System architecture, API docs, and platform guidelines')} </p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 space-y-6">
          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {sections.map((sec, i) => (
-               <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+               <div key={i} className="bg-white dark:bg-zinc-950 p-6 rounded-2xl shadow-sm border border-slate-100">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 mb-4 ${sec.bg}`}>
                      <sec.icon className={sec.color} size={24} />
                   </div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-2">{sec.title}</h3>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">{sec.title}</h3>
                   <p className="text-sm text-slate-500 leading-relaxed">{sec.content}</p>
                </div>
             ))}

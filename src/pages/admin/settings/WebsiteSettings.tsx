@@ -102,9 +102,9 @@ export function WebsiteSettings() {
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
          <div>
-             <h1 className="font-bold text-gray-900 text-2xl mb-1 flex items-center gap-2"><Monitor size={24} />  {t('website_settings', 'Website Settings')} </h1>
+             <h1 className="font-bold text-gray-900 dark:text-white text-2xl mb-1 flex items-center gap-2"><Monitor size={24} />  {t('website_settings', 'Website Settings')} </h1>
              <p className="text-gray-500 text-sm"> {t('configure_marketing_website_de', 'Configure marketing website details, SEO, and contact info')} </p>
          </div>
          <button 
@@ -117,8 +117,8 @@ export function WebsiteSettings() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 max-w-3xl space-y-8">
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2"><ImageIcon size={18} />  {t('website_assets', 'Website Assets')} </h2>
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2"><ImageIcon size={18} />  {t('website_assets', 'Website Assets')} </h2>
             <div className="space-y-6">
                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2"> {t('patient_homepage_hero_image', 'Patient Homepage Hero Image')} </label>
@@ -180,8 +180,8 @@ export function WebsiteSettings() {
             </div>
          </div>
 
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2"><Globe size={18} />  {t('seo_meta_data', 'SEO & Meta Data')} </h2>
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2"><Globe size={18} />  {t('seo_meta_data', 'SEO & Meta Data')} </h2>
             <div className="space-y-4">
                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1"> {t('global_seo_title', 'Global SEO Title')} </label>
@@ -206,8 +206,8 @@ export function WebsiteSettings() {
             </div>
          </div>
 
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h2 className="text-lg font-bold text-slate-900 mb-6"> {t('company_information', 'Company Information')} </h2>
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6"> {t('company_information', 'Company Information')} </h2>
             <div className="space-y-4">
                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1"> {t('contact_phone_number', 'Contact Phone Number')} </label>
@@ -232,8 +232,8 @@ export function WebsiteSettings() {
             </div>
          </div>
 
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h2 className="text-lg font-bold text-slate-900 mb-6"> {t('social_links', 'Social Links')} </h2>
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6"> {t('social_links', 'Social Links')} </h2>
             <div className="space-y-4">
                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1"> {t('facebook_url', 'Facebook URL')} </label>

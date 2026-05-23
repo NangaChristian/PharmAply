@@ -111,7 +111,7 @@ export function AdminLayout() {
                         `flex items-center gap-3 px-4 py-2.5 rounded-2xl text-sm font-medium transition-colors ${
                           isActive
                             ? "bg-slate-900 text-white dark:bg-indigo-600"
-                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:hover:bg-slate-700 dark:hover:text-white"
+                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-white dark:hover:bg-slate-700 dark:hover:text-white"
                         }`
                       }
                     >
@@ -182,7 +182,7 @@ export function AdminLayout() {
                  <button className="flex items-center gap-2 bg-slate-900 dark:bg-indigo-600 text-white px-4 py-2 rounded-full shadow-sm text-xs font-bold hover:bg-slate-800 dark:hover:bg-indigo-700 transition">
                     <Plus size={14} /> {t('add_new', 'Add New')}
                  </button>
-                 <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                 <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-zinc-950 rounded-xl shadow-lg border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
                     <div className="p-2 flex flex-col gap-1">
                        <button onClick={() => navigate('/admin/products')} className="text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg font-medium"> {t('add_product', 'Add Product')} </button>
                        <button onClick={() => navigate('/admin/categories')} className="text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg font-medium"> {t('add_category', 'Add Category')} </button>
@@ -194,10 +194,10 @@ export function AdminLayout() {
               
               <div className="flex items-center gap-4 text-slate-500">
                  <DarkModeToggle className="shadow-sm bg-white dark:bg-slate-800 dark:text-slate-200" />
-                 <button onClick={() => navigate('/admin/support')} className="relative p-2 bg-white dark:bg-slate-800 dark:text-slate-200 rounded-full shadow-sm hover:text-slate-900 transition">
+                 <button onClick={() => navigate('/admin/support')} className="relative p-2 bg-white dark:bg-slate-800 dark:text-slate-200 rounded-full shadow-sm hover:text-slate-900 dark:text-white transition">
                     <MessageSquare size={18} />
                  </button>
-                 <button onClick={() => navigate('/admin/changelog')} className="relative p-2 bg-white dark:bg-slate-800 dark:text-slate-200 rounded-full shadow-sm hover:text-slate-900 transition">
+                 <button onClick={() => navigate('/admin/changelog')} className="relative p-2 bg-white dark:bg-slate-800 dark:text-slate-200 rounded-full shadow-sm hover:text-slate-900 dark:text-white transition">
                     <Bell size={18} />
                     <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
                  </button>

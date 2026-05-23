@@ -46,7 +46,7 @@ export function PatientPrescriptions() {
     <div className="flex-1 bg-white dark:bg-black flex flex-col h-full relative h-[100dvh]">
       <div className="px-4 py-3 shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] z-10 flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 sticky top-0 bg-white dark:bg-black">
          <div className="flex items-center gap-2">
-           <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-900 transition">
+           <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-900 transition">
               <ArrowLeft size={24} />
            </button>
            <h1 className="text-[1.35rem] text-gray-800 dark:text-gray-100">{t('my_prescriptions', 'My Prescriptions')}</h1>
@@ -62,11 +62,11 @@ export function PatientPrescriptions() {
 
       <div className="flex-1 overflow-y-auto w-full max-w-5xl mx-auto pb-24">
          <div className="flex justify-between items-center px-4 py-3 text-sm text-gray-600 dark:text-gray-400 font-medium">
-            <div className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-800 px-2 py-1.5 rounded transition">
+            <div className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-800 px-2 py-1.5 rounded transition">
                {t('name', 'Name')} <ArrowUp size={16} />
             </div>
             <button 
-               className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition"
+               className="p-2 hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-800 rounded-full transition"
                onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
             >
                {viewMode === 'grid' ? <ListIcon size={22} className="text-gray-600 dark:text-gray-400" /> : <GridIcon size={22} className="text-gray-600 dark:text-gray-400" />}
@@ -131,7 +131,7 @@ export function PatientPrescriptions() {
                      <span className="text-[12px] md:text-[13px] font-medium text-gray-800 dark:text-gray-200 truncate flex-1 leading-tight">{displayFilename}</span>
                      
                      <div className="relative">
-                        <button className="text-gray-500 dark:text-gray-400 focus:outline-none p-1 md:p-1.5 -mr-1 md:-mr-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition shrink-0" onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === p.id ? null : p.id); }}>
+                        <button className="text-gray-500 dark:text-gray-400 focus:outline-none p-1 md:p-1.5 -mr-1 md:-mr-1.5 rounded-full hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-800 transition shrink-0" onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === p.id ? null : p.id); }}>
                            <MoreVertical size={16} />
                         </button>
                         {activeMenuId === p.id && (
@@ -150,7 +150,7 @@ export function PatientPrescriptions() {
                </div>
             )})}
             {prescriptions.length === 0 && (
-              <div className="col-span-2 md:col-span-3 lg:col-span-4 text-center py-20 text-gray-500 dark:text-gray-400 bg-gray-50/50 dark:bg-zinc-900 rounded-2xl border border-dashed border-gray-200 dark:border-zinc-800 w-full">
+              <div className="col-span-2 md:col-span-3 lg:col-span-4 text-center py-20 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-zinc-900/50 dark:bg-zinc-900 rounded-2xl border border-dashed border-gray-200 dark:border-zinc-800 w-full">
                 <FileText size={48} strokeWidth={1} className="mx-auto text-gray-300 dark:text-zinc-700 mb-4" />
                 <p className="text-[15px]">{t('no_prescriptions', 'You have no prescriptions yet.')}</p>
               </div>
@@ -164,7 +164,7 @@ export function PatientPrescriptions() {
                const displayFilename = p.fileName || p.fileUrl.split('%2F').pop()?.split('?')[0] || t('prescription_document', 'Prescription Document');
                
                return (
-                  <div key={p.id} className="flex items-center p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition cursor-pointer border border-transparent hover:border-gray-200 dark:hover:border-zinc-700" onClick={() => window.open(p.fileUrl, '_blank')}>
+                  <div key={p.id} className="flex items-center p-3 rounded-xl hover:bg-gray-50 dark:bg-zinc-900 dark:hover:bg-zinc-800/50 transition cursor-pointer border border-transparent hover:border-gray-200 dark:hover:border-zinc-700" onClick={() => window.open(p.fileUrl, '_blank')}>
                      <div className="w-10 h-10 shrink-0 bg-[#f0f4f9] dark:bg-zinc-800 rounded flex items-center justify-center mr-4">
                         {isImage ? (
                            <ImageIcon size={20} className="text-red-500" strokeWidth={2} />
@@ -191,7 +191,7 @@ export function PatientPrescriptions() {
                         </div>
                      </div>
                      <div className="relative">
-                        <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 ml-2 transition rounded-full hover:bg-gray-100 dark:hover:bg-zinc-700" onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === p.id ? null : p.id); }}>
+                        <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 ml-2 transition rounded-full hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-700" onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === p.id ? null : p.id); }}>
                            <MoreVertical size={18} />
                         </button>
                         {activeMenuId === p.id && (
@@ -210,7 +210,7 @@ export function PatientPrescriptions() {
                )
             })}
             {prescriptions.length === 0 && (
-              <div className="text-center py-20 text-gray-500 dark:text-gray-400 bg-gray-50/50 dark:bg-zinc-900 rounded-2xl border border-dashed border-gray-200 dark:border-zinc-800 w-full">
+              <div className="text-center py-20 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-zinc-900/50 dark:bg-zinc-900 rounded-2xl border border-dashed border-gray-200 dark:border-zinc-800 w-full">
                 <FileText size={48} strokeWidth={1} className="mx-auto text-gray-300 dark:text-zinc-700 mb-4" />
                 <p className="text-[15px]">{t('no_prescriptions', 'You have no prescriptions yet.')}</p>
               </div>
@@ -219,7 +219,7 @@ export function PatientPrescriptions() {
          )}
       </div>
 
-      <button onClick={() => navigate('/patient/prescription-upload')} className="fixed bottom-6 right-6 w-14 h-14 bg-white dark:bg-zinc-800 rounded-full shadow-[0_1px_8px_0_rgba(0,0,0,0.1),0_3px_4px_0_rgba(0,0,0,0.14),0_3px_3px_-2px_rgba(0,0,0,0.12)] flex items-center justify-center cursor-pointer hover:shadow-lg transition-all active:bg-gray-50 dark:active:bg-zinc-700 z-50">
+      <button onClick={() => navigate('/patient/prescription-upload')} className="fixed bottom-6 right-6 w-14 h-14 bg-white dark:bg-zinc-800 rounded-full shadow-[0_1px_8px_0_rgba(0,0,0,0.1),0_3px_4px_0_rgba(0,0,0,0.14),0_3px_3px_-2px_rgba(0,0,0,0.12)] flex items-center justify-center cursor-pointer hover:shadow-lg transition-all active:bg-gray-50 dark:bg-zinc-900 dark:active:bg-zinc-700 z-50">
          <svg width="32" height="32" viewBox="0 0 36 36">
             <path fill="#EA4335" d="M16 16v14h4V20z" />
             <path fill="#4285F4" d="M30 16H20l-4 4h14z" />

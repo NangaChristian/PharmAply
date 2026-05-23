@@ -32,8 +32,8 @@ export function ForgetPassword() {
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full scrollbar-hide">
-      <div className="bg-white px-6 pt-12 pb-4 shadow-sm z-10 flex items-center justify-between">
-         <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-indigo-900 hover:bg-gray-50 rounded-full transition">
+      <div className="bg-white dark:bg-zinc-950 px-6 pt-12 pb-4 shadow-sm z-10 flex items-center justify-between">
+         <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-indigo-900 hover:bg-gray-50 dark:bg-zinc-900 rounded-full transition">
             <ArrowLeft size={24} />
          </button>
          <div className="w-8"></div>
@@ -41,7 +41,7 @@ export function ForgetPassword() {
       
       <div className="p-6 flex-1 flex flex-col items-center pt-8">
          <div className="w-full max-w-sm">
-            <h1 className="text-2xl font-bold text-slate-800 text-center mb-2"> {t('forget_your_password', 'Forget Your Password')} </h1>
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 text-center mb-2"> {t('forget_your_password', 'Forget Your Password')} </h1>
             <p className="text-slate-500 text-center text-sm mb-8 px-4">
               {isSent 
                 ? "Check your email inbox for instructions to reset your password." 

@@ -171,7 +171,7 @@ export function PatientReminders() {
         <div className="flex-1 bg-slate-50 dark:bg-black flex flex-col h-full relative">
           <div className="bg-white dark:bg-black px-4 py-3 shadow-sm z-10 flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 sticky top-0 md:px-6">
              <div className="flex items-center gap-2">
-               <button onClick={() => setView('calendar')} className="p-2 -ml-2 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-900 transition flex items-center justify-center">
+               <button onClick={() => setView('calendar')} className="p-2 -ml-2 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-900 transition flex items-center justify-center">
                  <ArrowLeft size={24} />
                </button>
                <h1 className="text-lg font-bold text-gray-900 dark:text-white">{t('add_calendar_event', 'New Event')}</h1>
@@ -185,10 +185,10 @@ export function PatientReminders() {
                    <div className="mb-5">
                      <label className="text-xs font-bold text-gray-600 dark:text-gray-400 mb-2 block uppercase tracking-wider">{t('event_type', 'Event Type')}</label>
                      <div className="grid grid-cols-2 gap-3">
-                        <button type="button" onClick={() => setNewEvent({...newEvent, type: 'medication'})} className={`py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-sm transition ${newEvent.type === 'medication' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-500/20 dark:border-indigo-500/30 dark:text-indigo-300 border-2' : 'bg-gray-50 border-gray-200 text-gray-600 dark:bg-zinc-800 dark:border-zinc-700 dark:text-gray-300 border hover:bg-gray-100 dark:hover:bg-zinc-700'}`}>
+                        <button type="button" onClick={() => setNewEvent({...newEvent, type: 'medication'})} className={`py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-sm transition ${newEvent.type === 'medication' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-500/20 dark:border-indigo-500/30 dark:text-indigo-300 border-2' : 'bg-gray-50 dark:bg-zinc-900 border-gray-200 text-gray-600 dark:bg-zinc-800 dark:border-zinc-700 dark:text-gray-300 border hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-700'}`}>
                            <Pill size={18} /> {t('medication', 'Medication')}
                         </button>
-                        <button type="button" onClick={() => setNewEvent({...newEvent, type: 'appointment'})} className={`py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-sm transition ${newEvent.type === 'appointment' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-500/20 dark:border-indigo-500/30 dark:text-indigo-300 border-2' : 'bg-gray-50 border-gray-200 text-gray-600 dark:bg-zinc-800 dark:border-zinc-700 dark:text-gray-300 border hover:bg-gray-100 dark:hover:bg-zinc-700'}`}>
+                        <button type="button" onClick={() => setNewEvent({...newEvent, type: 'appointment'})} className={`py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-medium text-sm transition ${newEvent.type === 'appointment' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-500/20 dark:border-indigo-500/30 dark:text-indigo-300 border-2' : 'bg-gray-50 dark:bg-zinc-900 border-gray-200 text-gray-600 dark:bg-zinc-800 dark:border-zinc-700 dark:text-gray-300 border hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-700'}`}>
                            <Stethoscope size={18} /> {t('appointment', 'Appointment')}
                         </button>
                      </div>
@@ -201,7 +201,7 @@ export function PatientReminders() {
                            required 
                            value={newEvent.title}
                            onChange={e => setNewEvent({...newEvent, title: e.target.value})}
-                           className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 px-4 py-3.5 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white dark:focus:border-indigo-500 transition-colors dark:text-white"
+                           className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 px-4 py-3.5 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white dark:bg-zinc-950 dark:focus:border-indigo-500 transition-colors dark:text-white"
                            placeholder={newEvent.type === 'medication' ? t('e_g_panadol', 'e.g., Vitamin C, 1 Tablet') : t('e_g_doctor_visit', 'e.g., Dr. Smith Checkup')}
                         />
                       </div>
@@ -214,7 +214,7 @@ export function PatientReminders() {
                              required 
                              value={newEvent.date}
                              onChange={e => setNewEvent({...newEvent, date: e.target.value})}
-                             className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 px-4 py-3.5 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white dark:focus:border-indigo-500 transition-colors dark:text-white"
+                             className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 px-4 py-3.5 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white dark:bg-zinc-950 dark:focus:border-indigo-500 transition-colors dark:text-white"
                           />
                         </div>
                         
@@ -225,7 +225,7 @@ export function PatientReminders() {
                              required 
                              value={newEvent.time}
                              onChange={e => setNewEvent({...newEvent, time: e.target.value})}
-                             className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 px-4 py-3.5 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white dark:focus:border-indigo-500 transition-colors dark:text-white"
+                             className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 px-4 py-3.5 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white dark:bg-zinc-950 dark:focus:border-indigo-500 transition-colors dark:text-white"
                           />
                         </div>
                       </div>
@@ -236,7 +236,7 @@ export function PatientReminders() {
                            rows={3}
                            value={newEvent.notes}
                            onChange={e => setNewEvent({...newEvent, notes: e.target.value})}
-                           className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 px-4 py-3 rounded-xl text-sm outline-none focus:border-indigo-500 focus:bg-white dark:focus:border-indigo-500 transition-colors dark:text-white"
+                           className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 px-4 py-3 rounded-xl text-sm outline-none focus:border-indigo-500 focus:bg-white dark:bg-zinc-950 dark:focus:border-indigo-500 transition-colors dark:text-white"
                            placeholder={t('add_any_details', 'Add any extra details...')}
                         />
                       </div>
@@ -245,7 +245,7 @@ export function PatientReminders() {
              </form>
           </div>
           
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-black/80 backdrop-blur-md border-t border-gray-100 dark:border-zinc-800 z-10 md:pb-6">
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-white dark:bg-zinc-950/80 dark:bg-black/80 backdrop-blur-md border-t border-gray-100 dark:border-zinc-800 z-10 md:pb-6">
              <button disabled={isSaving} form="event-form" type="submit" className="w-full max-w-2xl mx-auto block bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold transition-colors disabled:opacity-50">
                 {isSaving ? t('saving', 'Saving...') : t('save_event', 'Save Event')}
              </button>
@@ -260,7 +260,7 @@ export function PatientReminders() {
       {/* Header */}
       <div className="px-4 py-3 shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-black shrink-0 md:px-6">
          <div className="flex items-center gap-2">
-           <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-900 transition">
+           <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-900 transition">
               <ArrowLeft size={24} />
            </button>
            <h1 className="text-[1.35rem] font-medium text-gray-800 dark:text-gray-100">{t('my_calendar', 'My Calendar')}</h1>
@@ -299,13 +299,13 @@ export function PatientReminders() {
                      {format(currentMonth, 'MMMM yyyy')}
                   </h2>
                   <div className="flex items-center gap-1">
-                     <button onClick={prevMonth} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition text-gray-600 dark:text-gray-400">
+                     <button onClick={prevMonth} className="p-2 rounded-full hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-800 transition text-gray-600 dark:text-gray-400">
                         <ChevronLeft size={22} />
                      </button>
                      <button onClick={() => setCurrentMonth(new Date())} className="px-3 py-1 text-sm font-medium text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition">
                         {t('today', 'Today')}
                      </button>
-                     <button onClick={nextMonth} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition text-gray-600 dark:text-gray-400">
+                     <button onClick={nextMonth} className="p-2 rounded-full hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-800 transition text-gray-600 dark:text-gray-400">
                         <ChevronRight size={22} />
                      </button>
                   </div>
@@ -335,7 +335,7 @@ export function PatientReminders() {
                            onClick={() => setSelectedDate(day)}
                            className={`aspect-square sm:aspect-auto sm:h-[4.5rem] rounded-xl flex flex-col items-center justify-center sm:justify-start sm:p-2 cursor-pointer transition relative
                               ${!isCurMonth ? 'text-gray-300 dark:text-zinc-700' : 'text-gray-700 dark:text-gray-300'}
-                              ${isSelDate ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'hover:bg-gray-50 dark:hover:bg-zinc-800'}
+                              ${isSelDate ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'hover:bg-gray-50 dark:bg-zinc-900 dark:hover:bg-zinc-800'}
                               ${isTod && !isSelDate ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-500/30' : ''}
                            `}
                         >
@@ -344,9 +344,9 @@ export function PatientReminders() {
                            {/* Event Indicators */}
                            <div className="flex gap-[3px] mt-1 sm:mt-auto">
                               {dayEvents.slice(0, 3).map((e, i) => (
-                                 <div key={i} className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isSelDate ? 'bg-white' : e.type === 'appointment' ? 'bg-purple-500' : 'bg-green-500'}`} />
+                                 <div key={i} className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isSelDate ? 'bg-white dark:bg-zinc-950' : e.type === 'appointment' ? 'bg-purple-500' : 'bg-green-500'}`} />
                               ))}
-                              {dayEvents.length > 3 && <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isSelDate ? 'bg-white' : 'bg-gray-400'}`} />}
+                              {dayEvents.length > 3 && <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isSelDate ? 'bg-white dark:bg-zinc-950' : 'bg-gray-400'}`} />}
                            </div>
                         </div>
                      );

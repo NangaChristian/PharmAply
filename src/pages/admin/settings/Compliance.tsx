@@ -58,11 +58,11 @@ export function Compliance() {
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
          <div>
-             <button onClick={() => navigate("/admin/settings")} className="flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 mb-2">
+             <button onClick={() => navigate("/admin/settings")} className="flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-slate-100 mb-2">
                <ArrowLeft size={16} className="mr-1" />  {t('back_to_settings', 'Back to Settings')} </button>
-             <h1 className="font-bold text-gray-900 text-2xl mb-1"> {t('compliance_legal', 'Compliance & Security Controls')} </h1>
+             <h1 className="font-bold text-gray-900 dark:text-white text-2xl mb-1"> {t('compliance_legal', 'Compliance & Security Controls')} </h1>
              <p className="text-gray-500 text-sm"> Audit logs, prescription verification, RBAC, and Legal </p>
          </div>
          <button 
@@ -74,8 +74,8 @@ export function Compliance() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 max-w-4xl space-y-6">
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900 mb-4"> HIPAA & Audit </h2>
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4"> HIPAA & Audit </h2>
             <div className="space-y-4">
                <label className="flex items-start gap-4 p-4 border border-gray-100 rounded-xl hover:bg-slate-50 transition cursor-pointer">
                   <input 
@@ -86,15 +86,15 @@ export function Compliance() {
                     className="w-5 h-5 text-indigo-600 rounded mt-0.5"
                   />
                   <div>
-                    <h3 className="font-bold text-gray-900 text-sm block">Enable PHI Audit Logging</h3>
+                    <h3 className="font-bold text-gray-900 dark:text-white text-sm block">Enable PHI Audit Logging</h3>
                     <p className="text-xs text-slate-500 mt-1"> Log every time Protected Health Information (PHI) is accessed (timestamp, user, action) to ensure HIPAA compliance. </p>
                   </div>
                </label>
             </div>
          </div>
 
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900 mb-4"> Prescription Verification Rules </h2>
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4"> Prescription Verification Rules </h2>
             <div className="space-y-4">
                <label className="flex items-start gap-4 p-4 border border-gray-100 rounded-xl hover:bg-slate-50 transition cursor-pointer">
                   <input 
@@ -105,7 +105,7 @@ export function Compliance() {
                     className="w-5 h-5 text-indigo-600 rounded mt-0.5"
                   />
                   <div>
-                    <h3 className="font-bold text-gray-900 text-sm block">Require Admin/Pharmacist Approval for Uploaded E-Prescriptions</h3>
+                    <h3 className="font-bold text-gray-900 dark:text-white text-sm block">Require Admin/Pharmacist Approval for Uploaded E-Prescriptions</h3>
                     <p className="text-xs text-slate-500 mt-1"> Define if and how prescriptions are required for certain drugs. If enabled, manual check is required. </p>
                   </div>
                </label>
@@ -118,15 +118,15 @@ export function Compliance() {
                     className="w-5 h-5 text-indigo-600 rounded mt-0.5"
                   />
                   <div>
-                    <h3 className="font-bold text-gray-900 text-sm block">Require NABP checks for pharmacies</h3>
+                    <h3 className="font-bold text-gray-900 dark:text-white text-sm block">Require NABP checks for pharmacies</h3>
                     <p className="text-xs text-slate-500 mt-1"> Set requirements for uploaded pharmacy licenses, NABP checks, and government-issued documents. </p>
                   </div>
                </label>
             </div>
          </div>
 
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900 mb-4"> {t('legal_links', 'Legal Links')} </h2>
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4"> {t('legal_links', 'Legal Links')} </h2>
             <div className="space-y-4">
                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1"> {t('terms_of_service_url', 'Terms of Service URL')} </label>

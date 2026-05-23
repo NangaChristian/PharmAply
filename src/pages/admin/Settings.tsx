@@ -15,13 +15,13 @@ export function AdminSettings() {
     { title: "Compliance & Security Controls", icon: Shield, color: "text-red-600", bg: "bg-red-50", desc: "TOS updates, HIPAA, verification", path: "/admin/settings/compliance" },
     { title: "Security Roles & Access", icon: Shield, color: "text-green-600", bg: "bg-green-50", desc: "Admin permissions, 2FA settings", path: "/admin/settings/security" },
     { title: "Theme & Visuals", icon: Palette, color: "text-teal-600", bg: "bg-teal-50", desc: "App colors, dashboard texts", path: "/admin/settings/theme" },
-    { title: "Global Configuration", icon: Settings, color: "text-gray-600", bg: "bg-gray-100", desc: "App maintenance, localization, API keys", path: "/admin/settings/global" },
+    { title: "Global Configuration", icon: Settings, color: "text-gray-600", bg: "bg-gray-100 dark:bg-zinc-800", desc: "App maintenance, localization, API keys", path: "/admin/settings/global" },
   ];
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0">
-         <h1 className="font-bold text-gray-900 text-2xl mb-1"> {t('system_settings', 'System Settings')} </h1>
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0">
+         <h1 className="font-bold text-gray-900 dark:text-white text-2xl mb-1"> {t('system_settings', 'System Settings')} </h1>
          <p className="text-gray-500 text-sm"> {t('platform_configuration_and_log', 'Platform configuration and logs')} </p>
       </div>
 
@@ -32,14 +32,14 @@ export function AdminSettings() {
                <div 
                  key={i} 
                  onClick={() => sec.path && navigate(sec.path)}
-                 className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer hover:shadow-md transition"
+                 className="bg-white dark:bg-zinc-950 rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer hover:shadow-md transition"
                >
                   <div className="flex items-center gap-4">
                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${sec.bg} ${sec.color}`}>
                         <Icon size={24} />
                      </div>
                      <div>
-                        <h3 className="font-bold text-gray-900 text-sm">{sec.title}</h3>
+                        <h3 className="font-bold text-gray-900 dark:text-white text-sm">{sec.title}</h3>
                         <p className="text-xs text-gray-500 mt-0.5">{sec.desc}</p>
                      </div>
                   </div>

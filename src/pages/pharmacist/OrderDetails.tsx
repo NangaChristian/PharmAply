@@ -110,7 +110,7 @@ export function PharmacistOrderDetails() {
            </p>
 
            {/* Order Summary */}
-           <div className="bg-gray-50/70 dark:bg-black/40 rounded-3xl p-5 mb-5 pb-6">
+           <div className="bg-gray-50 dark:bg-zinc-900/70 dark:bg-black/40 rounded-3xl p-5 mb-5 pb-6">
              <h3 className="font-bold text-gray-700 dark:text-gray-200 text-[15px] mb-3">Order Summary</h3>
              <div className="text-[13px] font-medium text-gray-500 dark:text-gray-400 flex flex-wrap gap-x-2 gap-y-1">
                <span>Driver : <span className="text-gray-700 font-bold dark:text-gray-300">{order.driverName || 'Najem'}</span></span>
@@ -120,7 +120,7 @@ export function PharmacistOrderDetails() {
            </div>
 
            {/* Medicines */}
-           <div className="bg-gray-50/70 dark:bg-black/40 rounded-3xl p-5 mb-5 pb-6">
+           <div className="bg-gray-50 dark:bg-zinc-900/70 dark:bg-black/40 rounded-3xl p-5 mb-5 pb-6">
              <h3 className="font-bold text-gray-700 dark:text-gray-200 text-[15px] mb-4">Medicines</h3>
              <div className="space-y-4">
                {(order.items || []).map((item: any, index: number) => (
@@ -135,7 +135,7 @@ export function PharmacistOrderDetails() {
            </div>
 
            {/* Prescription */}
-           <div className="bg-gray-50/70 dark:bg-black/40 rounded-3xl p-5 mb-5">
+           <div className="bg-gray-50 dark:bg-zinc-900/70 dark:bg-black/40 rounded-3xl p-5 mb-5">
              <h3 className="font-bold text-gray-700 dark:text-gray-200 text-[15px] mb-3">Prescription</h3>
              {order.hasPrescription && order.prescriptionUrl ? (
                <div className="text-center py-3">
@@ -147,7 +147,7 @@ export function PharmacistOrderDetails() {
            </div>
 
            {/* Note */}
-           <div className="bg-gray-50/70 dark:bg-black/40 rounded-3xl p-5 mb-5">
+           <div className="bg-gray-50 dark:bg-zinc-900/70 dark:bg-black/40 rounded-3xl p-5 mb-5">
              <h3 className="font-bold text-gray-700 dark:text-gray-200 text-[15px] mb-3">Note:</h3>
              <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 whitespace-pre-line leading-relaxed px-1">
                {order.notes || "I am allergic to penicillin"}
@@ -155,7 +155,7 @@ export function PharmacistOrderDetails() {
            </div>
 
            {/* Total */}
-           <div className="bg-gray-50/70 dark:bg-black/40 rounded-3xl p-5 mb-2 flex justify-between items-center">
+           <div className="bg-gray-50 dark:bg-zinc-900/70 dark:bg-black/40 rounded-3xl p-5 mb-2 flex justify-between items-center">
              <h3 className="font-bold text-gray-700 dark:text-gray-200 text-[16px]">Total :</h3>
              <span className="font-bold text-gray-800 dark:text-white text-[16px]">{formatCurrency(order.total)}</span>
            </div>

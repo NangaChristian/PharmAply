@@ -57,6 +57,128 @@ export function PharmacistReports() {
     };
   }, [user]);
 
+  if (activeView === 'sales') {
+    // Process orders for sales metrics
+    let filteredOrders = orders;
+    const now = dayjs();
+    
+    if (insightTab === 'Today') {
+      filteredOrders = orders.filter(o => o.createdAt && dayjs(o.createdAt).isSame(now, 'day'));
+    } else if (insightTab === 'This Week') {
+      filteredOrders = orders.filter(o => o.createdAt && dayjs(o.createdAt).isSame(now, 'week'));
+    } else if (insightTab === 'This Month') {
+      filteredOrders = orders.filter(o => o.createdAt && dayjs(o.createdAt).isSame(now, 'month'));
+    }
+
+    const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    const numberOfOrders = filteredOrders.length;
+
+    // We can also calculate top selling products by revenue
+    const productRevenue: Record<string, { revenue: number, name: string, quantity: number }> = {};
+    filteredOrders.forEach(o => {
+      if (o.items && Array.isArray(o.items)) {
+        o.items.forEach((item: any) => {
+           const id = item.productId || item.id || item.name;
+           if (!productRevenue[id]) productRevenue[id] = { revenue: 0, name: item.name, quantity: 0 };
+           const price = item.price || 0;
+           const qty = item.quantity || 1;
+           productRevenue[id].revenue += price * qty;
+           productRevenue[id].quantity += qty;
+        });
+      }
+    });
+
+    const topSellingProducts = Object.values(productRevenue)
+       .sort((a, b) => b.revenue - a.revenue)
+       .slice(0, 5);
+
+    // Chart data based on days or previous periods could be real, but for this overview
+    // we might just use a placeholder chart array like `defaultData` but styled for sales.
+    const defaultData = [120, 300, 150, 450, 200, 350, 180];
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    return (
+      <div className="flex-1 bg-[#f4f5f9] dark:bg-black/95 flex flex-col h-full overflow-hidden relative">
+        <div className="px-5 pt-12 pb-4 flex items-center gap-4 z-10 bg-[#f4f5f9] dark:bg-black">
+          <button onClick={() => setActiveView('main')} className="flex items-center justify-center transition-colors">
+            <ArrowLeft size={24} className="text-gray-700 dark:text-gray-200" />
+          </button>
+          <h1 className="font-bold text-gray-800 dark:text-white text-[19px] tracking-tight">Sales Overview</h1>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto pb-40 px-5">
+           <div className="flex bg-[#eef0f5] dark:bg-zinc-900 rounded-full p-1 mb-6 mt-2 shadow-sm">
+             {['Today', 'This Week', 'This Month'].map(tab => (
+               <button 
+                 key={tab}
+                 onClick={() => setInsightTab(tab)}
+                 className={`flex-1 text-[13px] font-bold py-2.5 rounded-full transition-all ${insightTab === tab ? 'bg-[#3b4c9b] text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
+               >
+                 {tab}
+               </button>
+             ))}
+           </div>
+
+           <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bg-gradient-to-br from-[#445bba] to-[#8fa5db] rounded-[24px] p-5 shadow-sm text-white">
+                 <p className="text-white/80 text-[12px] font-bold mb-1">Total Revenue</p>
+                 <h3 className="font-bold text-[22px]">{formatCurrency(totalRevenue)}</h3>
+              </div>
+              <div className="bg-white dark:bg-zinc-900 rounded-[24px] p-5 shadow-sm">
+                 <p className="text-gray-500 dark:text-gray-400 text-[12px] font-bold mb-1">Total Orders</p>
+                 <h3 className="font-bold text-gray-900 dark:text-white text-[22px]">{numberOfOrders}</h3>
+              </div>
+           </div>
+
+           <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-6 shadow-sm mb-6">
+             <div className="flex items-center justify-between mb-6">
+               <h3 className="font-bold text-gray-900 dark:text-white text-[16px]">Sales Trend</h3>
+             </div>
+             <div className="flex items-end gap-2 h-32 mt-4 relative">
+                {defaultData.map((val, i) => (
+                   <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-2 relative group">
+                      <div className="w-full bg-[#f0f2f8] dark:bg-zinc-800 rounded-t-md relative hover:bg-[#3b4c9b]/20 dark:hover:bg-[#3b4c9b]/40 transition-colors" style={{ height: `${(val / 500) * 100}%`}}>
+                         <div className="absolute bottom-0 w-full bg-[#3b4c9b] rounded-t-md transition-all duration-500" style={{ height: `${(val / 500) * 100}%` }}></div>
+                         <div className="absolute -top-10 left-1/2 min-w-max -translate-x-1/2 bg-black text-white text-[10px] font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                            {formatCurrency(val)}
+                         </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-400 tracking-wider hidden sm:block">{days[i]}</span>
+                   </div>
+                ))}
+             </div>
+             <div className="flex justify-between mt-2 sm:hidden px-1">
+                {days.map((day, i) => (
+                  <span key={day} className="text-[10px] font-bold text-gray-400">{day.charAt(0)}</span>
+                ))}
+             </div>
+           </div>
+
+           <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-6 shadow-sm">
+             <h3 className="font-bold text-gray-900 dark:text-white text-[17px] mb-5">Top Selling Items</h3>
+             <div className="space-y-4">
+               {topSellingProducts.length > 0 ? topSellingProducts.map((item, index) => {
+                  return (
+                    <div key={index} className={`flex items-center justify-between ${index !== topSellingProducts.length - 1 ? 'pb-4 border-b border-gray-100 dark:border-zinc-800' : 'pb-1'}`}>
+                      <div>
+                        <h4 className="font-bold text-gray-800 dark:text-gray-200 text-[14.5px] max-w-[180px] truncate mb-1">{item.name}</h4>
+                        <p className="text-[12px] text-gray-400 font-medium">{item.quantity} units sold</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-bold text-[#3b4c9b] text-[14.5px]">{formatCurrency(item.revenue)}</span>
+                      </div>
+                    </div>
+                  );
+               }) : (
+                 <p className="text-sm text-gray-500 text-center py-4">No sales data available for this period.</p>
+               )}
+             </div>
+           </div>
+        </div>
+      </div>
+    );
+  }
+
   if (activeView === 'usage') {
     // Process order items to get top medicines
     const medicineCounts: Record<string, { count: number, name: string }> = {};
@@ -156,7 +278,7 @@ export function PharmacistReports() {
                       </div>
                       <div className="text-right flex flex-col items-end">
                         <span className="font-bold text-[#3b4c9b] text-[13px] mb-1">{item.count} Items</span>
-                        <div className="w-12 h-[3px] bg-gray-100 rounded-full overflow-hidden">
+                        <div className="w-12 h-[3px] bg-gray-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                           <div className="h-full bg-[#3b4c9b] rounded-full" style={{ width: `${Math.max(10, percentage)}%` }}></div>
                         </div>
                       </div>

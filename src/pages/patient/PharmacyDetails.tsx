@@ -60,10 +60,10 @@ export function PatientPharmacyDetails() {
               <img src={pharmacy.imageUrl || theme.defaultPharmacyLogo} className="absolute inset-0 w-full h-full object-cover" alt="header" />
            )}
            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 to-slate-900/40"></div>
-           <button onClick={() => navigate(-1)} className="absolute top-12 left-6 w-10 h-10 flex items-center justify-center bg-white/20 backdrop-blur-md rounded-full text-white">
+           <button onClick={() => navigate(-1)} className="absolute top-12 left-6 w-10 h-10 flex items-center justify-center bg-white dark:bg-zinc-950/20 backdrop-blur-md rounded-full text-white">
               <ArrowLeft size={20} />
            </button>
-           <button className="absolute top-12 right-6 w-10 h-10 flex items-center justify-center bg-white/20 backdrop-blur-md rounded-full text-white">
+           <button className="absolute top-12 right-6 w-10 h-10 flex items-center justify-center bg-white dark:bg-zinc-950/20 backdrop-blur-md rounded-full text-white">
               <Search size={20} />
            </button>
            <div className="relative z-10 w-full">

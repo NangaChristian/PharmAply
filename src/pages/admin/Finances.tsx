@@ -55,15 +55,15 @@ export function AdminFinances() {
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0">
-         <h1 className="font-bold text-gray-900 text-2xl mb-1"> {t('financial_center', 'Financial Center')} </h1>
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0">
+         <h1 className="font-bold text-gray-900 dark:text-white text-2xl mb-1"> {t('financial_center', 'Financial Center')} </h1>
          <p className="text-gray-500 text-sm"> {t('revenue_payouts_and_commission', 'Revenue, payouts, and commissions')} </p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 space-y-8">
          {/* Balance Card */}
          <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
-            <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full translate-x-8 -translate-y-8 blur-2xl"></div>
+            <div className="absolute right-0 top-0 w-32 h-32 bg-white dark:bg-zinc-950/10 rounded-full translate-x-8 -translate-y-8 blur-2xl"></div>
             <p className="text-slate-300 text-xs font-semibold mb-1 uppercase tracking-wide"> {t('platform_escrow_balance', 'Platform Escrow Balance')} </p>
             <h2 className="text-3xl font-bold font-mono">{formatCurrency(finances.totalRevenue - finances.platformCommission)}</h2>
             <div className="flex justify-between items-end mt-4">
@@ -75,9 +75,9 @@ export function AdminFinances() {
          </div>
 
          {/* Revenue Chart Section */}
-         <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+         <div className="bg-white dark:bg-zinc-950 rounded-3xl p-6 shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-6">
-               <h2 className="text-lg font-bold text-slate-800"> {t('revenue_overview', 'Revenue Overview')} </h2>
+               <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100"> {t('revenue_overview', 'Revenue Overview')} </h2>
                <select className="bg-slate-50 border-0 rounded-xl text-sm font-medium text-slate-600 px-4 py-2 outline-none focus:ring-2 focus:ring-teal-500">
                  <option> {t('last_7_days', 'Last 7 days')} </option>
                  <option> {t('last_30_days', 'Last 30 days')} </option>
@@ -108,9 +108,9 @@ export function AdminFinances() {
 
          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
            {/* Commission Config Preview */}
-           <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
+           <div className="bg-white dark:bg-zinc-950 p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
             <div>
-               <p className="font-bold text-gray-900 text-sm"> {t('platform_fee_rate', 'Platform Fee Rate')} </p>
+               <p className="font-bold text-gray-900 dark:text-white text-sm"> {t('platform_fee_rate', 'Platform Fee Rate')} </p>
                <p className="text-xs text-gray-500 mt-0.5"> {t('applied_per_pharmacy_order', 'Applied per pharmacy order')} </p>
             </div>
             <div className="text-right">
@@ -119,9 +119,9 @@ export function AdminFinances() {
             </div>
          </div>
          
-         <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
+         <div className="bg-white dark:bg-zinc-950 p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
             <div>
-               <p className="font-bold text-gray-900 text-sm"> {t('delivery_fixed_fee', 'Delivery Fixed Fee')} </p>
+               <p className="font-bold text-gray-900 dark:text-white text-sm"> {t('delivery_fixed_fee', 'Delivery Fixed Fee')} </p>
                <p className="text-xs text-gray-500 mt-0.5"> {t('base_fee_for_drivers', 'Base fee for drivers')} </p>
             </div>
             <div className="text-right">
@@ -133,16 +133,16 @@ export function AdminFinances() {
 
          {/* Recent Transactions */}
          <div>
-            <h3 className="font-bold text-gray-900 text-sm mb-3 px-1"> {t('pending_payouts', 'Pending Payouts')} </h3>
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-3 px-1"> {t('pending_payouts', 'Pending Payouts')} </h3>
             {finances.pendingPayoutsCount > 0 ? (
-              <div className="bg-white shadow-sm rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-50">
+              <div className="bg-white dark:bg-zinc-950 shadow-sm rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-50">
                  <div className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                        <div className="w-10 h-10 bg-red-50 text-red-600 rounded-full flex items-center justify-center">
                           <ArrowUpRight size={18} />
                        </div>
                        <div>
-                          <p className="font-bold text-gray-900 text-sm">{finances.pendingPayoutsCount}  {t('orders_pending', 'Orders Pending')} </p>
+                          <p className="font-bold text-gray-900 dark:text-white text-sm">{finances.pendingPayoutsCount}  {t('orders_pending', 'Orders Pending')} </p>
                           <p className="text-[10px] text-gray-500 font-medium"> {t('to_various_pharmacies_drivers', 'To various pharmacies/drivers')} </p>
                        </div>
                     </div>

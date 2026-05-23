@@ -59,9 +59,9 @@ export function AppSettings() {
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
          <div>
-             <h1 className="font-bold text-gray-900 text-2xl mb-1 flex items-center gap-2"><Smartphone size={24} />  {t('app_settings', 'App Settings')} </h1>
+             <h1 className="font-bold text-gray-900 dark:text-white text-2xl mb-1 flex items-center gap-2"><Smartphone size={24} />  {t('app_settings', 'App Settings')} </h1>
              <p className="text-gray-500 text-sm"> {t('configure_mobile_application_b', 'Configure mobile application behavior and parameters')} </p>
          </div>
          <button 
@@ -74,8 +74,8 @@ export function AppSettings() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 max-w-3xl space-y-8">
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h2 className="text-lg font-bold text-slate-900 mb-6"> {t('general_application_settings', 'General Application Settings')} </h2>
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6"> {t('general_application_settings', 'General Application Settings')} </h2>
             
             <div className="space-y-5">
                <div>
@@ -91,12 +91,12 @@ export function AppSettings() {
 
                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
                   <div>
-                    <p className="font-bold text-slate-800"> {t('force_update_required', 'Force Update Required')} </p>
+                    <p className="font-bold text-slate-800 dark:text-slate-100"> {t('force_update_required', 'Force Update Required')} </p>
                     <p className="text-xs text-slate-500"> {t('require_all_users_to_update_to', 'Require all users to update to the latest version to use the app.')} </p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" name="forceUpdate" checked={settings.forceUpdate} onChange={handleChange} className="sr-only peer" />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white dark:bg-zinc-950 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                   </label>
                </div>
 
@@ -107,14 +107,14 @@ export function AppSettings() {
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" name="maintenanceMode" checked={settings.maintenanceMode} onChange={handleChange} className="sr-only peer" />
-                    <div className="w-11 h-6 bg-amber-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-amber-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+                    <div className="w-11 h-6 bg-amber-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white dark:bg-zinc-950 after:border-amber-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
                   </label>
                </div>
             </div>
          </div>
 
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h2 className="text-lg font-bold text-slate-900 mb-6"> {t('links_support', 'Links & Support')} </h2>
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6"> {t('links_support', 'Links & Support')} </h2>
             <div className="space-y-4">
                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1"> {t('support_email_address', 'Support Email Address')} </label>

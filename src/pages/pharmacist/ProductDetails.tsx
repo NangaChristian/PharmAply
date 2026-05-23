@@ -5,6 +5,7 @@ import { doc, getDoc, updateDoc } from '../../lib/firebase';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { useTranslation } from "react-i18next";
+import { getCategoryIcon } from "../../lib/icons";
 
 export function PharmacistProductDetails() {
    const { t } = useTranslation();
@@ -117,8 +118,8 @@ export function PharmacistProductDetails() {
                      className="w-full h-full object-contain drop-shadow-md"
                   />
                ) : (
-                  <div className="w-full h-full bg-slate-100 dark:bg-zinc-800 rounded-3xl flex items-center justify-center border border-gray-200 dark:border-zinc-700">
-                     <span className="text-gray-400 font-medium">No Image</span>
+                  <div className="w-full h-full bg-slate-100 dark:bg-zinc-800 rounded-3xl flex items-center justify-center border border-gray-200 dark:border-zinc-700 text-gray-300">
+                     {getCategoryIcon(product.category, 64)}
                   </div>
                )}
             </div>
@@ -148,7 +149,7 @@ export function PharmacistProductDetails() {
                }} className="w-full bg-[#3b4c9b] hover:bg-[#324082] transition-colors text-white py-3.5 rounded-2xl font-bold text-[15px] shadow-sm cursor-pointer">
                   Update Stock
                </button>
-               <button onClick={handleMarkOutOfStock} className="w-full bg-transparent hover:bg-gray-50 border border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-gray-300 py-3.5 rounded-2xl font-bold text-[15px] cursor-pointer transition-colors">
+               <button onClick={handleMarkOutOfStock} className="w-full bg-transparent hover:bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-gray-300 py-3.5 rounded-2xl font-bold text-[15px] cursor-pointer transition-colors">
                   Mark as out of stock
                </button>
             </div>
@@ -169,7 +170,10 @@ export function PharmacistProductDetails() {
                </div>
                <div className="flex justify-between items-center text-[14px]">
                   <span className="text-gray-500 font-medium">Category:</span>
-                  <span className="text-gray-800 dark:text-gray-200 font-bold">{product.category || '---'}</span>
+                  <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md">
+                     {getCategoryIcon(product.category, 14, "text-indigo-500")}
+                     <span className="text-gray-800 dark:text-gray-200 font-bold text-xs">{product.category || '---'}</span>
+                  </div>
                </div>
                <div className="flex justify-between items-center text-[14px]">
                   <span className="text-gray-500 font-medium">Manufacturer:</span>
@@ -247,7 +251,7 @@ export function PharmacistProductDetails() {
                            type="button"
                            onClick={() => setShowStockModal(false)}
                            disabled={savingStock}
-                           className="flex-1 py-3.5 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-300 rounded-2xl font-bold text-[14px] transition-colors disabled:opacity-50"
+                           className="flex-1 py-3.5 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-300 rounded-2xl font-bold text-[14px] transition-colors disabled:opacity-50"
                         >
                            Cancel
                         </button>

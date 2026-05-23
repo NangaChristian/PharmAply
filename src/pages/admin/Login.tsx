@@ -139,7 +139,7 @@ export function AdminLogin() {
   };
 
   return (
-    <div className="w-full h-full bg-white rounded-[2rem] shadow-xl flex overflow-hidden relative">
+    <div className="w-full h-full bg-white dark:bg-zinc-950 rounded-[2rem] shadow-xl flex overflow-hidden relative">
       {/* Left Panel */}
       <div className="hidden md:flex w-1/2 bg-teal-900 relative flex-col justify-between p-12 overflow-hidden">
         {/* Abstract Shapes */}
@@ -148,7 +148,7 @@ export function AdminLogin() {
 
         <div className="relative z-10">
           <div className="flex items-center gap-3 text-white mb-16">
-            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-950 flex items-center justify-center">
               <MapPin size={18} className="text-teal-900" />
             </div>
             <span className="font-bold text-2xl tracking-tight">{t("app_name")}</span>
@@ -171,14 +171,14 @@ export function AdminLogin() {
            <div className="relative">
              <button 
                onClick={() => setShowLangMenu(!showLangMenu)}
-               className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-xl text-sm font-medium text-gray-700 shadow-sm"
+               className="flex items-center gap-2 bg-white dark:bg-zinc-950 border border-gray-200 px-4 py-2 rounded-xl text-sm font-medium text-gray-700 shadow-sm"
              >
                 <span className="text-gray-400">文A</span> 
                 {i18n.language === 'fr' ? 'Français' : 'English'} 
                 <span className="text-gray-400 text-[10px]">▼</span>
              </button>
              {showLangMenu && (
-               <div className="absolute right-0 mt-2 w-32 bg-white rounded-xl shadow-lg border border-gray-100 py-1 overflow-hidden">
+               <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-zinc-950 rounded-xl shadow-lg border border-gray-100 py-1 overflow-hidden">
                  <button onClick={() => toggleLang('en')} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700"> {t('english', 'English')} </button>
                  <button onClick={() => toggleLang('fr')} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700"> {t('fran_ais', 'Français')} </button>
                </div>
@@ -188,20 +188,20 @@ export function AdminLogin() {
 
         <div className="w-full max-w-md">
           <div className="mb-8 block">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">{t("admin_welcome")}</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t("admin_welcome")}</h2>
             <p className="text-gray-500 text-sm mb-6">{t("admin_role_select")}</p>
             
             {/* Role Switcher */}
-            <div className="flex bg-gray-50 p-1.5 rounded-xl border border-gray-100 mb-8">
+            <div className="flex bg-gray-50 dark:bg-zinc-900 p-1.5 rounded-xl border border-gray-100 mb-8">
                <button 
                  onClick={() => setSelectedRole("admin")}
-                 className={`flex-1 font-bold py-2.5 rounded-lg text-sm transition ${selectedRole === "admin" ? "bg-teal-100 text-teal-900 border border-teal-200" : "text-gray-500 hover:bg-gray-100"}`}
+                 className={`flex-1 font-bold py-2.5 rounded-lg text-sm transition ${selectedRole === "admin" ? "bg-teal-100 text-teal-900 border border-teal-200" : "text-gray-500 hover:bg-gray-100 dark:bg-zinc-800"}`}
                >
                  {t("admin_role_admin")}
                </button>
                <button 
                  onClick={() => setSelectedRole("cashier")}
-                 className={`flex-1 font-bold py-2.5 rounded-lg text-sm transition ${selectedRole === "cashier" ? "bg-teal-100 text-teal-900 border border-teal-200" : "text-gray-500 hover:bg-gray-100"}`}
+                 className={`flex-1 font-bold py-2.5 rounded-lg text-sm transition ${selectedRole === "cashier" ? "bg-teal-100 text-teal-900 border border-teal-200" : "text-gray-500 hover:bg-gray-100 dark:bg-zinc-800"}`}
                >
                  {t("admin_role_cashier")}
                </button>
@@ -217,7 +217,7 @@ export function AdminLogin() {
             )}
 
             <div>
-              <label className="block text-xs font-bold text-gray-900 mb-2">{t("email")}</label>
+              <label className="block text-xs font-bold text-gray-900 dark:text-white mb-2">{t("email")}</label>
               <input
                 type="email"
                 required
@@ -229,7 +229,7 @@ export function AdminLogin() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-900 mb-2">{t("password")}</label>
+              <label className="block text-xs font-bold text-gray-900 dark:text-white mb-2">{t("password")}</label>
               <input
                 type="password"
                 required

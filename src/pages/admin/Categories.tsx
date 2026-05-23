@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 
 import { seedData } from '../../seed_data';
 import { useTranslation } from "react-i18next";
+import { getCategoryIcon } from "../../lib/icons";
 
 export function AdminCategories() {
     const { t } = useTranslation();
@@ -115,9 +116,9 @@ export function AdminCategories() {
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden relative">
-      <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
          <div>
-             <h1 className="font-bold text-gray-900 text-2xl mb-1"> {t('categories_directory', 'Categories Directory')} </h1>
+             <h1 className="font-bold text-gray-900 dark:text-white text-2xl mb-1"> {t('categories_directory', 'Categories Directory')} </h1>
              <p className="text-gray-500 text-sm"> {t('organize_store_structure_and_v', 'Organize store structure and visual navigation')} </p>
          </div>
       </div>
@@ -131,7 +132,7 @@ export function AdminCategories() {
                   placeholder={t('search_categories', 'Search categories...')} 
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-white border border-slate-200 py-2.5 pl-12 pr-4 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none transition"
+                  className="w-full bg-white dark:bg-zinc-950 border border-slate-200 py-2.5 pl-12 pr-4 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none transition"
                 />
              </div>
              <div className="flex gap-3">
@@ -156,7 +157,7 @@ export function AdminCategories() {
              </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-white dark:bg-zinc-950 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
              {loading ? (
                 <div className="p-8 text-center text-slate-500"> {t('loading_categories', 'Loading categories...')} </div>
              ) : (
@@ -174,16 +175,16 @@ export function AdminCategories() {
                          {filteredCategories.map((c) => (
                            <tr key={c.id} className="hover:bg-slate-50 transition-colors">
                               <td className="py-4 px-6">
-                                 <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                                 <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 text-slate-500">
                                     {c.imageUrl ? (
                                       <img src={c.imageUrl} className="w-full h-full object-cover rounded-xl" alt="" />
                                     ) : (
-                                      <Tags className="text-slate-400" size={18} />
+                                      getCategoryIcon(c.name, 20)
                                     )}
                                  </div>
                               </td>
                               <td className="py-4 px-6">
-                                 <span className="font-bold text-slate-800">{c.name}</span>
+                                 <span className="font-bold text-slate-800 dark:text-slate-100">{c.name}</span>
                               </td>
                               <td className="py-4 px-6">
                                  {c.isActive ? (
@@ -218,8 +219,8 @@ export function AdminCategories() {
 
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl border border-slate-100">
-              <h2 className="text-lg font-bold text-slate-900 mb-6">{editingId ? "Edit Category" : "Create New Category"}</h2>
+           <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 w-full max-w-md shadow-xl border border-slate-100">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6">{editingId ? "Edit Category" : "Create New Category"}</h2>
               <div className="space-y-4">
                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1"> {t('category_name', 'Category Name')} </label>

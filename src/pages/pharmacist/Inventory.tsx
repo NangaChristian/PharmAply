@@ -17,6 +17,7 @@ export function PharmacistInventory() {
   const [globalProducts, setGlobalProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [highlightedItems, setHighlightedItems] = useState<Set<string>>(new Set());
   
   const [selectedGlobalProduct, setSelectedGlobalProduct] = useState("");
   const [newProductPrice, setNewProductPrice] = useState("");
@@ -49,6 +50,26 @@ export function PharmacistInventory() {
 
         const q = query(collection(db, 'products'), where("pharmacyId", "==", currentPharmacyId));
         unsubscribeProducts = onSnapshot(q, (snapshot) => {
+          const modifiedIds = snapshot.docChanges()
+              .filter(change => change.type === 'modified')
+              .map(change => change.doc.id);
+          
+          if (modifiedIds.length > 0) {
+              setHighlightedItems(prev => {
+                  const newSet = new Set(prev);
+                  modifiedIds.forEach(id => newSet.add(id));
+                  return newSet;
+              });
+              
+              setTimeout(() => {
+                  setHighlightedItems(prev => {
+                      const newSet = new Set(prev);
+                      modifiedIds.forEach(id => newSet.delete(id));
+                      return newSet;
+                  });
+              }, 2500);
+          }
+
           setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
           setLoading(false);
         });
@@ -208,7 +229,7 @@ export function PharmacistInventory() {
           products.length === 0 ? <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 text-center py-10"> {t('no_products_in_inventory', 'No products in inventory.')} </p> :
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {products.map(item => (
-                <div key={item.id}>
+                <div key={item.id} className={`transition-all duration-700 ease-out rounded-2xl ${highlightedItems.has(item.id) ? 'ring-[3px] ring-emerald-400 bg-emerald-50/10 dark:bg-emerald-900/10 shadow-[0_0_15px_rgba(52,211,153,0.3)] scale-[1.02]' : 'ring-0 ring-transparent shadow-none scale-100'}`}>
                    <ProductCard product={item} onClick={() => navigate(`/pharmacist/inventory/${item.id}`)} showSaleBadge={false} />
                 </div>
             ))}

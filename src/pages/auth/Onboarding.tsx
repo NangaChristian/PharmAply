@@ -285,39 +285,39 @@ export function Onboarding() {
                   </svg>
                </div>
                
-               <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('choose_language')}</h2>
+               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t('choose_language')}</h2>
                <p className="text-gray-500 mb-10 text-center"> {t('select_your_preferred_language', 'Select your preferred language to get started.')} </p>
                
                <div className="w-full max-w-sm space-y-4">
                   <button
                      onClick={() => { i18n.changeLanguage('en'); setStep(2); }}
-                     className="w-full flex items-center justify-between p-5 rounded-2xl border-2 transition-all duration-200 border-gray-100 bg-white hover:border-[#344fb1] hover:bg-indigo-50/30"
+                     className="w-full flex items-center justify-between p-5 rounded-2xl border-2 transition-all duration-200 border-gray-100 bg-white dark:bg-zinc-950 hover:border-[#344fb1] hover:bg-indigo-50/30"
                   >
                      <div className="flex items-center gap-4">
                         <span className="text-2xl">🇺🇸</span>
-                        <span className="font-bold text-gray-900 text-base"> {t('english', 'English')} </span>
+                        <span className="font-bold text-gray-900 dark:text-white text-base"> {t('english', 'English')} </span>
                      </div>
                      <div className="w-6 h-6 rounded-full border-2 border-gray-200 flex items-center justify-center"></div>
                   </button>
                   
                   <button
                      onClick={() => { i18n.changeLanguage('fr'); setStep(2); }}
-                     className="w-full flex items-center justify-between p-5 rounded-2xl border-2 transition-all duration-200 border-gray-100 bg-white hover:border-[#344fb1] hover:bg-indigo-50/30"
+                     className="w-full flex items-center justify-between p-5 rounded-2xl border-2 transition-all duration-200 border-gray-100 bg-white dark:bg-zinc-950 hover:border-[#344fb1] hover:bg-indigo-50/30"
                   >
                      <div className="flex items-center gap-4">
                         <span className="text-2xl">🇫🇷</span>
-                        <span className="font-bold text-gray-900 text-base"> {t('fran_ais', 'Français')} </span>
+                        <span className="font-bold text-gray-900 dark:text-white text-base"> {t('fran_ais', 'Français')} </span>
                      </div>
                      <div className="w-6 h-6 rounded-full border-2 border-gray-200 flex items-center justify-center"></div>
                   </button>
 
                   <button
                      onClick={() => { i18n.changeLanguage('ar'); setStep(2); }}
-                     className="w-full flex items-center justify-between p-5 rounded-2xl border-2 transition-all duration-200 border-gray-100 bg-white hover:border-[#344fb1] hover:bg-indigo-50/30"
+                     className="w-full flex items-center justify-between p-5 rounded-2xl border-2 transition-all duration-200 border-gray-100 bg-white dark:bg-zinc-950 hover:border-[#344fb1] hover:bg-indigo-50/30"
                   >
                      <div className="flex items-center gap-4">
                         <span className="text-2xl">🇦🇪</span>
-                        <span className="font-bold text-gray-900 text-base">العربية</span>
+                        <span className="font-bold text-gray-900 dark:text-white text-base">العربية</span>
                      </div>
                      <div className="w-6 h-6 rounded-full border-2 border-gray-200 flex items-center justify-center"></div>
                   </button>
@@ -368,8 +368,8 @@ export function Onboarding() {
                      {t('skip')}
                   </button>
                   
-                  <div className="flex bg-white/20 rounded-full p-1 backdrop-blur-md">
-                     <button onClick={handleNext} className="w-14 h-14 bg-white text-gray-900 rounded-full flex items-center justify-center hover:bg-gray-100 transition shadow-lg">
+                  <div className="flex bg-white dark:bg-zinc-950/20 rounded-full p-1 backdrop-blur-md">
+                     <button onClick={handleNext} className="w-14 h-14 bg-white dark:bg-zinc-950 text-gray-900 dark:text-white rounded-full flex items-center justify-center hover:bg-gray-100 dark:bg-zinc-800 transition shadow-lg">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                            <path d="m9 18 6-6-6-6"/>
                         </svg>
@@ -378,7 +378,7 @@ export function Onboarding() {
                   
                   <div className="flex gap-2 items-center px-4">
                      {ONBOARDING_SLIDES.map((_, idx) => (
-                        <div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${idx === activeSlide ? 'w-6 bg-white' : 'w-2 bg-white/40'}`}></div>
+                        <div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${idx === activeSlide ? 'w-6 bg-white dark:bg-zinc-950' : 'w-2 bg-white dark:bg-zinc-950/40'}`}></div>
                      ))}
                   </div>
                </div>
@@ -412,7 +412,7 @@ export function Onboarding() {
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[2rem] p-6 pt-8 pb-12 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
+                  className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-950 rounded-t-[2rem] p-6 pt-8 pb-12 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
                >
                   {errorText && (
                     <div className="mb-4 p-3 bg-red-100 border border-red-200 text-red-700 text-sm rounded-xl text-center">
@@ -420,7 +420,7 @@ export function Onboarding() {
                     </div>
                   )}
 
-                  <h3 className="text-center font-bold text-gray-900 mb-6 tracking-wide">{t('select_user_type')}</h3>
+                  <h3 className="text-center font-bold text-gray-900 dark:text-white mb-6 tracking-wide">{t('select_user_type')}</h3>
                   
                   <div className="space-y-3 px-2">
                      <button
@@ -434,7 +434,7 @@ export function Onboarding() {
                      <button
                         onClick={() => handleRoleSelection('pharmacy')}
                         disabled={loading}
-                        className="w-full flex items-center justify-center py-4 bg-gray-50 border border-gray-100 text-gray-900 rounded-xl font-bold hover:bg-gray-100 transition gap-2 disabled:opacity-70"
+                        className="w-full flex items-center justify-center py-4 bg-gray-50 dark:bg-zinc-900 border border-gray-100 text-gray-900 dark:text-white rounded-xl font-bold hover:bg-gray-100 dark:bg-zinc-800 transition gap-2 disabled:opacity-70"
                      >
                         {t('pharmacist')}
                      </button>
@@ -442,7 +442,7 @@ export function Onboarding() {
                      <button
                         onClick={() => handleRoleSelection('driver')}
                         disabled={loading}
-                        className="w-full flex items-center justify-center py-4 bg-gray-50 border border-gray-100 text-gray-900 rounded-xl font-bold hover:bg-gray-100 transition gap-2 disabled:opacity-70"
+                        className="w-full flex items-center justify-center py-4 bg-gray-50 dark:bg-zinc-900 border border-gray-100 text-gray-900 dark:text-white rounded-xl font-bold hover:bg-gray-100 dark:bg-zinc-800 transition gap-2 disabled:opacity-70"
                      >
                         {t('delivery')}
                      </button>
@@ -477,15 +477,15 @@ export function Onboarding() {
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[2rem] p-6 pt-8 pb-8 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] flex flex-col h-[75vh]"
+                  className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-950 rounded-t-[2rem] p-6 pt-8 pb-8 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] flex flex-col h-[75vh]"
                >
                   <div className="flex items-center mb-6 relative">
-                     <button onClick={() => { setStep(5); setAuthMode('login'); }} className="absolute left-0 p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-full transition">
+                     <button onClick={() => { setStep(5); setAuthMode('login'); }} className="absolute left-0 p-2 -ml-2 text-gray-500 hover:bg-gray-100 dark:bg-zinc-800 rounded-full transition">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                            <path d="M19 12H5M12 19l-7-7 7-7"/>
                         </svg>
                      </button>
-                     <h3 className="w-full text-center font-bold text-gray-900 text-lg">
+                     <h3 className="w-full text-center font-bold text-gray-900 dark:text-white text-lg">
                         {authMode === 'login' ? 'Welcome Back' : 'Create Account'}
                      </h3>
                   </div>
@@ -500,16 +500,16 @@ export function Onboarding() {
                      {authMode === 'signup' && (
                         <div>
                            <label className="block text-sm font-medium text-gray-700 mb-1"> {t('full_name', 'Full Name')} </label>
-                           <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#344fb1] outline-none transition" placeholder={t('john_doe', 'John Doe')} required />
+                           <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 dark:bg-zinc-900 focus:bg-white dark:bg-zinc-950 focus:ring-2 focus:ring-[#344fb1] outline-none transition" placeholder={t('john_doe', 'John Doe')} required />
                         </div>
                      )}
                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1"> {t('email_address', 'Email Address')} </label>
-                        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#344fb1] outline-none transition" placeholder={t('email_example_com', 'email@example.com')} required />
+                        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 dark:bg-zinc-900 focus:bg-white dark:bg-zinc-950 focus:ring-2 focus:ring-[#344fb1] outline-none transition" placeholder={t('email_example_com', 'email@example.com')} required />
                      </div>
                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1"> {t('password', 'Password')} </label>
-                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#344fb1] outline-none transition" placeholder="••••••••" required minLength={6} />
+                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 dark:bg-zinc-900 focus:bg-white dark:bg-zinc-950 focus:ring-2 focus:ring-[#344fb1] outline-none transition" placeholder="••••••••" required minLength={6} />
                      </div>
                      
                      {authMode === 'login' && (
@@ -541,7 +541,7 @@ export function Onboarding() {
                         type="button"
                         onClick={handleGoogleAuth}
                         disabled={loading}
-                        className="w-full flex items-center justify-center py-4 bg-white border border-gray-200 text-gray-800 rounded-xl font-bold hover:bg-gray-50 transition shadow-sm mt-0 disabled:opacity-70"
+                        className="w-full flex items-center justify-center py-4 bg-white dark:bg-zinc-950 border border-gray-200 text-gray-800 dark:text-gray-100 rounded-xl font-bold hover:bg-gray-50 dark:bg-zinc-900 transition shadow-sm mt-0 disabled:opacity-70"
                      >
                         <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>

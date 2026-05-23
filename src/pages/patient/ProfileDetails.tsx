@@ -138,7 +138,7 @@ export function PatientProfileDetails() {
                    onClick={() => setFormData(s => ({ ...s, isHealthcareProvider: !s.isHealthcareProvider }))}
                    className={`w-12 h-6 rounded-full transition-colors relative ${formData.isHealthcareProvider ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-zinc-700'}`}
                  >
-                    <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${formData.isHealthcareProvider ? 'translate-x-6' : 'translate-x-0.5'}`}></div>
+                    <div className={`w-5 h-5 bg-white dark:bg-zinc-950 rounded-full absolute top-0.5 transition-transform ${formData.isHealthcareProvider ? 'translate-x-6' : 'translate-x-0.5'}`}></div>
                  </button>
              </div>
              

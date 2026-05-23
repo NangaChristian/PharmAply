@@ -60,11 +60,11 @@ export function FinancialSettings() {
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
          <div>
-             <button onClick={() => navigate("/admin/settings")} className="flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 mb-2">
+             <button onClick={() => navigate("/admin/settings")} className="flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-slate-100 mb-2">
                <ArrowLeft size={16} className="mr-1" /> Back to Settings </button>
-             <h1 className="font-bold text-gray-900 text-2xl mb-1">Financial & Payment Settings</h1>
+             <h1 className="font-bold text-gray-900 dark:text-white text-2xl mb-1">Financial & Payment Settings</h1>
              <p className="text-gray-500 text-sm">Gateways, taxes, and platform commission</p>
          </div>
          <button 
@@ -77,8 +77,8 @@ export function FinancialSettings() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 max-w-4xl space-y-6">
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Payment Gateways & Reconciliation</h2>
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Payment Gateways & Reconciliation</h2>
             <div className="grid grid-cols-2 gap-4">
                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1"> Primary Payment Gateway </label>
@@ -100,8 +100,8 @@ export function FinancialSettings() {
             </div>
          </div>
 
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Commission Rules & Fees</h2>
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Commission Rules & Fees</h2>
             <div className="grid grid-cols-2 gap-4">
                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1"> Default Commission Rate (%) </label>
@@ -132,8 +132,8 @@ export function FinancialSettings() {
             </div>
          </div>
 
-         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Tax & Invoice Settings</h2>
+         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Tax & Invoice Settings</h2>
             <div className="space-y-4">
                <label className="flex items-start gap-4 p-4 border border-gray-100 rounded-xl hover:bg-slate-50 transition cursor-pointer">
                   <input 
@@ -144,7 +144,7 @@ export function FinancialSettings() {
                     className="w-5 h-5 text-indigo-600 rounded mt-0.5"
                   />
                   <div>
-                    <h3 className="font-bold text-gray-900 text-sm block">Automated Tax Calculations</h3>
+                    <h3 className="font-bold text-gray-900 dark:text-white text-sm block">Automated Tax Calculations</h3>
                     <p className="text-xs text-slate-500 mt-1">Automatically calculate regional taxes on checkout based on user location.</p>
                   </div>
                </label>
@@ -156,7 +156,7 @@ export function FinancialSettings() {
                     value={settings.taxRate} 
                     onChange={handleChange}
                     disabled={!settings.autoCalculateTax}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50 disabled:bg-gray-100"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50 disabled:bg-gray-100 dark:bg-zinc-800"
                     placeholder="7.0"
                   />
                </div>

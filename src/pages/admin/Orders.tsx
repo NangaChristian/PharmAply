@@ -43,9 +43,9 @@ export function AdminOrders() {
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="bg-white px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
          <div>
-             <h1 className="font-bold text-gray-900 text-2xl mb-1">{t('admin_orders', 'Orders')}</h1>
+             <h1 className="font-bold text-gray-900 dark:text-white text-2xl mb-1">{t('admin_orders', 'Orders')}</h1>
              <p className="text-gray-500 text-sm">{t('admin_orders_desc', 'Monitor all platform deliveries')}</p>
          </div>
       </div>
@@ -59,12 +59,12 @@ export function AdminOrders() {
                   placeholder={t('search_order_id', 'Search order ID...')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-white border border-slate-200 py-2.5 pl-12 pr-4 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none transition"
+                  className="w-full bg-white dark:bg-zinc-950 border border-slate-200 py-2.5 pl-12 pr-4 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none transition"
                 />
              </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-white dark:bg-zinc-950 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
              {loading ? (
                 <div className="p-8 text-center text-slate-500">{t('loading', 'Loading...')}</div>
              ) : (

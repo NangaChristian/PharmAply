@@ -90,7 +90,7 @@ export function PharmacistPrescriptions() {
                return (
                   <div key={p.id} className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm flex flex-col overflow-hidden group">
                      {/* Preview Area */}
-                     <div className="h-44 bg-gray-50 dark:bg-zinc-800/80 w-full flex flex-col relative overflow-hidden group-hover:bg-gray-100 transition-colors">
+                     <div className="h-44 bg-gray-50 dark:bg-zinc-800/80 w-full flex flex-col relative overflow-hidden group-hover:bg-gray-100 dark:bg-zinc-800 transition-colors">
                         <div className="absolute top-3 left-3 z-10 flex gap-2">
                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 ${p.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100/50' : p.status === 'rejected' ? 'bg-red-50 text-red-700 border border-red-100/50' : 'bg-amber-50 text-amber-700 border border-amber-100/50'}`}>
                              {p.status === 'approved' ? <CheckCircle size={10} /> : p.status === 'rejected' ? <XCircle size={10} /> : <Clock size={10} />}
@@ -109,7 +109,7 @@ export function PharmacistPrescriptions() {
                      
                      <div className="p-4 flex flex-col flex-1 border-t border-gray-100 dark:border-zinc-800">
                         <div className="flex items-center gap-2 mb-2">
-                           <div className={`w-6 h-6 shrink-0 rounded flex items-center justify-center ${isPdf ? 'bg-red-50 text-red-500' : isImage ? 'bg-blue-50 text-blue-500' : 'bg-gray-100 text-gray-500'}`}>
+                           <div className={`w-6 h-6 shrink-0 rounded flex items-center justify-center ${isPdf ? 'bg-red-50 text-red-500' : isImage ? 'bg-blue-50 text-blue-500' : 'bg-gray-100 dark:bg-zinc-800 text-gray-500'}`}>
                               {isPdf ? <FileText size={14} /> : isImage ? <ImageIcon size={14} /> : <FileText size={14} />}
                            </div>
                            <p className="font-bold text-gray-900 dark:text-gray-100 text-sm truncate flex-1" title={displayFilename}>
@@ -125,14 +125,14 @@ export function PharmacistPrescriptions() {
                            <button 
                              disabled={!isPending || processingId === p.id}
                              onClick={() => handleUpdateStatus(p.id, 'approved')}
-                             className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 disabled:opacity-50 disabled:bg-gray-50 disabled:text-gray-400 font-bold py-2 rounded-xl text-xs flex justify-center items-center gap-1 transition"
+                             className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 disabled:opacity-50 disabled:bg-gray-50 dark:bg-zinc-900 disabled:text-gray-400 font-bold py-2 rounded-xl text-xs flex justify-center items-center gap-1 transition"
                            >
                               {processingId === p.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />} Approve
                            </button>
                            <button 
                              disabled={!isPending || processingId === p.id}
                              onClick={() => handleUpdateStatus(p.id, 'rejected')}
-                             className="bg-red-50 hover:bg-red-100 text-red-700 disabled:opacity-50 disabled:bg-gray-50 disabled:text-gray-400 font-bold py-2 rounded-xl text-xs flex justify-center items-center gap-1 transition"
+                             className="bg-red-50 hover:bg-red-100 text-red-700 disabled:opacity-50 disabled:bg-gray-50 dark:bg-zinc-900 disabled:text-gray-400 font-bold py-2 rounded-xl text-xs flex justify-center items-center gap-1 transition"
                            >
                               <XCircle size={14} /> Reject
                            </button>

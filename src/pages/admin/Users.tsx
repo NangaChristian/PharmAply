@@ -218,8 +218,8 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
 
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
-      <div className="bg-white px-8 pt-6 pb-0 shadow-sm z-10 border-b border-gray-200 shrink-0">
-         <h1 className="font-bold text-gray-900 text-2xl mb-6">{getTitle()}</h1>
+      <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-0 shadow-sm z-10 border-b border-gray-200 shrink-0">
+         <h1 className="font-bold text-gray-900 dark:text-white text-2xl mb-6">{getTitle()}</h1>
          <div className="flex gap-6 border-b-0 border-gray-100">
             <button 
                onClick={() => setActiveTab('users')} 
@@ -251,7 +251,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                       placeholder={t('search_users', 'Search users...')} 
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="w-full bg-white border border-gray-200 py-2.5 pl-10 pr-4 rounded-xl text-sm focus:outline-none focus:border-slate-400" 
+                      className="w-full bg-white dark:bg-zinc-950 border border-gray-200 py-2.5 pl-10 pr-4 rounded-xl text-sm focus:outline-none focus:border-slate-400" 
                     />
                  </div>
                  
@@ -261,7 +261,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                       <select 
                         value={statusFilter} 
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="bg-white border border-gray-200 py-2.5 pl-9 pr-8 rounded-xl text-sm appearance-none outline-none focus:border-slate-400"
+                        className="bg-white dark:bg-zinc-950 border border-gray-200 py-2.5 pl-9 pr-8 rounded-xl text-sm appearance-none outline-none focus:border-slate-400"
                       >
                          <option value="all">{t('all_status', 'All Status')}</option>
                          <option value="approved"> {t('active', 'Active')} </option>
@@ -273,7 +273,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                      <select 
                         value={roleFilter} 
                         onChange={(e) => setRoleFilter(e.target.value)}
-                        className="bg-white border border-gray-200 py-2.5 px-4 rounded-xl text-sm outline-none focus:border-slate-400"
+                        className="bg-white dark:bg-zinc-950 border border-gray-200 py-2.5 px-4 rounded-xl text-sm outline-none focus:border-slate-400"
                       >
                          <option value="all">{t('all_roles', 'All Roles')}</option>
                          <option value="patient">{t('role_patient', 'Patient')}</option>
@@ -297,10 +297,10 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                )}
              </div>
 
-             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+             <div className="bg-white dark:bg-zinc-950 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
                    <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-gray-500 bg-gray-50/50 border-b border-gray-100">
+                      <thead className="text-xs text-gray-500 bg-gray-50 dark:bg-zinc-900/50 border-b border-gray-100">
                          <tr>
                             <th className="py-4 px-6 font-semibold w-12">
                               <button onClick={toggleSelectAll} className="block text-gray-400 hover:text-indigo-600">
@@ -320,7 +320,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                          filteredUsers.map((u) => {
                            const isSelected = selectedUsers.includes(u.id);
                            return (
-                             <tr key={u.id} onClick={() => toggleSelectUser(u.id)} className={`cursor-pointer hover:bg-gray-100/80 transition-colors even:bg-gray-50/30 ${isSelected ? 'bg-indigo-50/40 even:bg-indigo-50/40' : ''}`}>
+                             <tr key={u.id} onClick={() => toggleSelectUser(u.id)} className={`cursor-pointer hover:bg-gray-100 dark:bg-zinc-800/80 transition-colors even:bg-gray-50 dark:bg-zinc-900/30 ${isSelected ? 'bg-indigo-50/40 even:bg-indigo-50/40' : ''}`}>
                                 <td className="py-4 px-6">
                                   <button onClick={(e) => { e.stopPropagation(); toggleSelectUser(u.id); }} className="block text-gray-400 hover:text-indigo-600">
                                     {isSelected ? <CheckSquare size={18} className="text-indigo-600" /> : <div className="w-[18px] h-[18px] border-2 border-gray-300 rounded-[4px]"></div>}
@@ -332,7 +332,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                                          {u.name ? u.name.charAt(0).toUpperCase() : <User size={18} />}
                                       </div>
                                       <div>
-                                         <h3 className="font-bold text-gray-900 text-sm">{u.name || 'Unknown User'}</h3>
+                                         <h3 className="font-bold text-gray-900 dark:text-white text-sm">{u.name || 'Unknown User'}</h3>
                                          <p className="text-xs text-gray-500">{u.email}</p>
                                       </div>
                                    </div>
@@ -342,7 +342,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                                      value={u.role || 'patient'} 
                                      onChange={(e) => handleRoleChange(u.id, e.target.value)}
                                      onClick={(e) => e.stopPropagation()}
-                                     className="text-xs bg-white border border-gray-200 rounded-lg py-1.5 px-2 outline-none focus:ring-2 focus:ring-indigo-100"
+                                     className="text-xs bg-white dark:bg-zinc-950 border border-gray-200 rounded-lg py-1.5 px-2 outline-none focus:ring-2 focus:ring-indigo-100"
                                    >
                                      <option value="patient">{t('role_patient', 'Patient')}</option>
                                      <option value="pharmacy">{t('role_pharmacy', 'Pharmacy')}</option>
@@ -405,17 +405,17 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
            </>
          ) : (
            <div className="space-y-4">
-              <h3 className="font-bold text-gray-900">{t('pending_bg_checks', 'Pending Background Checks')}</h3>
+              <h3 className="font-bold text-gray-900 dark:text-white">{t('pending_bg_checks', 'Pending Background Checks')}</h3>
               {loading ? <p className="text-sm text-gray-500">{t('loading', 'Loading...')}</p> :
                (pharmacies.length === 0 && drivers.length === 0) ? (
-                 <div className="text-center py-12 px-6 bg-white rounded-2xl border border-gray-dashed">
+                 <div className="text-center py-12 px-6 bg-white dark:bg-zinc-950 rounded-2xl border border-gray-dashed">
                     <ShieldCheck size={48} className="text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500 text-sm">{t('all_operations_reviewed', 'All operations have been reviewed.')}</p>
                  </div>
                ) : (
                  <>
                    {(type === 'all' || type === 'vendors') && pharmacies.map((pharmacy) => (
-                     <div key={pharmacy.id} className="bg-white rounded-2xl p-5 shadow-sm border border-orange-200 relative overflow-hidden">
+                     <div key={pharmacy.id} className="bg-white dark:bg-zinc-950 rounded-2xl p-5 shadow-sm border border-orange-200 relative overflow-hidden">
                         <div className="absolute top-0 right-0 bg-orange-100 text-orange-600 font-bold text-[10px] px-3 py-1 rounded-bl-xl uppercase"> {t('pharmacy_review', 'Pharmacy Review')} </div>
                         
                         <div className="flex items-center gap-3 mb-4">
@@ -423,7 +423,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                               <Store size={24} />
                            </div>
                            <div>
-                              <h4 className="font-bold text-gray-900 text-lg">{pharmacy.name}</h4>
+                              <h4 className="font-bold text-gray-900 dark:text-white text-lg">{pharmacy.name}</h4>
                               <p className="text-xs text-gray-500">{pharmacy.address}</p>
                            </div>
                         </div>
@@ -431,17 +431,17 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                         <div className="space-y-2 mb-6">
                            <div className="flex justify-between text-sm">
                               <span className="text-gray-500"> {t('rccm_registration', 'RCCM / Registration:')} </span>
-                              <span className="font-bold text-gray-900">{pharmacy.registrationNumber}</span>
+                              <span className="font-bold text-gray-900 dark:text-white">{pharmacy.registrationNumber}</span>
                            </div>
                            <div className="flex justify-between text-sm">
                               <span className="text-gray-500"> {t('phone', 'Phone:')} </span>
-                              <span className="font-bold text-gray-900">{pharmacy.phoneNumber}</span>
+                              <span className="font-bold text-gray-900 dark:text-white">{pharmacy.phoneNumber}</span>
                            </div>
                            <div className="flex justify-between items-start text-sm">
                               <span className="text-gray-500 mt-1"> {t('license', 'License:')} </span>
                               {pharmacy.operatingLicenseUrl ? (
                                 <button onClick={() => setViewDocumentUrl(pharmacy.operatingLicenseUrl)} className="flex flex-col items-end gap-1 group">
-                                  <div className="w-24 h-16 rounded bg-gray-50 overflow-hidden border border-gray-200 group-hover:border-indigo-400 transition relative flex items-center justify-center">
+                                  <div className="w-24 h-16 rounded bg-gray-50 dark:bg-zinc-900 overflow-hidden border border-gray-200 group-hover:border-indigo-400 transition relative flex items-center justify-center">
                                     {pharmacy.operatingLicenseUrl.toLowerCase().includes('.pdf') ? (
                                       <FileText size={24} className="text-gray-400" />
                                     ) : (
@@ -461,7 +461,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                               <span className="text-gray-500 mt-1"> {t('taxpayer_card', 'Taxpayer Card:')} </span>
                               {pharmacy.taxpayerCardUrl ? (
                                 <button onClick={() => setViewDocumentUrl(pharmacy.taxpayerCardUrl)} className="flex flex-col items-end gap-1 group">
-                                  <div className="w-24 h-16 rounded bg-gray-50 overflow-hidden border border-gray-200 group-hover:border-indigo-400 transition relative flex items-center justify-center">
+                                  <div className="w-24 h-16 rounded bg-gray-50 dark:bg-zinc-900 overflow-hidden border border-gray-200 group-hover:border-indigo-400 transition relative flex items-center justify-center">
                                     {pharmacy.taxpayerCardUrl.toLowerCase().includes('.pdf') ? (
                                       <FileText size={24} className="text-gray-400" />
                                     ) : (
@@ -477,7 +477,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                                 <span className="text-gray-400 mt-1"> {t('not_uploaded', 'Not uploaded')} </span>
                               )}
                            </div>
-                           <div className="bg-gray-50 p-3 rounded-xl mt-2 flex items-start gap-2">
+                           <div className="bg-gray-50 dark:bg-zinc-900 p-3 rounded-xl mt-2 flex items-start gap-2">
                               <ShieldAlert size={16} className="text-indigo-400 shrink-0 mt-0.5" />
                               <p className="text-xs text-gray-600"> {t('ensure_the_rccm_number_matches', 'Ensure the RCCM number matches official Cameroon business registries before approval.')} </p>
                            </div>
@@ -492,7 +492,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                    ))}
 
                    {(type === 'all' || type === 'drivers') && drivers.map((driver) => (
-                     <div key={driver.id} className="bg-white rounded-2xl p-5 shadow-sm border border-blue-200 relative overflow-hidden">
+                     <div key={driver.id} className="bg-white dark:bg-zinc-950 rounded-2xl p-5 shadow-sm border border-blue-200 relative overflow-hidden">
                         <div className="absolute top-0 right-0 bg-blue-100 text-blue-600 font-bold text-[10px] px-3 py-1 rounded-bl-xl uppercase"> {t('driver_check', 'Driver Check')} </div>
                         
                         <div className="flex items-center gap-3 mb-4">
@@ -500,7 +500,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                               <Truck size={24} />
                            </div>
                            <div>
-                              <h4 className="font-bold text-gray-900 text-lg">{driver.name}</h4>
+                              <h4 className="font-bold text-gray-900 dark:text-white text-lg">{driver.name}</h4>
                               <p className="text-xs text-gray-500">{driver.email}</p>
                            </div>
                         </div>
@@ -510,7 +510,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                               <span className="text-gray-500 mt-1"> {t('national_id', 'National ID:')} </span>
                               {driver.nationalIdUrl ? (
                                 <button onClick={() => setViewDocumentUrl(driver.nationalIdUrl)} className="flex flex-col items-end gap-1 group">
-                                  <div className="w-24 h-16 rounded bg-gray-50 overflow-hidden border border-gray-200 group-hover:border-blue-400 transition relative flex items-center justify-center">
+                                  <div className="w-24 h-16 rounded bg-gray-50 dark:bg-zinc-900 overflow-hidden border border-gray-200 group-hover:border-blue-400 transition relative flex items-center justify-center">
                                     {driver.nationalIdUrl.toLowerCase().includes('.pdf') ? (
                                       <FileText size={24} className="text-gray-400" />
                                     ) : (
@@ -530,7 +530,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                               <span className="text-gray-500 mt-1"> {t('driver_license', 'Driver License:')} </span>
                               {driver.driverLicenseUrl ? (
                                 <button onClick={() => setViewDocumentUrl(driver.driverLicenseUrl)} className="flex flex-col items-end gap-1 group">
-                                  <div className="w-24 h-16 rounded bg-gray-50 overflow-hidden border border-gray-200 group-hover:border-blue-400 transition relative flex items-center justify-center">
+                                  <div className="w-24 h-16 rounded bg-gray-50 dark:bg-zinc-900 overflow-hidden border border-gray-200 group-hover:border-blue-400 transition relative flex items-center justify-center">
                                     {driver.driverLicenseUrl.toLowerCase().includes('.pdf') ? (
                                       <FileText size={24} className="text-gray-400" />
                                     ) : (
@@ -546,7 +546,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                                 <span className="text-gray-400 mt-1"> {t('not_uploaded', 'Not uploaded')} </span>
                               )}
                            </div>
-                           <div className="bg-gray-50 p-3 rounded-xl mt-2 flex items-start gap-2">
+                           <div className="bg-gray-50 dark:bg-zinc-900 p-3 rounded-xl mt-2 flex items-start gap-2">
                               <ShieldAlert size={16} className="text-blue-400 shrink-0 mt-0.5" />
                               <p className="text-xs text-gray-600"> {t('please_verify_both_ids_are_cle', 'Please verify both IDs are clear, match the applicant\'s name, and are currently valid.')} </p>
                            </div>
@@ -574,14 +574,14 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
               <h3 className="text-white font-bold text-xl drop-shadow-md"> {t('document_verification', 'Document Verification')} </h3>
               <button 
                 onClick={() => setViewDocumentUrl(null)}
-                className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition backdrop-blur-md"
+                className="p-2 bg-white dark:bg-zinc-950/10 hover:bg-white dark:bg-zinc-950/20 text-white rounded-full transition backdrop-blur-md"
               >
                 <X size={24} />
               </button>
             </div>
             <div className="flex-1 overflow-auto rounded-2xl bg-black/50 border border-white/10 flex items-center justify-center min-h-[50vh]">
               {viewDocumentUrl.toLowerCase().includes('.pdf') ? (
-                <iframe src={`${viewDocumentUrl}#toolbar=0`} className="w-full h-[80vh] rounded-2xl bg-white" title={t('document_viewer', 'Document Viewer')} />
+                <iframe src={`${viewDocumentUrl}#toolbar=0`} className="w-full h-[80vh] rounded-2xl bg-white dark:bg-zinc-950" title={t('document_viewer', 'Document Viewer')} />
               ) : (
                 <img src={viewDocumentUrl} alt="Document View" className="max-w-full max-h-[80vh] object-contain rounded-xl" />
               )}
@@ -591,7 +591,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                  href={viewDocumentUrl} 
                  target="_blank" 
                  rel="noreferrer" 
-                 className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white text-center font-bold rounded-xl transition backdrop-blur-md border border-white/10"
+                 className="flex-1 py-3 bg-white dark:bg-zinc-950/10 hover:bg-white dark:bg-zinc-950/20 text-white text-center font-bold rounded-xl transition backdrop-blur-md border border-white/10"
                >
                   {t('open_in_new_tab', 'Open in New Tab')} </a>
             </div>

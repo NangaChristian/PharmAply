@@ -24,7 +24,7 @@ export function PatientCart() {
              </div>
              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{t('your_cart_is_empty', 'Your cart is empty')}</h2>
              <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-xs">{t('cart_empty_desc', 'Looks like you haven\'t added anything to your cart yet. Explore our wide range of products.')}</p>
-             <button onClick={() => navigate('/patient')} className="bg-[#16307b] hover:bg-[#122864] text-white font-bold py-4 px-8 rounded-[1.2rem] shadow-sm w-full max-w-xs transition-colors">
+             <button onClick={() => navigate('/patient')} className="bg-[#16307b] hover:bg-[#122864] text-white font-bold py-4 px-8 min-h-[56px] rounded-[1.2rem] shadow-sm w-full max-w-xs transition-colors touch-manipulation">
                 {t('browse_products', 'Browse Products')}
              </button>
            </div>
@@ -44,13 +44,13 @@ export function PatientCart() {
                      <p className="text-[#1a3b8d] dark:text-indigo-400 font-bold mb-3">{formatCurrency(item.price)}</p>
                      
                      <div className="flex items-center justify-between">
-                        <div className="flex items-center bg-gray-50 dark:bg-black rounded-lg px-2 py-1 border border-gray-200 dark:border-zinc-800">
-                           <button onClick={() => updateQuantity(item.id, -1)} className="text-indigo-600 dark:text-indigo-400 p-1"><Minus size={14}/></button>
-                           <span className="font-bold text-gray-900 dark:text-white mx-3 text-sm">{item.quantity}</span>
-                           <button onClick={() => updateQuantity(item.id, 1)} className="text-indigo-600 dark:text-indigo-400 p-1"><Plus size={14}/></button>
+                        <div className="flex items-center bg-gray-50 dark:bg-black rounded-lg p-1 border border-gray-200 dark:border-zinc-800">
+                           <button onClick={() => updateQuantity(item.id, -1)} className="text-indigo-600 dark:text-indigo-400 p-2 shrink-0 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"><Minus size={16}/></button>
+                           <span className="font-bold text-gray-900 dark:text-white mx-3 text-sm min-w-[20px] text-center">{item.quantity}</span>
+                           <button onClick={() => updateQuantity(item.id, 1)} className="text-indigo-600 dark:text-indigo-400 p-2 shrink-0 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"><Plus size={16}/></button>
                         </div>
-                        <button onClick={() => removeFromCart(item.id)} className="w-8 h-8 flex items-center justify-center bg-red-50 dark:bg-red-950/30 text-red-500 rounded-full">
-                           <Trash2 size={14} />
+                        <button onClick={() => removeFromCart(item.id)} className="w-11 h-11 flex items-center justify-center bg-red-50 dark:bg-red-950/30 text-red-500 rounded-full touch-manipulation">
+                           <Trash2 size={18} />
                         </button>
                      </div>
                   </div>
@@ -66,7 +66,7 @@ export function PatientCart() {
               <span className="text-gray-500 dark:text-gray-400 font-medium">{t('total', 'Total')}</span>
               <span className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(cartTotal)}</span>
            </div>
-           <button onClick={() => navigate('/patient/checkout')} className="w-full bg-[#16307b] hover:bg-[#122864] text-white font-bold py-3.5 rounded-[1.2rem] shadow-sm transition-colors">
+           <button onClick={() => navigate('/patient/checkout')} className="w-full bg-[#16307b] hover:bg-[#122864] text-white font-bold py-4 min-h-[56px] rounded-[1.2rem] shadow-sm transition-colors touch-manipulation">
               {t('checkout', 'Checkout')}
            </button>
         </div>

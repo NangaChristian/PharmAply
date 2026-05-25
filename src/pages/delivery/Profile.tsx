@@ -3,7 +3,7 @@ import { ArrowLeft, Edit2, User, Clock, ShieldCheck, LogOut, FileText, Globe, Ca
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { auth, db } from "../../lib/firebase";
-import { doc, getDoc, updateDoc, signOut } from '../../lib/firebase';
+import { doc, getDoc, updateDoc, setDoc, signOut } from '../../lib/firebase';
 import toast from "react-hot-toast";
 
 export function DeliveryProfile() {
@@ -22,6 +22,8 @@ export function DeliveryProfile() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           setDriver({ id: docSnap.id, ...docSnap.data() });
+        } else {
+          setDriver({ id: auth.currentUser.uid });
         }
       } catch (err) {
         console.error(err);
@@ -45,9 +47,10 @@ export function DeliveryProfile() {
   };
 
   const handleSave = async () => {
-    if (!auth.currentUser || !driver) return;
+    if (!auth.currentUser) return;
     try {
-      await updateDoc(doc(db, 'drivers', auth.currentUser.uid), formData);
+      await setDoc(doc(db, 'drivers', auth.currentUser.uid), formData, { merge: true });
+      setDriver((prev: any) => ({ ...prev, ...formData }));
       toast.success(t('profile_updated', 'Profile updated successfully'));
       setActiveMenu(null);
     } catch (err: any) {
@@ -179,7 +182,13 @@ export function DeliveryProfile() {
          {/* Profile Card */}
          <div className="bg-white dark:bg-black rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-zinc-800 flex flex-col items-center gap-4 text-center">
              <div className="w-24 h-24 bg-gray-200 rounded-full overflow-hidden border-4 border-indigo-50 relative">
-                <img src={auth.currentUser?.photoURL || "https://i.pravatar.cc/150?u=b042581f4e29026704z"} alt="Driver" className="w-full h-full object-cover" />
+                {auth.currentUser?.photoURL ? (
+                   <img src={auth.currentUser.photoURL} alt="Driver" className="w-full h-full object-cover" />
+                ) : (
+                   <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 dark:bg-zinc-800 text-gray-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                   </div>
+                )}
                 <div className="absolute bottom-0 right-0 w-6 h-6 bg-green-500 rounded-full border-2 border-white"></div>
              </div>
              <div>

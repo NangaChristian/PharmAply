@@ -25,6 +25,7 @@ export function PharmacistInventory() {
   const [newProductExpiry, setNewProductExpiry] = useState("");
   const [uploading, setUploading] = useState(false);
   const [pharmacyId, setPharmacyId] = useState<string | null>(null);
+  const [editingProduct, setEditingProduct] = useState<any | null>(null);
 
   useEffect(() => {
     let unsubscribeProducts: () => void;

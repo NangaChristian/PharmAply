@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { collection, query, getDocs, doc, updateDoc, deleteDoc, onSnapshot, addDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from "../../lib/firebase";
-import { Search, Plus, Edit2, Trash2, Tag, AlertCircle, Database, Upload, ArrowUpDown, Image as ImageIcon } from "lucide-react";
+import { Search, Plus, Edit2, Trash2, Tag, AlertCircle, Database, Upload, ArrowUpDown, Image as ImageIcon, Package } from "lucide-react";
 import toast from "react-hot-toast";
 import Papa from "papaparse";
 import { formatCurrency } from "../../lib/utils";

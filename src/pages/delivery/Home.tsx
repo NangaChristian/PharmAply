@@ -1,25 +1,48 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Bell, MapPin, Clock, DollarSign, CheckCircle, Navigation, Menu, Power, X } from "lucide-react";
-import { collection, query, where, getDocs, onSnapshot, updateDoc, doc } from '../../lib/firebase';
+import { User, Bell, MapPin, Clock, DollarSign, CheckCircle, Navigation, Menu, Power, X, Moon, Sun, Layers } from "lucide-react";
+import { collection, query, where, getDocs, onSnapshot, updateDoc, doc, setDoc, addDoc, serverTimestamp } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
+import { useDarkMode } from "../../components/DarkModeProvider";
 import { formatCurrency } from '../../lib/utils';
-
 import { useTranslation } from "react-i18next";
+import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
+import { RouteDisplay } from './RouteDisplay';
+import { NotificationBell } from "../../components/NotificationBell";
+
+const API_KEY =
+  process.env.GOOGLE_MAPS_PLATFORM_KEY ||
+  (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
+  '';
 
 export function DeliveryHome() {
+  const [mapType, setMapType] = useState('roadmap');
     const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, userData } = useAuth();
+  const { isDarkMode, toggleDarkMode } = useDarkMode();
   const [isOnline, setIsOnline] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [currentRequest, setCurrentRequest] = useState<any>(null);
   const [processing, setProcessing] = useState(false);
+  const [todaysEarnings, setTodaysEarnings] = useState(0);
+
+  useEffect(() => {
+     let unsub: () => void;
+     if (user) {
+        unsub = onSnapshot(query(collection(db, 'drivers'), where('id', '==', user.uid)), (snap) => {
+           if (!snap.empty) {
+              setIsOnline(snap.docs[0].data().isOnline || false);
+           }
+        });
+     }
+     return () => { if (unsub) unsub(); }
+  }, [user]);
 
   useEffect(() => {
     let unsubscribe: () => void;
-    if (isOnline) {
+    if (user && isOnline) {
       try {
         const q = query(collection(db, 'orders'), where('status', '==', 'ready'));
         unsubscribe = onSnapshot(q, (snapshot) => {
@@ -43,13 +66,68 @@ export function DeliveryHome() {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [isOnline]);
+  }, [isOnline, user]);
+
+  useEffect(() => {
+    const fetchEarnings = async () => {
+       if (!user) return;
+       try {
+          const startOfDay = new Date();
+          startOfDay.setHours(0,0,0,0);
+          
+          // Using JS filtering if timestamp query requires complex indices
+          const q = query(collection(db, 'orders'), where('driverId', '==', user.uid), where('status', '==', 'delivered'));
+          const snapshot = await getDocs(q);
+          const earned = snapshot.docs.reduce((acc, doc) => {
+             const data = doc.data();
+             const dateStr = data.deliveredAt || data.createdAt;
+             if (dateStr) {
+                const date = new Date(dateStr);
+                if (date >= startOfDay) {
+                   return acc + ((data.total || 0) * 0.1); 
+                }
+             }
+             return acc;
+          }, 0);
+          setTodaysEarnings(earned);
+       } catch(e) { console.error(e); }
+    };
+    fetchEarnings();
+  }, [user]);
+
+  const toggleOnlineStatus = async (status: boolean) => {
+     if (!user) return;
+     setIsOnline(status);
+     try {
+        await setDoc(doc(db, 'drivers', user.uid), { isOnline: status }, { merge: true });
+     } catch (err) { console.error("Error updating online status", err); }
+  };
 
   const handleAcceptOrder = async () => {
     if (!currentRequest || !user) return;
     setProcessing(true);
     try {
-      await updateDoc(doc(db, 'orders', currentRequest.id), { status: 'driver_assigned', driverId: user.uid });
+      await updateDoc(doc(db, 'orders', currentRequest.id), { 
+         status: 'driver_assigned', 
+         driverId: user.uid, 
+         driverName: userData?.name || user.displayName || 'Driver',
+         acceptedAt: new Date().toISOString() 
+      });
+      
+      try {
+         await addDoc(collection(db, 'notifications'), {
+           userId: currentRequest.patientId,
+           type: 'driver_assigned',
+           title: 'Driver Assigned',
+           message: `${userData?.name || user.displayName || 'A driver'} is heading to the pharmacy.`,
+           isRead: false,
+           relatedId: currentRequest.id,
+           createdAt: serverTimestamp()
+         });
+      } catch (e) {
+         console.warn("Could not notify patient", e);
+      }
+      
       setProcessing(false);
       navigate(`/delivery/order/${currentRequest.id}`);
     } catch (error) {
@@ -59,8 +137,6 @@ export function DeliveryHome() {
   };
 
   const handleRejectOrder = () => {
-     // In a real app we'd mark this driver as rejected for this order, 
-     // but here we just hide it and show the next one or wait.
      const nextOrders = orders.filter(o => o.id !== currentRequest?.id);
      setOrders(nextOrders);
      if (nextOrders.length > 0) {
@@ -73,25 +149,46 @@ export function DeliveryHome() {
   return (
     <div className="flex-1 bg-slate-100 flex flex-col relative pb-16 h-full overflow-hidden">
       
-      {/* Fake Map Background */}
+      {/* Map Background */}
       <div className="absolute inset-0 z-0 bg-[#e5e3df] overflow-hidden">
-         {/* Map Grid Pattern */}
-         <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-         {/* Roads Pattern */}
-         <div className="absolute top-1/3 left-0 right-0 h-4 bg-white dark:bg-black opacity-40 transform -skew-y-12"></div>
-         <div className="absolute top-1/2 left-0 right-0 h-6 bg-white dark:bg-black opacity-40 transform skew-y-6"></div>
-         <div className="absolute top-0 bottom-0 left-1/3 w-6 bg-white dark:bg-black opacity-40 transform skew-x-12"></div>
-         
-         {/* Driver Location Marker */}
-         {isOnline && (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center">
-               <div className="w-24 h-24 bg-indigo-500/20 rounded-full absolute animate-ping"></div>
-               <div className="w-12 h-12 bg-indigo-500/10 rounded-full absolute animate-pulse"></div>
-               <div className="w-8 h-8 bg-indigo-600 rounded-full border-4 border-white shadow-lg z-10 flex items-center justify-center">
-                  <Navigation size={12} className="text-white fill-current transform rotate-45" />
-               </div>
-            </div>
-         )}
+         <APIProvider apiKey={API_KEY} version="weekly">
+            <Map
+              defaultCenter={{ lat: 31.500, lng: 34.450 }}
+              defaultZoom={13}
+              mapId="DEMO_MAP_ID"
+              disableDefaultUI={true}
+              mapTypeId={mapType}
+              internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
+              style={{ width: '100%', height: '100%' }}
+            >
+               {isOnline && (
+                 <AdvancedMarker position={{ lat: 31.500, lng: 34.450 }}>
+                   <div className="flex flex-col items-center justify-center">
+                      <div className="w-16 h-16 bg-indigo-500/20 rounded-full absolute animate-ping"></div>
+                      <div className="w-8 h-8 bg-indigo-600 rounded-full border-4 border-white shadow-lg z-10 flex items-center justify-center">
+                         <Navigation size={12} className="text-white fill-current transform rotate-45" />
+                      </div>
+                   </div>
+                 </AdvancedMarker>
+               )}
+               {isOnline && currentRequest && (
+                  <RouteDisplay 
+                      origin={{ lat: 31.500, lng: 34.450 }} 
+                      destination={currentRequest.pharmacyAddress || currentRequest.pharmacyName || 'Pharmacy'}
+                  />
+               )}
+            </Map>
+         </APIProvider>
+      </div>
+
+      {/* Map Toggle FAB */}
+      <div className="absolute top-32 right-6 z-10">
+         <button 
+           onClick={() => setMapType(prev => prev === 'roadmap' ? 'satellite' : 'roadmap')}
+           className="w-10 h-10 bg-white dark:bg-black rounded-full shadow-lg flex items-center justify-center border border-gray-100 dark:border-zinc-800"
+         >
+           <Layers size={20} className="text-gray-700 dark:text-gray-300" />
+         </button>
       </div>
 
       {/* Top HUD */}
@@ -106,15 +203,18 @@ export function DeliveryHome() {
             </div>
             <div>
                <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight">{userData?.name || user?.displayName || t('driver', 'Driver')}</p>
-               <p className="text-[10px] text-gray-500 font-medium"> {formatCurrency(124.50)} {t('today_s_earnings', 'Today\'s earnings')} </p>
+               <p className="text-[10px] text-gray-500 font-medium"> {formatCurrency(todaysEarnings)} {t('today_s_earnings', 'Today\'s earnings')} </p>
             </div>
          </div>
          
-         <div className="flex flex-col gap-2 pointer-events-auto">
-            <button className="w-12 h-12 bg-white dark:bg-black/90 backdrop-blur rounded-2xl shadow-sm flex items-center justify-center text-gray-700 hover:bg-white dark:bg-black transition relative">
-               <Bell size={20} />
-               <span className="w-2.5 h-2.5 bg-red-500 rounded-full absolute top-3 right-3 border-2 border-white"></span>
+         <div className="flex flex-row gap-2 pointer-events-auto">
+            <button 
+               onClick={toggleDarkMode}
+               className="w-12 h-12 bg-white dark:bg-black/90 backdrop-blur rounded-2xl shadow-sm flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-zinc-800 transition relative"
+            >
+               {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
+            <NotificationBell />
          </div>
       </div>
 
@@ -131,7 +231,7 @@ export function DeliveryHome() {
                <h2 className="font-bold text-gray-900 dark:text-white text-xl text-center mb-2"> {t('you_re_offline', 'You\'re Offline')} </h2>
                <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm text-center mb-6"> {t('go_online_to_start_receiving_d', 'Go online to start receiving delivery requests')} </p>
                <button 
-                  onClick={() => setIsOnline(true)}
+                  onClick={() => toggleOnlineStatus(true)}
                   className="w-full bg-indigo-600 border border-indigo-700 shadow-indigo-200 shadow-lg text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 transition flex justify-center items-center gap-2 text-lg uppercase tracking-wide"
                >
                   <Power size={22} className="mr-1" />  {t('go_online', 'Go Online')} </button>
@@ -143,7 +243,7 @@ export function DeliveryHome() {
                <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm mb-6"> {t('waiting_for_the_next_delivery_', 'Waiting for the next delivery request...')} </p>
                
                <button 
-                  onClick={() => setIsOnline(false)}
+                  onClick={() => toggleOnlineStatus(false)}
                   className="w-full bg-gray-100 dark:bg-zinc-900 text-gray-600 font-bold py-4 rounded-2xl hover:bg-gray-200 transition text-sm uppercase tracking-wide"
                >
                    {t('go_offline', 'Go Offline')} </button>
@@ -163,7 +263,7 @@ export function DeliveryHome() {
                      </div>
                      <div className="flex bg-gray-50 dark:bg-black rounded-xl p-2 items-center gap-2">
                         <Clock size={16} className="text-gray-400 dark:text-gray-500" />
-                        <div className="font-bold text-gray-700 text-sm"> {t('12_min', '~ 12 min')} </div>
+                        <div className="font-bold text-gray-700 text-sm"> {t('calculating', 'Calculating...')} </div>
                      </div>
                   </div>
 
@@ -173,14 +273,14 @@ export function DeliveryHome() {
                         <div className="w-5 h-5 bg-indigo-600 rounded-full absolute -left-6 top-0 border-4 border-white flex items-center justify-center shadow-sm">
                            <div className="w-1 h-1 bg-white dark:bg-black rounded-full"></div>
                         </div>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">Pickup (0.5 km away)</p>
-                        <p className="font-bold text-gray-900 dark:text-white mt-0.5">{currentRequest.pharmacyId.slice(0, 16)}  {t('pharmacy', 'Pharmacy')} </p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">Pickup</p>
+                        <p className="font-bold text-gray-900 dark:text-white mt-0.5">{currentRequest.pharmacyName || t('pharmacy', 'Pharmacy')} </p>
                      </div>
                      <div className="relative">
                         <div className="w-5 h-5 bg-green-500 rounded-full absolute -left-6 top-0 border-4 border-white flex items-center justify-center shadow-sm">
                            <div className="w-1 h-1 bg-white dark:bg-black rounded-full"></div>
                         </div>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">Drop-off (3.2 km distance)</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">Drop-off</p>
                         <p className="font-bold text-gray-900 dark:text-white mt-0.5">{currentRequest.deliveryAddress || 'Customer Address'}</p>
                      </div>
                   </div>

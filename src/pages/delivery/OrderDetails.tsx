@@ -5,6 +5,7 @@ import { doc, getDoc, updateDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { useTranslation } from "react-i18next";
+import { formatCurrency } from "../../lib/utils";
 
 export function DeliveryOrderDetails() {
     const { t } = useTranslation();
@@ -64,7 +65,7 @@ export function DeliveryOrderDetails() {
          <div className="bg-white dark:bg-black rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-zinc-800 flex divide-x divide-gray-100 text-center">
             <div className="flex-1 px-2">
                <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1"> {t('earning', 'Earning')} </p>
-               <p className="font-bold text-gray-900 dark:text-white text-lg">$3.00</p>
+               <p className="font-bold text-gray-900 dark:text-white text-lg">{formatCurrency((order.total || 0) * 0.1)}</p>
             </div>
             <div className="flex-1 px-2">
                <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1"> {t('items', 'Items')} </p>
@@ -74,14 +75,6 @@ export function DeliveryOrderDetails() {
                <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1"> {t('time', 'Time')} </p>
                <p className="font-bold text-gray-900 dark:text-white text-lg"> {t('asap', 'ASAP')} </p>
             </div>
-         </div>
-
-         {/* Route Map Preview */}
-         <div className="w-full h-40 bg-indigo-100 rounded-3xl overflow-hidden relative border-4 border-white shadow-sm">
-             <div className="absolute inset-0 bg-[url('https://maps.googleapis.com/maps/api/staticmap?center=Brooklyn+Bridge,New+York,NY&zoom=13&size=600x300&maptype=roadmap&markers=color:blue%7Clabel:S%7C40.702147,-74.015794&markers=color:green%7Clabel:G%7C40.711614,-74.012318&markers=color:red%7Clabel:C%7C40.718217,-73.998284&key=YOUR_API_KEY')] bg-cover opacity-50 sepia-[.3]"></div>
-             
-             <button className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 bg-indigo-600 text-white px-5 py-2.5 rounded-full font-bold shadow-lg flex items-center gap-2 hover:bg-indigo-700 transition">
-                <Navigation size={18} className="fill-current" />  {t('navigate', 'Navigate')} </button>
          </div>
 
          {/* Locations */}
@@ -94,7 +87,7 @@ export function DeliveryOrderDetails() {
                </div>
                <div className="flex-1">
                   <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 font-medium"> {t('pickup_pharmacy', 'Pickup Pharmacy')} </p>
-                  <p className="font-bold text-gray-900 dark:text-white mt-0.5">{order.pharmacyId}</p>
+                  <p className="font-bold text-gray-900 dark:text-white mt-0.5">{order.pharmacyName || t('pharmacy', 'Pharmacy')}</p>
                </div>
             </div>
 
@@ -104,7 +97,7 @@ export function DeliveryOrderDetails() {
                </div>
                <div className="flex-1">
                   <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 font-medium"> {t('drop_off_customer', 'Drop-off Customer')} </p>
-                  <p className="font-bold text-gray-900 dark:text-white mt-0.5">{order.patientId}</p>
+                  <p className="font-bold text-gray-900 dark:text-white mt-0.5">{order.patientName || t('customer', 'Customer')}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">{order.deliveryAddress}</p>
                </div>
             </div>

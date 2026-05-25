@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, CheckCircle, Package, Download, X, AlertTriangle, RefreshCcw, MessageCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { doc, getDoc, updateDoc } from '../../lib/firebase';
+import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { sendEmail } from '../../lib/email';
 import { useAuth } from '../../components/AuthProvider';
@@ -56,6 +56,18 @@ export function PharmacistOrderDetails() {
         updateData.cancellationReason = rejectReason;
       }
       await updateDoc(doc(db, 'orders', order.id), updateData);
+      
+      // Notify the patient
+      await addDoc(collection(db, 'notifications'), {
+        userId: order.patientId,
+        type: 'order_status',
+        title: 'Order Status Updated',
+        message: `Your order status has been updated to: ${newStatus}`,
+        isRead: false,
+        relatedId: order.id,
+        createdAt: serverTimestamp()
+      });
+      
       setOrder({ ...order, status: newStatus, cancellationReason: newStatus === 'rejected' ? rejectReason : order.cancellationReason });
       setIsRejecting(false);
 
@@ -113,25 +125,33 @@ export function PharmacistOrderDetails() {
            <div className="bg-gray-50 dark:bg-zinc-900/70 dark:bg-black/40 rounded-3xl p-5 mb-5 pb-6">
              <h3 className="font-bold text-gray-700 dark:text-gray-200 text-[15px] mb-3">Order Summary</h3>
              <div className="text-[13px] font-medium text-gray-500 dark:text-gray-400 flex flex-wrap gap-x-2 gap-y-1">
-               <span>Driver : <span className="text-gray-700 font-bold dark:text-gray-300">{order.driverName || 'Najem'}</span></span>
-               <span>Customer : <span className="text-gray-700 font-bold dark:text-gray-300">{order.patientName || 'Ahmed'}</span></span>
-               <span>Count : <span className="text-gray-700 font-bold dark:text-gray-300">{order.items?.length || 0} item</span></span>
+               <span>Driver : <span className="text-gray-700 font-bold dark:text-gray-300">{order.driverName || (order.driverId ? 'Assigned' : 'Unassigned')}</span></span>
+               <span>Customer : <span className="text-gray-700 font-bold dark:text-gray-300">{order.patientName || 'Customer'}</span></span>
+               <span>Count : <span className="text-gray-700 font-bold dark:text-gray-300">{order.items?.length || 0} items</span></span>
              </div>
            </div>
 
            {/* Medicines */}
-           <div className="bg-gray-50 dark:bg-zinc-900/70 dark:bg-black/40 rounded-3xl p-5 mb-5 pb-6">
-             <h3 className="font-bold text-gray-700 dark:text-gray-200 text-[15px] mb-4">Medicines</h3>
-             <div className="space-y-4">
-               {(order.items || []).map((item: any, index: number) => (
-                 <div key={index} className="flex justify-between items-center text-[13px] font-medium text-gray-500 dark:text-gray-400 tracking-wide">
-                    <span className="flex-1 truncate max-w-[50%]">• {item.name} {item.dosage || ''}</span>
-                    <span className="text-center font-medium">Item: {item.quantity}</span>
-                    <span className="w-16 text-right font-medium">{formatCurrency(item.price * item.quantity)}</span>
-                 </div>
-               ))}
-               {!(order.items?.length > 0) && <p className="text-[13px] text-gray-500">No items</p>}
-             </div>
+           <div className="space-y-3 mb-5">
+             <h3 className="font-bold text-gray-700 dark:text-gray-200 text-[15px] mb-3 px-1">Medicines</h3>
+             {(order.items || []).map((item: any, index: number) => (
+                <div key={index} className="bg-white dark:bg-black border border-gray-100 dark:border-zinc-800 p-4 rounded-2xl flex justify-between items-center shadow-sm">
+                   <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-indigo-50 dark:bg-zinc-900 rounded-xl flex flex-col items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold shrink-0">
+                         <span className="text-xs opacity-70">x</span>{item.quantity}
+                      </div>
+                      <div>
+                         <p className="font-bold text-gray-900 dark:text-white text-[15px]">{item.name}</p>
+                         {item.dosage && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.dosage}</p>}
+                      </div>
+                   </div>
+                   <div className="text-right">
+                      <p className="font-bold text-gray-900 dark:text-white">{formatCurrency(item.price * item.quantity)}</p>
+                      {item.quantity > 1 && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatCurrency(item.price)} each</p>}
+                   </div>
+                </div>
+             ))}
+             {!(order.items?.length > 0) && <div className="bg-white dark:bg-black p-4 rounded-2xl border border-gray-100 dark:border-zinc-800 text-center text-gray-500 text-sm shadow-sm">No items</div>}
            </div>
 
            {/* Prescription */}
@@ -147,12 +167,19 @@ export function PharmacistOrderDetails() {
            </div>
 
            {/* Note */}
-           <div className="bg-gray-50 dark:bg-zinc-900/70 dark:bg-black/40 rounded-3xl p-5 mb-5">
-             <h3 className="font-bold text-gray-700 dark:text-gray-200 text-[15px] mb-3">Note:</h3>
-             <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 whitespace-pre-line leading-relaxed px-1">
-               {order.notes || "I am allergic to penicillin"}
-             </p>
-           </div>
+           {order.notes && (
+             <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-900/30 rounded-3xl p-5 mb-5">
+               <div className="flex items-start gap-3">
+                  <AlertTriangle size={20} className="text-orange-500 mt-0.5 shrink-0" />
+                  <div>
+                     <h3 className="font-bold text-orange-800 dark:text-orange-300 text-[15px] mb-2">Patient's Note</h3>
+                     <p className="text-[14.5px] font-medium text-orange-700 dark:text-orange-200/80 whitespace-pre-line leading-relaxed">
+                       {order.notes}
+                     </p>
+                  </div>
+               </div>
+             </div>
+           )}
 
            {/* Total */}
            <div className="bg-gray-50 dark:bg-zinc-900/70 dark:bg-black/40 rounded-3xl p-5 mb-2 flex justify-between items-center">

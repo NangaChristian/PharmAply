@@ -1,21 +1,24 @@
 import { useNavigate } from "react-router-dom";
-import { Activity, Search, Filter, MoreHorizontal, CheckCircle, Package, ShieldAlert, AlertTriangle, Bell, Clock, TrendingUp, DollarSign, Pill } from "lucide-react";
+import { Activity, Search, Filter, MoreHorizontal, CheckCircle, Package, ShieldAlert, AlertTriangle, Bell, Clock, TrendingUp, DollarSign, Pill, Moon, Sun } from "lucide-react";
 
 import { useState, useEffect } from "react";
 import { collection, query, where, getDocs, onSnapshot, addDoc, serverTimestamp } from '../../lib/firebase';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { useTheme } from '../../components/ThemeProvider';
+import { useDarkMode } from '../../components/DarkModeProvider';
 import { formatCurrency, parseDate } from '../../lib/utils';
 import dayjs from "dayjs";
 import { ProductCard } from '../../components/ProductCard';
 import { useTranslation } from "react-i18next";
+import { NotificationBell } from "../../components/NotificationBell";
 
 export function PharmacistHome() {
     const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, userData } = useAuth();
   const theme = useTheme();
+  const { isDarkMode, toggleDarkMode } = useDarkMode();
   
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -121,10 +124,15 @@ export function PharmacistHome() {
                </div>
             </div>
             
-            <button className="w-12 h-12 flex items-center justify-center bg-white dark:bg-black/10 hover:bg-white dark:bg-black/20 transition-colors rounded-full text-white backdrop-blur-sm relative">
-               <Bell size={22} />
-               {lowStockProducts.length > 0 && <span className="absolute top-3 right-3.5 w-2.5 h-2.5 bg-red-500 border border-indigo-600 rounded-full"></span>}
-            </button>
+            <div className="flex items-center gap-2">
+               <button 
+                  onClick={toggleDarkMode}
+                  className="w-12 h-12 flex items-center justify-center bg-white dark:bg-black/10 hover:bg-white dark:bg-black/20 transition-colors rounded-full text-white backdrop-blur-sm shadow-sm"
+               >
+                  {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+               </button>
+               <NotificationBell />
+            </div>
          </div>
 
          {/* Search Bar */}

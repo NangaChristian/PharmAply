@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { ArrowLeft, MoreVertical, CheckCircle, AlertCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { doc, getDoc, updateDoc } from '../../lib/firebase';

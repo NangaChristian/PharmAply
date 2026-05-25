@@ -53,13 +53,27 @@ export function PatientPrescriptionUpload() {
           throw storageErr;
         }
 
-        await addDoc(collection(db, 'prescriptions'), {
+        const presDoc = await addDoc(collection(db, 'prescriptions'), {
            patientId: user.uid,
            fileUrl: fileUrl,
            fileName: file.name,
            status: 'pending_review',
            createdAt: serverTimestamp()
         });
+
+        try {
+          await addDoc(collection(db, 'notifications'), {
+            userId: 'ADMIN',
+            type: 'prescription_uploaded',
+            title: 'New Prescription Uploaded',
+            message: `A new prescription is awaiting review.`,
+            isRead: false,
+            relatedId: presDoc.id,
+            createdAt: serverTimestamp()
+          });
+        } catch(e) {
+          console.warn("Could not notify admin", e);
+        }
 
         setStep('success');
       } catch (err: any) {

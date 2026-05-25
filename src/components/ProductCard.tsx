@@ -1,5 +1,5 @@
 import React from "react";
-import { Activity } from "lucide-react";
+import { Activity, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { formatCurrency } from "../lib/utils";
 import { useTranslation } from "react-i18next";
@@ -10,9 +10,11 @@ export interface ProductCardProps {
   basePath?: string; // e.g. "/patient/product" or "/pharmacist/inventory"
   onClick?: (product: any) => void;
   showSaleBadge?: boolean;
+  onHeartClick?: (e: React.MouseEvent, product: any) => void;
+  isWishlisted?: boolean;
 }
 
-export function ProductCard({ product, basePath, onClick, showSaleBadge = false }: ProductCardProps) {
+export function ProductCard({ product, basePath, onClick, showSaleBadge = false, onHeartClick, isWishlisted = false }: ProductCardProps) {
     const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -35,6 +37,14 @@ export function ProductCard({ product, basePath, onClick, showSaleBadge = false 
         {showSaleBadge && (
           <div className="absolute top-2 left-2 bg-emerald-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10">
              {t('25_off', '25% Off')} </div>
+        )}
+        {onHeartClick && (
+          <button 
+            onClick={(e) => onHeartClick(e, product)}
+            className="absolute top-2 right-2 p-1.5 bg-white/80 dark:bg-black/50 backdrop-blur-sm rounded-full text-gray-400 hover:text-red-500 transition-colors z-10 shadow-sm"
+          >
+             <Heart size={16} fill={isWishlisted ? "currentColor" : "none"} className={isWishlisted ? "text-red-500" : ""} />
+          </button>
         )}
         {(product.imageUrl || product.ImageURL || product.image || product.Image) ? (
           <img src={product.imageUrl || product.ImageURL || product.image || product.Image} alt={product.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />

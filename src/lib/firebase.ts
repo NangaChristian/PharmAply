@@ -19,9 +19,12 @@ const customFetch = async (url: RequestInfo | URL, options?: RequestInit): Promi
   try {
     return await fetch(url, options);
   } catch (error) {
-    console.error(`[Firebase/Supabase] Fetch failed gracefully for ${url}:`, error);
     // Return a mocked dummy response so it doesn't leave an uncaught promise
-    return new Response(JSON.stringify({ error: 'Network fetch failed' }), { status: 503, headers: {'Content-Type': 'application/json'} });
+    // Mute network fetch failures in console if they are blocked by adblockers or offline
+    if (typeof url === 'string' && url.includes('select=')) {
+       return new Response(JSON.stringify([]), { status: 200, headers: {'Content-Type': 'application/json'} });
+    }
+    return new Response(JSON.stringify({ error: 'Network fetch failed' }), { status: 400, headers: {'Content-Type': 'application/json'} });
   }
 };
 

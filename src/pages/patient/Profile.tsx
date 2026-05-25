@@ -72,7 +72,13 @@ export function PatientProfile() {
          <div className="bg-white dark:bg-black dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-zinc-800 dark:border-zinc-800 flex gap-4 items-center transition-colors">
              <div className="relative">
                  <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden">
-                    <img src={auth.currentUser?.photoURL || "https://i.pravatar.cc/150?u=a042581f4e29026704d"} alt="Profile" className="w-full h-full object-cover" />
+                    {auth.currentUser?.photoURL ? (
+                       <img src={auth.currentUser.photoURL} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                       <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 dark:bg-zinc-800 text-gray-400">
+                          <User size={32} />
+                       </div>
+                    )}
                  </div>
                  <button 
                    onClick={() => fileInputRef.current?.click()}

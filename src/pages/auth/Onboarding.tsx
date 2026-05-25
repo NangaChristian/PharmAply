@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from '../../lib/firebase';
 import { auth, googleProvider, db, handleFirestoreError, OperationType } from '../../lib/firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from '../../lib/firebase';
+import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc } from '../../lib/firebase';
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../components/AuthProvider";
 import toast from 'react-hot-toast';
@@ -189,6 +189,21 @@ export function Onboarding() {
           subject: "Welcome to Pharmap!",
           html: `<h1>Welcome ${name || 'User'} to Pharmap!</h1><p>We are glad to have you on board. Explore pharmacies around you and order medications with ease.</p>`
         });
+        
+        // Create in-app Welcome notification
+        try {
+          // Import conditionally or require collection, addDoc
+          await addDoc(collection(db, 'notifications'), {
+             userId: result.user.uid,
+             type: 'welcome',
+             title: 'Welcome to Pharmap!',
+             message: 'We are glad to have you on board. Start exploring!',
+             isRead: false,
+             createdAt: serverTimestamp()
+          });
+        } catch(e) {
+          console.warn("Could not send welcome notification", e);
+        }
         
         toast.success("Successfully signed up!");
       } else {

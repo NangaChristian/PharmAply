@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Edit2, Store, Clock, MapPin, LogOut, Globe, Camera, Loader2, Phone, Image as ImageIcon, Crosshair, Check } from "lucide-react";
+import { Edit2, Store, Clock, MapPin, LogOut, Globe, Camera, Loader2, Phone, Image as ImageIcon, Crosshair, Check, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, updateDoc } from '../../lib/firebase';
 import { db, auth, storage, handleFirestoreError, OperationType } from '../../lib/firebase';
@@ -170,7 +170,13 @@ export function PharmacistProfile() {
          <div className="bg-white dark:bg-black rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-zinc-800 flex gap-4 items-center">
              <div className="relative">
                  <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden">
-                    <img src={auth.currentUser?.photoURL || "https://i.pravatar.cc/150?u=a042581f4e29026704d"} alt="Profile" className="w-full h-full object-cover" />
+                    {auth.currentUser?.photoURL ? (
+                       <img src={auth.currentUser.photoURL} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                       <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 dark:bg-zinc-800 text-gray-400">
+                          <User size={32} />
+                       </div>
+                    )}
                  </div>
                  <button 
                    onClick={() => profileInputRef.current?.click()}

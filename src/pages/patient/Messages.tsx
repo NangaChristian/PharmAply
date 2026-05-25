@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, Send } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp } from '../../lib/firebase';
+import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, getDoc, doc } from '../../lib/firebase';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { useTranslation } from "react-i18next";
@@ -9,19 +9,34 @@ import { parseDate } from "../../lib/utils";
 
 export function Messages() {
   const navigate = useNavigate();
-  const { id } = useParams(); // assuming this is orderId for chat
+  const { id } = useParams(); // can be orderId or prescriptionId
   const { user, role } = useAuth();
   const { t } = useTranslation();
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [tableError, setTableError] = useState(false);
+  const [contextItem, setContextItem] = useState<any>(null);
+
+  useEffect(() => {
+     if (!id) return;
+     // Try to fetch order first
+     getDoc(doc(db, 'orders', id)).then(snap => {
+         if (snap.exists()) setContextItem({ type: 'Order', ...snap.data() });
+         else {
+             getDoc(doc(db, 'prescriptions', id)).then(pSnap => {
+                 if (pSnap.exists()) setContextItem({ type: 'Prescription', ...pSnap.data() });
+             });
+         }
+     });
+  }, [id]);
 
   useEffect(() => {
     if (!user || !id) return;
     
-    const q = query(
-        collection(db, 'messages'),
-        where('orderId', '==', id)
+    // We fetch messages where relatedId (which we map from old orderId) matches
+    let q = query(
+        collection(db, 'chat_messages'),
+        where('relatedId', '==', id)
     );
 
     const unsub = onSnapshot(q, (snapshot: any) => {
@@ -37,7 +52,7 @@ export function Messages() {
     }, (error: any) => {
         console.error("Messages sync error: ", error);
         setTableError(true); // Fallback on ANY error (RLS, missing table, etc)
-        const localMsgs = localStorage.getItem(`local_messages_${id}`);
+        const localMsgs = localStorage.getItem(`local_chat_messages_${id}`);
         if (localMsgs) {
             setMessages(JSON.parse(localMsgs));
         }
@@ -46,21 +61,32 @@ export function Messages() {
     return () => unsub();
   }, [user, id]);
 
+  const getReceiverId = () => {
+      if (!contextItem) return 'unknown';
+      if (role === 'patient') {
+          // just send to pharmacy since patient only chats with pharmacy or driver. We'll default to pharmacyId
+          return contextItem.pharmacyId || contextItem.driverId || 'unknown';
+      }
+      return contextItem.patientId || 'unknown';
+  };
+
   const handleSend = async () => {
     if (!input.trim() || !user || !id) return;
     
     const msgText = input;
     setInput("");
+    const receiverId = getReceiverId();
 
     try {
         if (tableError) {
              throw new Error("Table error fallback active");
         }
 
-        await addDoc(collection(db, 'messages'), {
-            orderId: id,
+        await addDoc(collection(db, 'chat_messages'), {
+            relatedId: id,
             patientId: role === 'patient' ? user.uid : '',
             senderId: user.uid,
+            receiverId,
             senderType: role || 'unknown',
             text: msgText,
             createdAt: serverTimestamp()
@@ -70,16 +96,17 @@ export function Messages() {
         setTableError(true);
         const newLocalMsg = {
              id: Math.random().toString(36).substring(7),
-             orderId: id,
+             relatedId: id,
              patientId: role === 'patient' ? user.uid : 'client-id',
              senderId: user.uid,
+             receiverId,
              senderType: role || 'unknown',
              text: msgText,
              createdAt: new Date().toISOString()
         };
         const updatedMsgs = [...messages, newLocalMsg];
         setMessages(updatedMsgs);
-        localStorage.setItem(`local_messages_${id}`, JSON.stringify(updatedMsgs));
+        localStorage.setItem(`local_chat_messages_${id}`, JSON.stringify(updatedMsgs));
     }
   };
 
@@ -91,10 +118,17 @@ export function Messages() {
                <ArrowLeft size={20} className="text-gray-900 dark:text-white" />
             </button>
             <div>
-               <h1 className="font-bold text-gray-900 dark:text-white text-sm">
+                <h1 className="font-bold text-gray-900 dark:text-white text-sm">
                   {role === 'pharmacist' || role === 'delivery' ? t('contact_patient', 'Contact Patient') : t('contact_driver', 'Contact Driver')}
                </h1>
-               <p className="text-xs text-green-500 font-medium tracking-wide">{t('online', 'Online')}</p>
+               <div className="flex items-center gap-2">
+                 <p className="text-xs text-green-500 font-medium tracking-wide">{t('online', 'Online')}</p>
+                 {contextItem && (
+                   <span className="text-[10px] bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full">
+                     {contextItem.type} #{id?.substring(0, 6).toUpperCase()}
+                   </span>
+                 )}
+               </div>
             </div>
          </div>
       </div>
@@ -102,16 +136,17 @@ export function Messages() {
       <div className="flex-1 overflow-y-auto p-6 space-y-4 pb-24">
          {tableError && (
               <div className="bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 text-yellow-800 dark:text-yellow-400 p-4 rounded-xl text-sm mb-4">
-                 <strong>Database Setup Required:</strong> The <code>messages</code> table is missing in Supabase. You are currently using <strong>local offline storage</strong> for this chat.
+                 <strong>Database Setup Required:</strong> The <code>chat_messages</code> table is missing in Supabase. You are currently using <strong>local offline storage</strong> for this chat.
                  <br className="mb-2"/>
                  To enable cloud sync, execute the following SQL in your Supabase SQL Editor:
                  <pre className="mt-2 p-3 bg-yellow-100 dark:bg-yellow-500/20 rounded font-mono text-[11px] overflow-x-auto text-yellow-900 dark:text-yellow-200">
-{`CREATE TABLE public.messages (
+{`CREATE TABLE public.chat_messages (
   id TEXT PRIMARY KEY,
   patientId TEXT NOT NULL,
   senderId TEXT NOT NULL,
+  receiverId TEXT,
   senderType TEXT NOT NULL,
-  orderId TEXT NOT NULL,
+  relatedId TEXT NOT NULL,
   text TEXT NOT NULL,
   createdAt TIMESTAMPTZ DEFAULT now()
 );`}

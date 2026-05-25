@@ -8,9 +8,69 @@ import { useAuth } from '../../components/AuthProvider';
 import { useTheme } from '../../components/ThemeProvider';
 import { useTranslation } from "react-i18next";
 import { useNotifications } from "../../hooks/useNotifications";
+import { NotificationBell } from "../../components/NotificationBell";
 import { PharmacyCard } from "../../components/PharmacyCard";
 import { ProductCard } from "../../components/ProductCard";
 import { getCategoryIcon } from "../../lib/icons";
+import { APIProvider, Map, AdvancedMarker, Pin, useMap } from '@vis.gl/react-google-maps';
+import { MarkerClusterer } from '@googlemaps/markerclusterer';
+
+const API_KEY =
+  process.env.GOOGLE_MAPS_PLATFORM_KEY ||
+  (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
+  (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
+  '';
+
+const PharmacyMarkers = React.memo(({ pharmacies }: { pharmacies: any[] }) => {
+  const map = useMap();
+  const [markers, setMarkers] = useState<{[key: string]: google.maps.marker.AdvancedMarkerElement}>({});
+  const clusterer = React.useRef<MarkerClusterer | null>(null);
+
+  useEffect(() => {
+    if (!map) return;
+    if (!clusterer.current) {
+      clusterer.current = new MarkerClusterer({ map });
+    }
+  }, [map]);
+
+  useEffect(() => {
+    clusterer.current?.clearMarkers();
+    clusterer.current?.addMarkers(Object.values(markers));
+  }, [markers]);
+
+  const setMarkerRef = (marker: google.maps.marker.AdvancedMarkerElement | null, key: string) => {
+    if (marker && markers[key]) return;
+    if (!marker && !markers[key]) return;
+
+    setMarkers(prev => {
+      if (marker) {
+        return { ...prev, [key]: marker };
+      } else {
+        const newMarkers = { ...prev };
+        delete newMarkers[key];
+        return newMarkers;
+      }
+    });
+  };
+
+  return (
+    <>
+      {pharmacies.map((pharmacy, i) => {
+         const lat = pharmacy.lat || pharmacy.latitude || (48.8566 + (i * 0.01));
+         const lng = pharmacy.lng || pharmacy.longitude || (2.3522 + (i * 0.02));
+         return (
+           <AdvancedMarker 
+             key={pharmacy.id} 
+             position={{ lat, lng }} 
+             ref={m => setMarkerRef(m, pharmacy.id)}
+           >
+             <Pin background={"#4f46e5"} glyphColor={"#fff"} borderColor={"#fff"} />
+           </AdvancedMarker>
+         );
+      })}
+    </>
+  );
+});
 
 export function PatientHome() {
   const navigate = useNavigate();
@@ -22,13 +82,15 @@ export function PatientHome() {
   const [pharmacies, setPharmacies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   
   const { unreadCount } = useNotifications();
 
-  const suggestions = [
-    { type: 'category', text: 'Pain Relief' },
+  const autocompleteSuggestions = search ? [
+    ...categories.map(c => ({ type: 'category', text: c.name })),
     ...pharmacies.map(p => ({ type: 'pharmacy', text: p.name })),
-  ].filter(s => s.text.toLowerCase().includes(search.toLowerCase()));
+    ...products.map(p => ({ type: 'product', text: p.name }))
+  ].filter(s => (s.text?.toLowerCase() || '').includes(search.toLowerCase())).slice(0, 10) : [];
 
     const handleSearchClick = (item: any) => {
       navigate(`/patient/search?q=${encodeURIComponent(item.text)}`);
@@ -39,7 +101,6 @@ export function PatientHome() {
         navigate(`/patient/search?q=${encodeURIComponent(search)}`);
       }
     };
-    const [categories, setCategories] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchPharmacies = async () => {
@@ -102,14 +163,7 @@ export function PatientHome() {
               </div>
             </div>
           </div>
-          <button onClick={() => navigate('/patient/notifications')} className="relative w-10 h-10 flex items-center justify-center bg-gray-50 dark:bg-black rounded-full cursor-pointer hover:bg-gray-100 dark:bg-zinc-900 transition">
-            <Bell size={20} className="text-gray-600" />
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 flex items-center justify-center min-w-4 min-h-4 px-1 bg-red-500 rounded-full text-[10px] font-bold text-white border border-white">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </button>
+          <NotificationBell />
         </div>
 
         {/* Search Bar with Autosuggest */}
@@ -128,8 +182,8 @@ export function PatientHome() {
           
           {showSuggestions && search && (
              <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-black rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-zinc-800 z-50">
-                {suggestions.length > 0 ? (
-                   suggestions.map((s, i) => (
+                {autocompleteSuggestions.length > 0 ? (
+                   autocompleteSuggestions.map((s, i) => (
                       <div key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:bg-black cursor-pointer border-b border-gray-50 last:border-0" onClick={() => handleSearchClick(s)}>
                          <div className="text-gray-400 dark:text-gray-500">
                             {s.type === 'product' && <Pill size={16} />}
@@ -195,6 +249,27 @@ export function PatientHome() {
                   </div>
                </div>
             </div>
+          </div>
+        </div>
+
+        {/* Nearby Pharmacies Map View */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-gray-900 dark:text-white text-[19px] tracking-tight">{t('pharmacies_map', 'Pharmacies Map')}</h3>
+          </div>
+          <div className="w-full h-64 bg-slate-100 dark:bg-zinc-900 rounded-[1.75rem] overflow-hidden relative border border-gray-100 dark:border-zinc-800 shadow-sm">
+             <APIProvider apiKey={API_KEY} version="weekly">
+                 <Map
+                   defaultCenter={{ lat: 48.8566, lng: 2.3522 }}
+                   defaultZoom={11}
+                   mapId="DEMO_MAP_ID"
+                   disableDefaultUI={true}
+                   internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
+                   style={{ width: '100%', height: '100%' }}
+                 >
+                   <PharmacyMarkers pharmacies={pharmacies} />
+                 </Map>
+             </APIProvider>
           </div>
         </div>
 

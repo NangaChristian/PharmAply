@@ -21,7 +21,7 @@ export function PatientCheckout() {
   const [uploading, setUploading] = useState(false);
   const [prescriptionUrl, setPrescriptionUrl] = useState<string | null>(null);
   const [prescriptionName, setPrescriptionName] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("Fapshi");
   const [showPaymentSelector, setShowPaymentSelector] = useState(false);
   const [processing, setProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -140,6 +140,17 @@ export function PatientCheckout() {
       
       const docRef = await addDoc(collection(db, 'orders'), orderData);
       
+      // Emit notification to Pharmacy
+      await addDoc(collection(db, 'notifications'), {
+        userId: orderData.pharmacyId || 'UNKNOWN',
+        type: 'new_order',
+        title: 'New Order Received',
+        message: `You have received a new order for ${formatCurrency(orderData.total)}`,
+        isRead: false,
+        relatedId: docRef.id,
+        createdAt: serverTimestamp()
+      });
+      
       if (isCartCheckout) clearCart();
       
       navigate(`/patient/tracking/${docRef.id}`);
@@ -165,11 +176,11 @@ export function PatientCheckout() {
   return (
     <div className="flex-1 bg-gray-50 dark:bg-black flex flex-col h-full overflow-hidden relative">
       <div className="px-6 pt-12 pb-4 flex items-center justify-between bg-white dark:bg-zinc-900 border-b border-gray-100 dark:border-zinc-800 shadow-sm z-10 w-full fixed top-0">
-         <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center bg-gray-50 dark:bg-black rounded-full">
+         <button onClick={() => navigate(-1)} className="w-12 h-12 flex items-center justify-center bg-gray-50 dark:bg-black rounded-full touch-manipulation">
             <ArrowLeft size={20} className="text-gray-900 dark:text-white" />
          </button>
          <h1 className="font-bold text-gray-900 dark:text-white text-sm">{t('checkout', 'Checkout')}</h1>
-         <div className="w-10"></div>
+         <div className="w-12"></div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6 pt-28">
@@ -303,15 +314,12 @@ export function PatientCheckout() {
                <ChevronRight size={20} className={`text-gray-400 dark:text-gray-500 transition transform ${showPaymentSelector ? 'rotate-90' : ''}`} />
             </div>
             
-            {showPaymentSelector && (
+             {showPaymentSelector && (
               <div className="mt-3 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-2xl p-2 space-y-1 shadow-sm">
                  {[
-                   { id: "MTN Mobile Money", name: t('mtn_mobile_money', 'MTN Mobile Money'), color: "yellow", icon: "MTN" },
-                   { id: "Orange Money", name: t('orange_money', 'Orange Money'), color: "orange", icon: "OM" },
-                   { id: "Cash on Delivery", name: t('cash_on_delivery', 'Cash on Delivery'), color: "green", icon: <FileText size={16}/> },
-                   { id: "Credit Card", name: t('credit_card', 'Credit Card'), color: "blue", icon: <CreditCard size={16}/> },
+                   { id: "Fapshi", name: t('fapshi_payment', 'Fapshi (Mobile Money & Card)'), color: "blue", icon: <CreditCard size={16}/> }
                  ].map(method => (
-                    <button key={method.id} onClick={() => { setPaymentMethod(method.id); setShowPaymentSelector(false); }} className={`w-full flex items-center justify-between p-3 rounded-xl border-2 transition ${paymentMethod === method.id ? `border-${method.color}-400 bg-${method.color}-50/30 dark:bg-${method.color}-900/10` : 'border-transparent hover:bg-gray-50 dark:hover:bg-black'}`}>
+                    <button key={method.id} onClick={() => { setPaymentMethod(method.id); setShowPaymentSelector(false); }} className={`w-full flex items-center justify-between p-4 min-h-[56px] rounded-xl border-2 transition touch-manipulation ${paymentMethod === method.id ? `border-${method.color}-400 bg-${method.color}-50/30 dark:bg-${method.color}-900/10` : 'border-transparent hover:bg-gray-50 dark:hover:bg-black'}`}>
                        <div className="flex items-center gap-3">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${typeof method.icon === 'string' ? `bg-${method.color}-400 text-white` : `bg-${method.color}-100 dark:bg-${method.color}-900/30 text-${method.color}-600 dark:text-${method.color}-400`}`}>
                             {method.icon}
@@ -351,7 +359,7 @@ export function PatientCheckout() {
       <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 p-4 px-6 pb-8 z-20">
          <button 
            disabled={(requiresPrescription && !prescriptionUrl) || processing}
-           className="w-full bg-[#16307b] hover:bg-[#122864] disabled:bg-gray-300 dark:disabled:bg-zinc-800 text-white rounded-[1.2rem] font-bold py-4 shadow-sm transition disabled:opacity-50"
+           className="w-full bg-[#16307b] hover:bg-[#122864] disabled:bg-gray-300 dark:disabled:bg-zinc-800 text-white rounded-[1.2rem] font-bold py-4 min-h-[56px] shadow-sm transition disabled:opacity-50 touch-manipulation"
            onClick={handleConfirmOrder}
          >
             {processing ? t('processing', 'Processing...') : (requiresPrescription && !prescriptionUrl ? t('upload_rx_to_continue', 'Upload Prescription to Continue') : t('confirm_pay', 'Confirm & Pay'))}

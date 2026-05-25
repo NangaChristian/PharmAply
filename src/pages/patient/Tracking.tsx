@@ -1,71 +1,105 @@
-import { ArrowLeft, CheckCircle, Package, Truck, Home, Phone, Star } from "lucide-react";
+import { ArrowLeft, CheckCircle, Package, Truck, Home, Phone, Star, User } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import { useState, useEffect } from 'react';
 import { useTranslation } from "react-i18next";
+import { doc, onSnapshot, db } from '../../lib/firebase';
+import { parseDate } from '../../lib/utils';
 
-const truckIcon = new L.DivIcon({
-  html: `<div style="background-color: #4f46e5; color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 4px solid white; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-left: -5px; margin-top: -5px;">
-     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17h4V5H2v12h3M20 17h2v-9l-3-3h-4v12h3M7 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM17 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg>
-  </div>`,
-  className: 'custom-leaflet-icon',
-  iconSize: [36, 36],
-  iconAnchor: [18, 18],
-});
-
-const homeIcon = new L.DivIcon({
-  html: `<div style="background-color: #f97316; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
-     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-  </div>`,
-  className: 'custom-leaflet-icon',
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-});
+const API_KEY =
+  process.env.GOOGLE_MAPS_PLATFORM_KEY ||
+  (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
+  (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
+  '';
 
 export function PatientTracking() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { t } = useTranslation();
   
+  const [order, setOrder] = useState<any>(null);
+  const [driver, setDriver] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [truckPos, setTruckPos] = useState<[number, number]>([31.500, 34.450]);
-  const destPos: [number, number] = [31.505, 34.465];
   const [eta, setEta] = useState(15);
 
+  const destPos: [number, number] = order?.deliveryLocation 
+    ? [order.deliveryLocation.lat, order.deliveryLocation.lng]
+    : [31.505, 34.465];
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTruckPos((prev) => {
-        const dLat = destPos[0] - prev[0];
-        const dLng = destPos[1] - prev[1];
-        
-        // Stop moving if close enough
-        if (Math.abs(dLat) < 0.0001 && Math.abs(dLng) < 0.0001) {
-            clearInterval(interval);
-            setEta(0);
-            return destPos;
-        }
+    if (!id) return;
+    
+    // Listen to order updates
+    const unsubscribe = onSnapshot(doc(db, 'orders', id), (snapshot) => {
+       if (snapshot.exists()) {
+          const data = snapshot.data();
+          setOrder(data);
+          if (data.driverLocation) {
+             setTruckPos([data.driverLocation.lat, data.driverLocation.lng]);
+          }
+       }
+       setLoading(false);
+    });
+    return () => unsubscribe();
+  }, [id]);
 
-        const distance = Math.sqrt(dLat * dLat + dLng * dLng);
-        // Estimate time: distance * factor
-        const estimatedTime = Math.max(1, Math.round(distance * 500));
-        setEta(estimatedTime);
+  useEffect(() => {
+    if (!order?.driverId) return;
+    const unsub = onSnapshot(doc(db, 'drivers', order.driverId), (docObj) => {
+       if (docObj.exists()) {
+          setDriver({ id: docObj.id, ...docObj.data() });
+       }
+    });
+    return () => unsub();
+  }, [order?.driverId]);
 
-        return [
-          prev[0] + dLat * 0.1,
-          prev[1] + dLng * 0.1
-        ];
-      });
-    }, 2000);
+  useEffect(() => {
+    if (order?.driverLocation) {
+       const R = 6371; // Radius of the earth in km
+       const dLat = (destPos[0] - order.driverLocation.lat) * Math.PI / 180;
+       const dLng = (destPos[1] - order.driverLocation.lng) * Math.PI / 180;
+       const a = 
+          Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(order.driverLocation.lat * Math.PI / 180) * Math.cos(destPos[0] * Math.PI / 180) * 
+          Math.sin(dLng/2) * Math.sin(dLng/2); 
+       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+       const distance = R * c; // Distance in km
 
-    return () => clearInterval(interval);
-  }, []);
+       // Assume average speed 40 km/h -> distance / 40 hours -> distance / 40 * 60 minutes
+       let estimatedTime = Math.round((distance / 40) * 60);
+       if(estimatedTime < 1) estimatedTime = 1;
+       
+       if (distance < 0.05 || order.status === 'delivered') { // within 50m
+          setEta(0);
+       } else {
+          setEta(estimatedTime);
+       }
+    }
+  }, [truckPos, order?.status, destPos[0], destPos[1]]);
+
+  const getTimelineDate = (type: string) => {
+    if (!order) return "";
+    
+    const extractDate = (dateField: any) => {
+      const parsed = parseDate(dateField);
+      if (!parsed) return "";
+      return parsed.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    };
+
+    if (type === 'placed') return extractDate(order.createdAt) || t('today', "Today");
+    if (type === 'preparing') return extractDate(order.preparedAt || order.acceptedAt) || (['preparing', 'driver_assigned', 'out_for_delivery', 'delivered'].includes(order.status) ? "Processing..." : "");
+    if (type === 'out') return extractDate(order.dispatchedAt || order.outForDeliveryAt) || (['driver_assigned', 'out_for_delivery', 'delivered'].includes(order.status) ? "Dispatched" : "");
+    if (type === 'delivered') return extractDate(order.deliveredAt) || (order.status === 'delivered' ? "Delivered" : t('pending', "Pending"));
+
+    return "";
+  };
 
   const statuses = [
-    { label: t('order_placed', "Order Placed"), date: t('today', "Today") + " 10:42 AM", completed: true, icon: CheckCircle },
-    { label: t('pharmacy_preparing', "Pharmacy Preparing"), date: t('today', "Today") + " 10:45 AM", completed: true, icon: Package },
-    { label: t('on_the_way', "On the way"), date: t('estimated', "Estimated") + " 11:20 AM", completed: false, icon: Truck, active: true },
-    { label: t('delivered_status', "Delivered"), date: t('pending', "Pending"), completed: false, icon: Home },
+    { label: t('order_placed', "Order Placed"), date: getTimelineDate('placed'), completed: true, icon: CheckCircle },
+    { label: t('pharmacy_preparing', "Pharmacy Preparing"), date: getTimelineDate('preparing'), completed: ['preparing', 'driver_assigned', 'out_for_delivery', 'delivered'].includes(order?.status), active: order?.status === 'pending', icon: Package },
+    { label: t('on_the_way', "On the way"), date: eta > 0 ? t('estimated', "Estimated") + ` ${eta} ${t('mins', 'mins')}` : getTimelineDate('out'), completed: order?.status === 'delivered', active: ['driver_assigned', 'out_for_delivery'].includes(order?.status), icon: Truck },
+    { label: t('delivered_status', "Delivered"), date: order?.status === 'delivered' ? getTimelineDate('delivered') : t('pending', "Pending"), completed: order?.status === 'delivered', icon: Home },
   ];
 
   return (
@@ -81,17 +115,25 @@ export function PatientTracking() {
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
          {/* Live Map Tracking */}
          <div className="w-full h-64 bg-indigo-100 rounded-3xl overflow-hidden relative border-4 border-white shadow-sm z-0">
-            <MapContainer center={[31.51, 34.46]} zoom={14} scrollWheelZoom={false} zoomControl={false} className="w-full h-full z-0 p-0 m-0">
-                <TileLayer
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                />
-                
-                <Marker position={truckPos} icon={truckIcon}>
-                </Marker>
-                
-                <Marker position={destPos} icon={homeIcon}>
-                </Marker>
-            </MapContainer>
+             <APIProvider apiKey={API_KEY} version="weekly">
+                 <Map
+                   defaultCenter={{ lat: truckPos[0], lng: truckPos[1] }}
+                   center={{ lat: truckPos[0], lng: truckPos[1] }}
+                   defaultZoom={14}
+                   mapId="DEMO_MAP_ID"
+                   disableDefaultUI={true}
+                   internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
+                   style={{ width: '100%', height: '100%' }}
+                 >
+                   <AdvancedMarker position={{ lat: truckPos[0], lng: truckPos[1] }}>
+                     <Pin background="#4f46e5" glyphColor="#fff" borderColor="#fff" />
+                   </AdvancedMarker>
+
+                   <AdvancedMarker position={{ lat: destPos[0], lng: destPos[1] }}>
+                     <Pin background="#f97316" glyphColor="#fff" borderColor="#fff" />
+                   </AdvancedMarker>
+                 </Map>
+             </APIProvider>
             
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-48 bg-white dark:bg-black/95 backdrop-blur-md p-3 rounded-2xl shadow-lg flex items-center gap-3">
                <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600">
@@ -105,29 +147,49 @@ export function PatientTracking() {
          </div>
 
          {/* Driver Info */}
-         <div className="bg-white dark:bg-black p-4 rounded-2xl border border-gray-100 dark:border-zinc-800 flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-3">
-               <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden">
-                   <img src="https://i.pravatar.cc/150?u=b042581f4e29026704z" alt="Driver" className="w-full h-full object-cover" />
-               </div>
-               <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-bold text-gray-900 dark:text-white text-sm"> {t('ahmed_hassan', 'Ahmed Hassan')} </p>
-                    <span className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-green-200">
-                      <CheckCircle size={10} />  {t('verified', 'Verified')} </span>
+         {order && order.driverId ? (
+            <div className="bg-white dark:bg-black p-4 rounded-2xl border border-gray-100 dark:border-zinc-800 flex items-center justify-between shadow-sm">
+               <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden flex items-center justify-center">
+                      {driver?.photoUrl ? (
+                         <img src={driver.photoUrl} alt="Driver" className="w-full h-full object-cover" />
+                      ) : (
+                         <User size={24} className="text-gray-400" />
+                      )}
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">{t('delivery_driver', 'Delivery Driver')}  {t('bull_4_9', '&bull; 4.9')} <Star size={10} className="inline fill-yellow-400 text-yellow-400" /></p>
+                  <div>
+                     <div className="flex items-center gap-2">
+                       <p className="font-bold text-gray-900 dark:text-white text-sm"> {driver?.name || t('ahmed_hassan', 'Driver')} </p>
+                       <span className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-green-200">
+                         <CheckCircle size={10} />  {t('verified', 'Verified')} </span>
+                     </div>
+                     <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                        {driver?.vehicleDetails?.model || driver?.vehicleDetails?.plate || driver?.vehicleDetails?.type || t('delivery_driver', 'Delivery Driver')}  {t('bull_4_9', '&bull;')} {driver?.rating !== undefined ? driver.rating : 'New'} <Star size={10} className="inline fill-yellow-400 text-yellow-400" />
+                     </p>
+                  </div>
+               </div>
+               <div className="flex gap-2">
+                  <button className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center" onClick={() => navigate(`/patient/messages/${order.id}`)}>
+                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                  </button>
+                  {driver && (driver.phone || driver.phoneNumber) && (
+                     <button className="w-10 h-10 bg-green-50 text-green-600 rounded-full flex items-center justify-center" onClick={() => window.location.href = `tel:${driver.phone || driver.phoneNumber}`}>
+                        <Phone size={18} />
+                     </button>
+                  )}
                </div>
             </div>
-            <div className="flex gap-2">
-               <button className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center" onClick={() => navigate('/patient/messages/123')}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-               </button>
-               <button className="w-10 h-10 bg-green-50 text-green-600 rounded-full flex items-center justify-center">
-                  <Phone size={18} />
-               </button>
+         ) : (
+            <div className="bg-white dark:bg-black p-4 rounded-2xl border border-gray-100 dark:border-zinc-800 flex items-center shadow-sm">
+               <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gray-100 animate-pulse rounded-full overflow-hidden"></div>
+                  <div>
+                     <p className="font-bold text-gray-900 dark:text-white text-sm"> {t('waiting_for_driver', 'Waiting for a driver...')} </p>
+                     <p className="text-xs text-gray-400">Order is being processed</p>
+                  </div>
+               </div>
             </div>
-         </div>
+         )}
 
          {/* Timeline */}
          <div className="bg-white dark:bg-black p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm">
@@ -155,6 +217,46 @@ export function PatientTracking() {
                })}
             </div>
          </div>
+
+         {/* Order Details */}
+         {order && order.items && order.items.length > 0 && (
+           <div className="bg-white dark:bg-black p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm">
+              <h3 className="font-bold text-gray-900 dark:text-white mb-4">{t('order_details', 'Order Details')}</h3>
+              <div className="space-y-3 mb-4">
+                 {order.items.map((item: any, index: number) => (
+                    <div key={index} className="flex justify-between items-center text-sm">
+                       <span className="text-gray-700 dark:text-gray-300 font-medium">
+                          {item.quantity}x {item.name || item.productId}
+                       </span>
+                       <span className="font-bold text-gray-900 dark:text-white">
+                          ${(item.price * item.quantity).toFixed(2)}
+                       </span>
+                    </div>
+                 ))}
+                 
+                 {/* Substitute Items (if any) */}
+                 {order.substituteItems && order.substituteItems.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-100 dark:border-zinc-800">
+                       <h4 className="text-xs font-bold text-indigo-600 mb-2">{t('substitutes', 'Substitutes')}</h4>
+                       {order.substituteItems.map((item: any, index: number) => (
+                          <div key={`sub-${index}`} className="flex justify-between items-center text-sm">
+                             <span className="text-indigo-700 dark:text-indigo-400 font-medium">
+                                {item.quantity}x {item.name}
+                             </span>
+                             <span className="font-bold text-indigo-900 dark:text-indigo-300">
+                                ${(item.price * item.quantity).toFixed(2)}
+                             </span>
+                          </div>
+                       ))}
+                    </div>
+                 )}
+              </div>
+              <div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-zinc-800">
+                 <span className="font-bold text-gray-500 dark:text-gray-400">{t('total', 'Total')}</span>
+                 <span className="font-black text-gray-900 dark:text-white text-lg">${Number(order.total || 0).toFixed(2)}</span>
+              </div>
+           </div>
+         )}
          <div className="h-8"></div>
       </div>
     </div>

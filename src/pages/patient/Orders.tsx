@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Activity, Clock, FileText, Search, AlertTriangle, Check, X } from "lucide-react";
 import { collection, query, where, onSnapshot, orderBy, updateDoc, doc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
@@ -7,6 +8,7 @@ import { formatCurrency, parseDate } from '../../lib/utils';
 import { useTranslation } from "react-i18next";
 
 export function PatientOrders() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useTranslation();
   const [orders, setOrders] = useState<any[]>([]);
@@ -84,7 +86,7 @@ export function PatientOrders() {
              <div className="space-y-4">
                 <h3 className="font-bold text-gray-900 dark:text-white text-sm">{t('active_orders', 'Active Orders')}</h3>
                 {activeOrders.map(order => (
-                   <div key={order.id} className={`bg-white dark:bg-black p-4 rounded-2xl border shadow-sm ${order.status === 'substitution_proposed' ? 'border-indigo-200 shadow-indigo-100/50' : 'border-orange-200 shadow-orange-100/50'}`}>
+                   <div key={order.id} onClick={() => navigate(`/patient/tracking/${order.id}`)} className={`bg-white dark:bg-black p-4 rounded-2xl border shadow-sm cursor-pointer hover:border-indigo-300 transition ${order.status === 'substitution_proposed' ? 'border-indigo-200 shadow-indigo-100/50' : 'border-orange-200 shadow-orange-100/50'}`}>
                       <div className="flex justify-between items-start mb-3 border-b border-gray-50 pb-3">
                          <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${order.status === 'substitution_proposed' ? 'bg-indigo-50 text-indigo-500' : 'bg-orange-50 text-orange-500'}`}>
@@ -104,10 +106,10 @@ export function PatientOrders() {
                               {t('substitution_proposal_desc', 'The pharmacist proposed an equivalent substitute. please approve to proceed.')}
                             </p>
                             <div className="flex gap-2">
-                               <button onClick={() => {}} className="flex-1 py-1.5 bg-white dark:bg-black border border-red-100 text-red-600 text-xs font-bold rounded-lg flex items-center justify-center gap-1">
+                               <button onClick={(e) => { e.stopPropagation(); }} className="flex-1 py-1.5 bg-white dark:bg-black border border-red-100 text-red-600 text-xs font-bold rounded-lg flex items-center justify-center gap-1">
                                   <X size={12} /> {t('reject', 'Reject')}
                                </button>
-                               <button onClick={() => handleApproveSubstitute(order.id)} className="flex-1 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1">
+                               <button onClick={(e) => { e.stopPropagation(); handleApproveSubstitute(order.id); }} className="flex-1 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1">
                                   <Check size={12} /> {t('approve', 'Approve')}
                                </button>
                             </div>
@@ -119,13 +121,13 @@ export function PatientOrders() {
                          <span>{formatCurrency(order.total)}</span>
                       </div>
                       
-                      {order.status === 'pending' && cancellingOrder !== order.id && (
-                        <div className="mt-3 text-right">
-                          <button onClick={() => setCancellingOrder(order.id)} className="text-xs text-red-600 font-bold bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 hover:bg-red-100 transition">
-                            {t('cancel_order', 'Cancel Order')}
-                          </button>
-                        </div>
-                      )}
+                        {order.status === 'pending' && cancellingOrder !== order.id && (
+                          <div className="mt-3 text-right">
+                            <button onClick={(e) => { e.stopPropagation(); setCancellingOrder(order.id); }} className="text-xs text-red-600 font-bold bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 hover:bg-red-100 transition">
+                              {t('cancel_order', 'Cancel Order')}
+                            </button>
+                          </div>
+                        )}
                       
                       {cancellingOrder === order.id && (
                         <div className="mt-4 pt-3 border-t border-gray-100 dark:border-zinc-800">
@@ -151,8 +153,8 @@ export function PatientOrders() {
                              />
                           )}
                           <div className="flex gap-2 mt-2">
-                             <button onClick={() => setCancellingOrder(null)} className="flex-1 py-1.5 bg-gray-100 dark:bg-zinc-900 text-gray-700 rounded-lg text-xs font-bold transition hover:bg-gray-200">{t('keep_order', 'Keep Order')}</button>
-                             <button disabled={!cancelReason} onClick={() => handleCancelOrder(order.id)} className="flex-1 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold transition disabled:opacity-50 hover:bg-red-700">{t('confirm_cancel', 'Confirm Cancel')}</button>
+                             <button onClick={(e) => { e.stopPropagation(); setCancellingOrder(null); }} className="flex-1 py-1.5 bg-gray-100 dark:bg-zinc-900 text-gray-700 rounded-lg text-xs font-bold transition hover:bg-gray-200">{t('keep_order', 'Keep Order')}</button>
+                             <button disabled={!cancelReason} onClick={(e) => { e.stopPropagation(); handleCancelOrder(order.id); }} className="flex-1 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold transition disabled:opacity-50 hover:bg-red-700">{t('confirm_cancel', 'Confirm Cancel')}</button>
                           </div>
                         </div>
                       )}
@@ -177,7 +179,7 @@ export function PatientOrders() {
              <div className="space-y-4">
                 <h3 className="font-bold text-gray-900 dark:text-white text-sm">{t('past_orders', 'Past Orders')}</h3>
                 {pastOrders.map(order => (
-                   <div key={order.id} className="bg-white dark:bg-black p-4 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm">
+                   <div key={order.id} onClick={() => navigate(`/patient/tracking/${order.id}`)} className="bg-white dark:bg-black p-4 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm cursor-pointer hover:border-indigo-300 transition">
                       <div className="flex justify-between items-start mb-3 border-b border-gray-50 pb-3">
                          <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-gray-50 dark:bg-black rounded-xl flex items-center justify-center text-gray-500 dark:text-gray-400 dark:text-gray-500">

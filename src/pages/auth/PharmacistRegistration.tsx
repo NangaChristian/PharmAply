@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Store, FileText, CheckCircle, Upload } from 'lucide-react';
 import { auth, db, storage } from '../../lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from '../../lib/firebase';
-import { doc, setDoc, serverTimestamp } from '../../lib/firebase';
+import { doc, setDoc, serverTimestamp, addDoc, collection } from '../../lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from '../../lib/firebase';
 import toast from 'react-hot-toast';
 import { useTranslation } from "react-i18next";
@@ -117,6 +117,20 @@ export function PharmacistRegistration() {
         status: 'pending_verification',
         createdAt: serverTimestamp()
       });
+
+      try {
+          await addDoc(collection(db, 'notifications'), {
+            userId: 'ADMIN',
+            type: 'admin_alert',
+            title: 'New Pharmacy Registration',
+            message: `${formData.pharmacyName} is awaiting approval.`,
+            isRead: false,
+            relatedId: user.uid,
+            createdAt: serverTimestamp()
+          });
+      } catch (e) {
+          console.warn("Notification error (non-fatal)", e);
+      }
 
       toast.success("Pharmacy registered successfully!");
       setStep(4); // Success step

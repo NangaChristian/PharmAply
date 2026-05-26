@@ -29,35 +29,57 @@ ADD COLUMN IF NOT EXISTS driver_lng DECIMAL(11, 8),
 ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ;
 
--- 3. Create Messages Table for Real-time Chat
-CREATE TABLE IF NOT EXISTS public.chat_messages (
-    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    "relatedId" TEXT NOT NULL, 
-    "patientId" TEXT,
-    "senderId" TEXT NOT NULL,
-    "receiverId" TEXT,
-    "senderType" TEXT NOT NULL,
-    "text" TEXT NOT NULL,
-    "createdAt" TIMESTAMPTZ DEFAULT now()
+-- 3. Correct Messages Table for Real-time Chat
+-- Drop any wrongly created explicit column tables
+DROP TABLE IF EXISTS public.chat_messages;
+DROP TABLE IF EXISTS public.messages;
+
+CREATE TABLE IF NOT EXISTS public.messages (
+    id TEXT PRIMARY KEY,
+    data JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
--- 4. Create Notifications Table
+-- 4. Correct Notifications Table
+-- Drop any wrongly created explicit column tables
+DROP TABLE IF EXISTS public.notifications;
+
 CREATE TABLE IF NOT EXISTS public.notifications (
-    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    "userId" TEXT NOT NULL,
-    "type" TEXT NOT NULL, -- e.g., 'welcome', 'new_order', 'prescription_uploaded', 'driver_assigned'
-    "title" TEXT NOT NULL,
-    "message" TEXT NOT NULL,
-    "isRead" BOOLEAN DEFAULT FALSE,
-    "relatedId" TEXT, -- e.g., order_id, prescription_id
-    "createdAt" TIMESTAMPTZ DEFAULT now()
+    id TEXT PRIMARY KEY,
+    data JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
 -- Enable RLS for notifications
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
--- CREATE POLICY "Users can read their own notifications" ON public.notifications FOR SELECT USING ( auth.uid() = user_id );
--- CREATE POLICY "Users can update their own notifications" ON public.notifications FOR UPDATE USING ( auth.uid() = user_id );
+-- CREATE POLICY "Users can read their own notifications" ON public.notifications FOR SELECT USING ( (data->>'userId') = auth.uid()::text );
+-- CREATE POLICY "Users can update their own notifications" ON public.notifications FOR UPDATE USING ( (data->>'userId') = auth.uid()::text );
 
 -- Add RLS Policies for Messages (Example)
--- CREATE POLICY "Users can read messages for their orders" ON public.chat_messages FOR SELECT USING ( auth.uid()::text = "patientId" OR auth.uid()::text = "senderId" OR auth.uid()::text = "receiverId" );
--- CREATE POLICY "Users can insert messages" ON public.chat_messages FOR INSERT WITH CHECK ( auth.uid()::text = "senderId" );
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Users can read messages for their orders" ON public.messages FOR SELECT USING ( (data->>'patientId') = auth.uid()::text OR (data->>'senderId') = auth.uid()::text OR (data->>'receiverId') = auth.uid()::text );
+-- CREATE POLICY "Users can insert messages" ON public.messages FOR INSERT WITH CHECK ( (data->>'senderId') = auth.uid()::text );
+
+-- 5. Create Reviews Table
+CREATE TABLE IF NOT EXISTS public.reviews (
+    id TEXT PRIMARY KEY,
+    data JSONB NOT NULL DEFAULT '{}'::jsonb
+);
+ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Anyone can read reviews" ON public.reviews FOR SELECT USING ( true );
+-- CREATE POLICY "Authenticated users can create reviews" ON public.reviews FOR INSERT WITH CHECK ( (data->>'reviewerId') = auth.uid()::text );
+
+-- 6. Create Prescription Scans Table (for AI OCR)
+CREATE TABLE IF NOT EXISTS public.prescription_scans (
+    id TEXT PRIMARY KEY,
+    data JSONB NOT NULL DEFAULT '{}'::jsonb
+);
+ALTER TABLE public.prescription_scans ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Users can read own scans" ON public.prescription_scans FOR SELECT USING ( (data->>'patientId') = auth.uid()::text OR (data->>'pharmacyId') = auth.uid()::text );
+-- CREATE POLICY "Users can insert own scans" ON public.prescription_scans FOR INSERT WITH CHECK ( (data->>'patientId') = auth.uid()::text );
+
+-- 7. Create Order Items Table
+CREATE TABLE IF NOT EXISTS public.order_items (
+    id TEXT PRIMARY KEY,
+    data JSONB NOT NULL DEFAULT '{}'::jsonb
+);
+ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Users can read own order items" ON public.order_items FOR SELECT USING ( true );

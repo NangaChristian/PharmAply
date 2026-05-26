@@ -107,7 +107,7 @@ export function NotificationListener() {
 
     // 2. Message Notifications
     if (role === 'patient' || role === 'driver' || role === 'pharmacy') {
-      const messagesQ = query(collection(db, 'chat_messages'), where('receiverId', '==', user.uid));
+      const messagesQ = query(collection(db, 'messages'), where('receiverId', '==', user.uid));
       const unsubMessages = onSnapshot(messagesQ, (snapshot) => {
         snapshot.docChanges().forEach((change) => {
           if (change.type === 'added') {
@@ -127,6 +127,9 @@ export function NotificationListener() {
             }
           }
         });
+      }, (err: any) => {
+         // Silently ignore if table doesn't exist yet
+         console.warn("Messages sync error (likely missing table):", err.message);
       });
       unsubscribers.push(unsubMessages);
     }

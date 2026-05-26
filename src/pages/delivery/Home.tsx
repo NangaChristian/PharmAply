@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Bell, MapPin, Clock, DollarSign, CheckCircle, Navigation, Menu, Power, X, Moon, Sun, Layers } from "lucide-react";
+import { User, Bell, MapPin, Clock, DollarSign, CheckCircle, Navigation, Menu, Power, X, Moon, Sun, Layers, Star, AlertTriangle } from "lucide-react";
 import { collection, query, where, getDocs, onSnapshot, updateDoc, doc, setDoc, addDoc, serverTimestamp } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
@@ -27,18 +27,49 @@ export function DeliveryHome() {
   const [currentRequest, setCurrentRequest] = useState<any>(null);
   const [processing, setProcessing] = useState(false);
   const [todaysEarnings, setTodaysEarnings] = useState(0);
+  const [driverProfile, setDriverProfile] = useState<any>(null);
+  const [driverPos, setDriverPos] = useState({ lat: 31.500, lng: 34.450 });
 
   useEffect(() => {
      let unsub: () => void;
      if (user) {
-        unsub = onSnapshot(query(collection(db, 'drivers'), where('id', '==', user.uid)), (snap) => {
-           if (!snap.empty) {
-              setIsOnline(snap.docs[0].data().isOnline || false);
+        unsub = onSnapshot(doc(db, 'drivers', user.uid), (snap) => {
+           if (snap.exists()) {
+              const data = snap.data();
+              setIsOnline(data.isOnline || false);
+              setDriverProfile(data);
            }
         });
      }
      return () => { if (unsub) unsub(); }
   }, [user]);
+
+  useEffect(() => {
+    if (!isOnline || !user) return;
+    const watchId = navigator.geolocation.watchPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setDriverPos({ lat: latitude, lng: longitude });
+        try {
+          await updateDoc(doc(db, 'drivers', user.uid), {
+             lat: latitude,
+             lng: longitude,
+             updatedAt: serverTimestamp()
+          });
+          // Also update active orders if we have current request, or any out_for_delivery orders
+          if (currentRequest) {
+            await updateDoc(doc(db, 'orders', currentRequest.id), {
+               driverLat: latitude,
+               driverLng: longitude
+            });
+          }
+        } catch(e) {}
+      },
+      (error) => { console.error('Error watching location', error); },
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [isOnline, user, currentRequest]);
 
   useEffect(() => {
     let unsubscribe: () => void;
@@ -153,8 +184,9 @@ export function DeliveryHome() {
       <div className="absolute inset-0 z-0 bg-[#e5e3df] overflow-hidden">
          <APIProvider apiKey={API_KEY} version="weekly">
             <Map
-              defaultCenter={{ lat: 31.500, lng: 34.450 }}
-              defaultZoom={13}
+              defaultCenter={driverPos}
+              center={driverPos}
+              defaultZoom={15}
               mapId="DEMO_MAP_ID"
               disableDefaultUI={true}
               mapTypeId={mapType}
@@ -162,7 +194,7 @@ export function DeliveryHome() {
               style={{ width: '100%', height: '100%' }}
             >
                {isOnline && (
-                 <AdvancedMarker position={{ lat: 31.500, lng: 34.450 }}>
+                 <AdvancedMarker position={driverPos}>
                    <div className="flex flex-col items-center justify-center">
                       <div className="w-16 h-16 bg-indigo-500/20 rounded-full absolute animate-ping"></div>
                       <div className="w-8 h-8 bg-indigo-600 rounded-full border-4 border-white shadow-lg z-10 flex items-center justify-center">
@@ -173,7 +205,7 @@ export function DeliveryHome() {
                )}
                {isOnline && currentRequest && (
                   <RouteDisplay 
-                      origin={{ lat: 31.500, lng: 34.450 }} 
+                      origin={driverPos} 
                       destination={currentRequest.pharmacyAddress || currentRequest.pharmacyName || 'Pharmacy'}
                   />
                )}
@@ -194,7 +226,7 @@ export function DeliveryHome() {
       {/* Top HUD */}
       <div className="absolute top-0 left-0 right-0 p-6 pt-12 z-10 flex items-start justify-between">
          <div className="bg-white dark:bg-black/90 backdrop-blur shadow-sm rounded-2xl p-2 flex items-center gap-3 pr-4 pointer-events-auto cursor-pointer" onClick={() => navigate('/delivery/profile')}>
-            <div className="w-10 h-10 bg-indigo-100 rounded-full overflow-hidden flex items-center justify-center text-indigo-600 shrink-0">
+            <div className="w-10 h-10 bg-indigo-100 rounded-full overflow-hidden flex items-center justify-center text-indigo-600 shrink-0 relative">
                {user?.photoURL ? (
                  <img src={user.photoURL} alt={user.displayName || 'Driver'} className="w-full h-full object-cover" />
                ) : (
@@ -202,21 +234,40 @@ export function DeliveryHome() {
                )}
             </div>
             <div>
-               <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight">{userData?.name || user?.displayName || t('driver', 'Driver')}</p>
-               <p className="text-[10px] text-gray-500 font-medium"> {formatCurrency(todaysEarnings)} {t('today_s_earnings', 'Today\'s earnings')} </p>
+               <div className="flex items-center gap-1.5 mb-0.5">
+                  <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight">{userData?.name || user?.displayName || t('driver', 'Driver')}</p>
+                  <span className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 text-[10px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5"><Star size={10} className="fill-current"/> 5.0</span>
+               </div>
+               <div className="flex items-center gap-2">
+                 <span className="bg-indigo-50 dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">
+                   {driverProfile?.vehicleType === 'car' ? t('car', 'CAR') : (driverProfile?.vehicleType === 'motorcycle' ? t('moto', 'MOTO') : t('vehicle', 'VEHICLE'))}
+                 </span>
+                 <p className="text-[11px] text-gray-500 font-bold tracking-widest uppercase"> 
+                   {driverProfile?.vehiclePlate || 'NO PLATE'} 
+                 </p>
+               </div>
             </div>
          </div>
          
          <div className="flex flex-row gap-2 pointer-events-auto">
-            <button 
-               onClick={toggleDarkMode}
-               className="w-12 h-12 bg-white dark:bg-black/90 backdrop-blur rounded-2xl shadow-sm flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-zinc-800 transition relative"
-            >
-               {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
+            <div className="bg-white dark:bg-black/90 backdrop-blur rounded-2xl shadow-sm px-3 flex flex-col items-center justify-center text-gray-900 dark:text-white relative font-bold text-sm">
+               <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase uppercase">Today</span>
+               {formatCurrency(todaysEarnings)}
+            </div>
             <NotificationBell />
          </div>
       </div>
+
+      {/* KYC Warning Banner */}
+      {driverProfile?.status === 'pending_verification' && (
+         <div className="absolute top-32 left-6 right-20 z-10 bg-orange-500 text-white p-3 rounded-2xl shadow-lg flex items-start gap-3 pointer-events-auto animate-in slide-in-from-top-4">
+             <AlertTriangle size={20} className="shrink-0 mt-0.5" />
+             <div className="text-xs">
+                <span className="font-bold block text-sm mb-0.5">Action Required</span>
+                Your KYC profile is pending verification. Going online is restricted.
+             </div>
+         </div>
+      )}
 
       {/* Status Overlay */}
       {isOnline && !currentRequest && (
@@ -232,7 +283,8 @@ export function DeliveryHome() {
                <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm text-center mb-6"> {t('go_online_to_start_receiving_d', 'Go online to start receiving delivery requests')} </p>
                <button 
                   onClick={() => toggleOnlineStatus(true)}
-                  className="w-full bg-indigo-600 border border-indigo-700 shadow-indigo-200 shadow-lg text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 transition flex justify-center items-center gap-2 text-lg uppercase tracking-wide"
+                  disabled={driverProfile?.status === 'pending_verification'}
+                  className="w-full bg-indigo-600 disabled:bg-indigo-300 disabled:cursor-not-allowed border border-indigo-700 disabled:border-indigo-300 shadow-indigo-200 shadow-lg text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 disabled:hover:bg-indigo-300 transition flex justify-center items-center gap-2 text-lg uppercase tracking-wide"
                >
                   <Power size={22} className="mr-1" />  {t('go_online', 'Go Online')} </button>
             </div>

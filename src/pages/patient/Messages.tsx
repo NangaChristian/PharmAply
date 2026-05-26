@@ -35,7 +35,7 @@ export function Messages() {
     
     // We fetch messages where relatedId (which we map from old orderId) matches
     let q = query(
-        collection(db, 'chat_messages'),
+        collection(db, 'messages'),
         where('relatedId', '==', id)
     );
 
@@ -52,7 +52,7 @@ export function Messages() {
     }, (error: any) => {
         console.error("Messages sync error: ", error);
         setTableError(true); // Fallback on ANY error (RLS, missing table, etc)
-        const localMsgs = localStorage.getItem(`local_chat_messages_${id}`);
+        const localMsgs = localStorage.getItem(`local_messages_${id}`);
         if (localMsgs) {
             setMessages(JSON.parse(localMsgs));
         }
@@ -82,7 +82,7 @@ export function Messages() {
              throw new Error("Table error fallback active");
         }
 
-        await addDoc(collection(db, 'chat_messages'), {
+        await addDoc(collection(db, 'messages'), {
             relatedId: id,
             patientId: role === 'patient' ? user.uid : '',
             senderId: user.uid,
@@ -106,7 +106,7 @@ export function Messages() {
         };
         const updatedMsgs = [...messages, newLocalMsg];
         setMessages(updatedMsgs);
-        localStorage.setItem(`local_chat_messages_${id}`, JSON.stringify(updatedMsgs));
+        localStorage.setItem(`local_messages_${id}`, JSON.stringify(updatedMsgs));
     }
   };
 
@@ -136,19 +136,13 @@ export function Messages() {
       <div className="flex-1 overflow-y-auto p-6 space-y-4 pb-24">
          {tableError && (
               <div className="bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 text-yellow-800 dark:text-yellow-400 p-4 rounded-xl text-sm mb-4">
-                 <strong>Database Setup Required:</strong> The <code>chat_messages</code> table is missing in Supabase. You are currently using <strong>local offline storage</strong> for this chat.
+                 <strong>Database Setup Required:</strong> The <code>messages</code> table is missing in Supabase. You are currently using <strong>local offline storage</strong> for this chat.
                  <br className="mb-2"/>
                  To enable cloud sync, execute the following SQL in your Supabase SQL Editor:
                  <pre className="mt-2 p-3 bg-yellow-100 dark:bg-yellow-500/20 rounded font-mono text-[11px] overflow-x-auto text-yellow-900 dark:text-yellow-200">
-{`CREATE TABLE public.chat_messages (
+{`CREATE TABLE IF NOT EXISTS public.messages (
   id TEXT PRIMARY KEY,
-  patientId TEXT NOT NULL,
-  senderId TEXT NOT NULL,
-  receiverId TEXT,
-  senderType TEXT NOT NULL,
-  relatedId TEXT NOT NULL,
-  text TEXT NOT NULL,
-  createdAt TIMESTAMPTZ DEFAULT now()
+  data JSONB NOT NULL DEFAULT '{}'::jsonb
 );`}
                  </pre>
               </div>

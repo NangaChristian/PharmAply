@@ -35,7 +35,9 @@ export function PatientTracking() {
        if (snapshot.exists()) {
           const data = snapshot.data();
           setOrder(data);
-          if (data.driverLocation) {
+          if (data.driverLat && data.driverLng) {
+             setTruckPos([data.driverLat, data.driverLng]);
+          } else if (data.driverLocation) {
              setTruckPos([data.driverLocation.lat, data.driverLocation.lng]);
           }
        }
@@ -55,13 +57,13 @@ export function PatientTracking() {
   }, [order?.driverId]);
 
   useEffect(() => {
-    if (order?.driverLocation) {
+    if (truckPos[0] !== 31.500) { // Assuming 31.500 is default and wait until updated
        const R = 6371; // Radius of the earth in km
-       const dLat = (destPos[0] - order.driverLocation.lat) * Math.PI / 180;
-       const dLng = (destPos[1] - order.driverLocation.lng) * Math.PI / 180;
+       const dLat = (destPos[0] - truckPos[0]) * Math.PI / 180;
+       const dLng = (destPos[1] - truckPos[1]) * Math.PI / 180;
        const a = 
           Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(order.driverLocation.lat * Math.PI / 180) * Math.cos(destPos[0] * Math.PI / 180) * 
+          Math.cos(truckPos[0] * Math.PI / 180) * Math.cos(destPos[0] * Math.PI / 180) * 
           Math.sin(dLng/2) * Math.sin(dLng/2); 
        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
        const distance = R * c; // Distance in km

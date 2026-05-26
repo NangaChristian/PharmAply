@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS public.prescriptions (
   data JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
-CREATE TABLE IF NOT EXISTS public.chat_messages (
+CREATE TABLE IF NOT EXISTS public.messages (
   id TEXT PRIMARY KEY,
   data JSONB NOT NULL DEFAULT '{}'::jsonb
 );

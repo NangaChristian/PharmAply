@@ -20,6 +20,45 @@ async function startServer() {
   });
 
   // API Routes
+  app.post("/api/ocr", async (req: express.Request, res: express.Response) => {
+    try {
+      const { imageBase64, mimeType } = req.body;
+      
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ success: false, error: "Gemini API Key not configured." });
+      }
+
+      const { GoogleGenAI } = await import("@google/genai");
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: [
+          { inlineData: { data: imageBase64, mimeType: mimeType || "image/jpeg" } },
+          "Analyze this medical prescription or medicine box. Extract the medications, dosages, and quantities. Map them as closely as possible to standard inventory. Return a JSON array of objects with the following keys: { name: \"string\", dosage: \"string\", quantity: \"number\" }."
+        ],
+        config: {
+          responseMimeType: "application/json",
+        },
+      });
+
+      const text = response.text;
+      const data = JSON.parse(text);
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error("Error in OCR:", error);
+      res.status(500).json({ success: false, error: "Failed to process prescription image." });
+    }
+  });
+
   app.post("/api/send-email", async (req: express.Request, res: express.Response) => {
     try {
       const { to, subject, text, html } = req.body;

@@ -61,6 +61,32 @@ export function PatientPrescriptionUpload() {
            createdAt: serverTimestamp()
         });
 
+        // Backend AI OCR Logic
+        try {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = async () => {
+             const resultString = reader.result as string; 
+             const base64Data = resultString.split(',')[1];
+             const ocrRes = await fetch('/api/ocr', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ imageBase64: base64Data, mimeType: file.type })
+             });
+             const ocrJson = await ocrRes.json();
+             if (ocrJson.success) {
+                await addDoc(collection(db, 'prescription_scans'), {
+                   patientId: user.uid,
+                   prescriptionId: presDoc.id,
+                   mappedItems: ocrJson.data,
+                   createdAt: serverTimestamp()
+                });
+             }
+          };
+        } catch (ocrErr) {
+           console.warn("AI OCR mapping failed", ocrErr);
+        }
+
         try {
           await addDoc(collection(db, 'notifications'), {
             userId: 'ADMIN',

@@ -105,10 +105,17 @@ export function DeliveryOrderDetails() {
 
          {/* Contact & Actions */}
          <div className="flex gap-3">
-             <button className="flex-1 bg-white dark:bg-slate-950 border border-gray-200 dark:border-zinc-800 rounded-2xl py-4 flex flex-col items-center justify-center gap-2 text-gray-700 hover:bg-gray-50 dark:bg-black transition">
-                <Phone size={20} className="text-green-600" />
-                <span className="text-xs font-bold"> {t('call', 'Call')} </span>
-             </button>
+             {order.patientPhone ? (
+               <a href={`tel:${order.patientPhone}`} className="flex-1 bg-white dark:bg-slate-950 border border-gray-200 dark:border-zinc-800 rounded-2xl py-4 flex flex-col items-center justify-center gap-2 text-gray-700 hover:bg-gray-50 dark:bg-black transition">
+                  <Phone size={20} className="text-green-600" />
+                  <span className="text-xs font-bold"> {t('call', 'Call')} </span>
+               </a>
+             ) : (
+               <button onClick={() => alert("Phone number not available")} className="flex-1 bg-white dark:bg-slate-950 border border-gray-200 dark:border-zinc-800 rounded-2xl py-4 flex flex-col items-center justify-center gap-2 text-gray-700 hover:bg-gray-50 dark:bg-black transition">
+                  <Phone size={20} className="text-green-600" />
+                  <span className="text-xs font-bold"> {t('call', 'Call')} </span>
+               </button>
+             )}
              <button onClick={() => navigate(`/delivery/messages/${order.id}`)} className="flex-1 bg-white dark:bg-slate-950 border border-gray-200 dark:border-zinc-800 rounded-2xl py-4 flex flex-col items-center justify-center gap-2 text-gray-700 hover:bg-gray-50 dark:bg-black transition">
                 <MessageCircle size={20} className="text-blue-600" />
                 <span className="text-xs font-bold"> {t('message', 'Message')} </span>

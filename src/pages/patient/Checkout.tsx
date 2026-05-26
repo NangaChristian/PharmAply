@@ -108,6 +108,8 @@ export function PatientCheckout() {
       if (isCartCheckout) {
         orderData = {
           patientId: user.uid,
+          patientName: userData?.name || user.displayName || 'Customer',
+          patientPhone: userData?.phone || userData?.phoneNumber || '+1234567890',
           pharmacyId: items[0]?.pharmacyId || 'multiple', // grouped in real app, simplified here
           items: items.map(i => ({ productId: i.id, name: i.name, price: i.price, quantity: i.quantity })),
           total: cartTotal + 1000,
@@ -121,6 +123,8 @@ export function PatientCheckout() {
       } else {
         orderData = {
           patientId: user.uid,
+          patientName: userData?.name || user.displayName || 'Customer',
+          patientPhone: userData?.phone || userData?.phoneNumber || '+1234567890',
           pharmacyId: product.pharmacyId,
           items: [{
              productId: product.id,

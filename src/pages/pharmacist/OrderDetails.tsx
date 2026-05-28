@@ -235,7 +235,12 @@ export function PharmacistOrderDetails() {
          
          {order.status === 'preparing' && (
            <button disabled={processing} onClick={() => handleUpdateStatus('ready')} className="w-full py-4 bg-green-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl shadow-green-200 hover:bg-green-700 transition-all active:scale-[0.98]">
-              <CheckCircle size={20} />  {t('mark_as_ready_for_delivery', 'Mark as Ready for Delivery')} </button>
+              <CheckCircle size={20} />  {order.deliveryMethod === 'pickup' ? t('mark_as_ready_for_pickup', 'Mark as Ready for Pickup') : t('mark_as_ready_for_delivery', 'Mark as Ready for Delivery')} </button>
+         )}
+         
+         {order.status === 'ready' && order.deliveryMethod === 'pickup' && (
+           <button disabled={processing} onClick={() => handleUpdateStatus('delivered')} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all active:scale-[0.98]">
+              <CheckCircle size={20} />  {t('confirm_patient_pickup', 'Confirm Patient Picked Up')} </button>
          )}
       </div>
     </div>

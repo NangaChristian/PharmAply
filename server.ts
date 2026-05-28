@@ -79,6 +79,73 @@ async function startServer() {
     }
   });
 
+  app.post("/api/driver/telemetry", async (req: express.Request, res: express.Response) => {
+    try {
+      const { driver_id, latitude, longitude, heading, speed, destination_lat, destination_lng } = req.body;
+      
+      if (!driver_id || latitude === undefined || longitude === undefined) {
+         return res.status(400).json({ success: false, error: "Missing required telemetry fields" });
+      }
+
+      // Basic Haversine distance for route deviation check
+      let route_deviation_alert = false;
+      let distanceToDestination = 0;
+      
+      if (destination_lat && destination_lng) {
+         const R = 6371e3; // metres
+         const nLat1 = latitude * Math.PI/180;
+         const nLat2 = destination_lat * Math.PI/180;
+         const dLat = (destination_lat - latitude) * Math.PI/180;
+         const dLon = (destination_lng - longitude) * Math.PI/180;
+         
+         const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                   Math.cos(nLat1) * Math.cos(nLat2) *
+                   Math.sin(dLon/2) * Math.sin(dLon/2);
+         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+         
+         distanceToDestination = R * c; 
+         
+         // Arbitrary logic: If they are more than 5km away after being assigned, flag deviation.
+         // Realistically this would use the Directions API polyline and match the point to the path.
+         if (distanceToDestination > 5000) {
+            route_deviation_alert = true;
+         }
+      }
+
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey) {
+         console.warn("Supabase credentials not configured, skipping telemetry insert.");
+         return res.status(200).json({ success: true, simulated: true, route_deviation_alert });
+      }
+
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      const { error } = await supabase
+         .from('driver_telemetry_logs')
+         .insert([{
+            driver_id,
+            latitude,
+            longitude,
+            heading: heading || 0,
+            speed: speed || 0,
+            route_deviation: route_deviation_alert,
+            created_at: new Date().toISOString()
+         }]);
+
+      if (error) {
+         throw error;
+      }
+
+      res.json({ success: true, route_deviation_alert });
+    } catch (error) {
+      console.error("Error processing telemetry:", error);
+      res.status(500).json({ success: false, error: "Failed to process telemetry" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");

@@ -22,12 +22,25 @@ export function PatientCheckout() {
   const [prescriptionUrl, setPrescriptionUrl] = useState<string | null>(null);
   const [prescriptionName, setPrescriptionName] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState("Fapshi");
+  const [deliveryMethod, setDeliveryMethod] = useState<'delivery' | 'pickup'>('delivery');
   const [showPaymentSelector, setShowPaymentSelector] = useState(false);
   const [processing, setProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Is this a cart checkout or single product checkout?
   const isCartCheckout = !id;
+
+  const [userData, setUserData] = useState<any>(null);
+
+  useEffect(() => {
+    if (user) {
+       const fetchUserData = async () => {
+          const uDoc = await getDoc(doc(db, 'users', user.uid));
+          if (uDoc.exists()) setUserData(uDoc.data());
+       };
+       fetchUserData();
+    }
+  }, [user]);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -108,14 +121,15 @@ export function PatientCheckout() {
       if (isCartCheckout) {
         orderData = {
           patientId: user.uid,
-          patientName: userData?.name || user.displayName || 'Customer',
-          patientPhone: userData?.phone || userData?.phoneNumber || '+1234567890',
+          patientName: user.displayName || 'Customer',
+          patientPhone: '+1234567890',
           pharmacyId: items[0]?.pharmacyId || 'multiple', // grouped in real app, simplified here
           items: items.map(i => ({ productId: i.id, name: i.name, price: i.price, quantity: i.quantity })),
-          total: cartTotal + 1000,
+          total: cartTotal + (deliveryMethod === 'delivery' ? 1000 : 0),
           status: 'pending',
           createdAt: serverTimestamp(),
-          deliveryAddress: "Douala, Akwa St.",
+          deliveryMethod,
+          deliveryAddress: deliveryMethod === 'delivery' ? (userData?.address || "Please update your profile address") : null,
           paymentMethod,
           hasPrescription: !!prescriptionUrl,
           prescriptionUrl,
@@ -123,8 +137,8 @@ export function PatientCheckout() {
       } else {
         orderData = {
           patientId: user.uid,
-          patientName: userData?.name || user.displayName || 'Customer',
-          patientPhone: userData?.phone || userData?.phoneNumber || '+1234567890',
+          patientName: user.displayName || 'Customer',
+          patientPhone: userData?.phone || '+1234567890',
           pharmacyId: product.pharmacyId,
           items: [{
              productId: product.id,
@@ -132,10 +146,11 @@ export function PatientCheckout() {
              price: product.price,
              quantity: 1
           }],
-          total: product.price + 1000,
+          total: product.price + (deliveryMethod === 'delivery' ? 1000 : 0),
           status: 'pending',
           createdAt: serverTimestamp(),
-          deliveryAddress: "Douala, Akwa St.",
+          deliveryMethod,
+          deliveryAddress: deliveryMethod === 'delivery' ? (userData?.address || "Please update your profile address") : null,
           paymentMethod,
           hasPrescription: product.needsPrescription ? !!prescriptionUrl : false,
           prescriptionUrl,
@@ -157,6 +172,31 @@ export function PatientCheckout() {
       
       if (isCartCheckout) clearCart();
       
+      // Fapshi Sandbox API handling
+      if (paymentMethod === 'Fapshi') {
+         try {
+            const fapshiRes = await fetch('https://sandbox.fapshi.com/initiate-pay', {
+               method: 'POST',
+               headers: {
+                  'Content-Type': 'application/json'
+               },
+               body: JSON.stringify({
+                  amount: orderData.total,
+                  email: user.email,
+                  externalId: docRef.id,
+                  redirectUrl: window.location.origin + `/patient/tracking/${docRef.id}`
+               })
+            });
+            const payData = await fapshiRes.json();
+            if (payData && payData.link) {
+               window.location.href = payData.link;
+               return;
+            }
+         } catch (fapshiErr) {
+            console.error('Fapshi API Error:', fapshiErr);
+         }
+      }
+      
       navigate(`/patient/tracking/${docRef.id}`);
     } catch (error) {
       setProcessing(false);
@@ -174,7 +214,7 @@ export function PatientCheckout() {
   if (isCartCheckout && items.length === 0) return <div className="p-8 text-center text-sm text-gray-500">{t('your_cart_is_empty', 'Your cart is empty')}</div>;
 
   const requiresPrescription = isCartCheckout ? false /* simplified */ : product?.needsPrescription;
-  const deliveryFee = 1000;
+  const deliveryFee = deliveryMethod === 'delivery' ? 1000 : 0;
   const totalItemsPrice = isCartCheckout ? cartTotal : product.price;
 
   return (
@@ -282,22 +322,43 @@ export function PatientCheckout() {
              </div>
          )}
 
-         {/* Delivery Address */}
+         {/* Delivery Method */}
          <div>
-            <h3 className="font-bold text-gray-900 dark:text-white mb-3 text-sm px-1">{t('delivery_address', 'Delivery Address')}</h3>
-            <div className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-2xl p-4 flex items-center justify-between cursor-pointer">
-               <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                     <MapPin size={20} />
-                  </div>
-                  <div>
-                     <p className="font-bold text-gray-900 dark:text-white text-sm">{t('home', 'Home')}</p>
-                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5"> {t('douala_akwa_st', 'Douala, Akwa St.')} </p>
-                  </div>
-               </div>
-               <ChevronRight size={20} className="text-gray-400 dark:text-gray-500" />
+            <h3 className="font-bold text-gray-900 dark:text-white mb-3 text-sm px-1">{t('delivery_method', 'Delivery Method')}</h3>
+            <div className="flex bg-gray-100 dark:bg-zinc-800 p-1 rounded-xl">
+               <button
+                  onClick={() => setDeliveryMethod('delivery')}
+                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${deliveryMethod === 'delivery' ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500'}`}
+               >
+                  {t('home_delivery', 'Home Delivery')}
+               </button>
+               <button
+                  onClick={() => setDeliveryMethod('pickup')}
+                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${deliveryMethod === 'pickup' ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500'}`}
+               >
+                  {t('store_pickup', 'Store Pickup')}
+               </button>
             </div>
          </div>
+
+         {/* Delivery Address */}
+         {deliveryMethod === 'delivery' && (
+           <div>
+              <h3 className="font-bold text-gray-900 dark:text-white mb-3 text-sm px-1">{t('delivery_address', 'Delivery Address')}</h3>
+              <div className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-2xl p-4 flex items-center justify-between cursor-pointer" onClick={() => navigate('/patient/profile')}>
+                 <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                       <MapPin size={20} />
+                    </div>
+                    <div>
+                       <p className="font-bold text-gray-900 dark:text-white text-sm">{userData?.name || t('home', 'Home')}</p>
+                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5"> {userData?.address || t('please_update_address', 'Please set your address in Profile')} </p>
+                    </div>
+                 </div>
+                 <ChevronRight size={20} className="text-gray-400 dark:text-gray-500" />
+              </div>
+           </div>
+         )}
 
          {/* Payment Method */}
          <div>
@@ -363,7 +424,7 @@ export function PatientCheckout() {
       <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 p-4 px-6 pb-8 z-20">
          <button 
            disabled={(requiresPrescription && !prescriptionUrl) || processing}
-           className="w-full bg-[#16307b] hover:bg-[#122864] disabled:bg-gray-300 dark:disabled:bg-zinc-800 text-white rounded-[1.2rem] font-bold py-4 min-h-[56px] shadow-sm transition disabled:opacity-50 touch-manipulation"
+           className="w-full bg-[#0a1128] hover:bg-[#122864] disabled:bg-gray-300 dark:disabled:bg-zinc-800 text-white rounded-2xl font-bold py-4 min-h-[56px] shadow-sm transition disabled:opacity-50 touch-manipulation"
            onClick={handleConfirmOrder}
          >
             {processing ? t('processing', 'Processing...') : (requiresPrescription && !prescriptionUrl ? t('upload_rx_to_continue', 'Upload Prescription to Continue') : t('confirm_pay', 'Confirm & Pay'))}

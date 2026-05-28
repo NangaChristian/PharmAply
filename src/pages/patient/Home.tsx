@@ -15,11 +15,8 @@ import { getCategoryIcon } from "../../lib/icons";
 import { APIProvider, Map, AdvancedMarker, Pin, useMap } from '@vis.gl/react-google-maps';
 import { MarkerClusterer } from '@googlemaps/markerclusterer';
 
-const API_KEY =
-  process.env.GOOGLE_MAPS_PLATFORM_KEY ||
-  (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
-  (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
-  '';
+const rawApiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY || (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY || '';
+const API_KEY = rawApiKey === 'YOUR_GOOGLE_MAPS_API_KEY' || rawApiKey === 'YOUR_KEY_HERE' ? '' : rawApiKey;
 
 const PharmacyMarkers = React.memo(({ pharmacies }: { pharmacies: any[] }) => {
   const map = useMap();
@@ -83,6 +80,24 @@ export function PatientHome() {
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const fallbackLocation = { lat: 48.8566, lng: 2.3522 }; // Fallback to Paris
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error("Error getting user location", error);
+        }
+      );
+    }
+  }, []);
   
   const { unreadCount } = useNotifications();
 
@@ -167,8 +182,8 @@ export function PatientHome() {
         </div>
 
         {/* Search Bar with Autosuggest */}
-        <div className="relative mt-2">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" size={20} />
+        <div className="relative mt-2 flex items-center">
+          <Search className="absolute left-4 text-gray-400 dark:text-gray-500 z-10" size={20} />
           <input
             type="text"
             value={search}
@@ -177,8 +192,11 @@ export function PatientHome() {
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
             onKeyDown={handleKeyDown}
             placeholder={t('search_placeholder', 'Search medicine, pharmacy...')}
-            className="w-full pl-12 pr-4 py-3.5 bg-gray-100 dark:bg-zinc-900 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-shadow"
+            className="w-full pl-12 pr-12 py-3.5 bg-gray-100 dark:bg-zinc-900 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-shadow relative"
           />
+          <button className="absolute right-3 bg-indigo-50 dark:bg-zinc-800 p-2 rounded-xl text-indigo-600 dark:text-indigo-400 z-10">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          </button>
           
           {showSuggestions && search && (
              <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-black rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-zinc-800 z-50">
@@ -258,18 +276,26 @@ export function PatientHome() {
             <h3 className="font-bold text-gray-900 dark:text-white text-[19px] tracking-tight">{t('pharmacies_map', 'Pharmacies Map')}</h3>
           </div>
           <div className="w-full h-64 bg-slate-100 dark:bg-zinc-900 rounded-[1.75rem] overflow-hidden relative border border-gray-100 dark:border-zinc-800 shadow-sm">
-             <APIProvider apiKey={API_KEY} version="weekly">
-                 <Map
-                   defaultCenter={{ lat: 48.8566, lng: 2.3522 }}
-                   defaultZoom={11}
-                   mapId="DEMO_MAP_ID"
-                   disableDefaultUI={true}
-                   internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
-                   style={{ width: '100%', height: '100%' }}
-                 >
-                   <PharmacyMarkers pharmacies={pharmacies} />
-                 </Map>
-             </APIProvider>
+            {API_KEY ? (
+               <APIProvider apiKey={API_KEY} version="weekly">
+                   <Map
+                     defaultCenter={userLocation || fallbackLocation}
+                     center={userLocation || fallbackLocation}
+                     defaultZoom={11}
+                     mapId="DEMO_MAP_ID"
+                     disableDefaultUI={true}
+                     internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
+                     style={{ width: '100%', height: '100%' }}
+                   >
+                     <PharmacyMarkers pharmacies={pharmacies} />
+                   </Map>
+               </APIProvider>
+            ) : (
+               <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
+                  <MapPin className="w-8 h-8 text-gray-400 mb-2 opacity-50" />
+                  <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Map Unavailable</p>
+               </div>
+            )}
           </div>
         </div>
 

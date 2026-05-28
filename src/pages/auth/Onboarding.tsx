@@ -407,10 +407,10 @@ export function Onboarding() {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.1 }}
-                  className="absolute top-[20%] left-0 right-0 flex flex-col items-center justify-center z-10 text-white"
+                  className="absolute top-[18%] left-0 right-0 flex flex-col items-center justify-center z-10 text-white"
                >
-                  <div className="mb-6 text-white scale-125">
-                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <div className="mb-4 text-white p-4 bg-white/20 backdrop-blur-md rounded-[2rem] border border-white/20 shadow-xl">
+                     <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M10 6a2 2 0 1 0 4 0v12a2 2 0 1 0-4 0z" />
                         <path d="M12 2v2" />
                         <path d="M12 20v2" />
@@ -420,14 +420,14 @@ export function Onboarding() {
                         <path d="M19.5 16.5c-3 3-7.5 3-7.5-4.5" />
                      </svg>
                   </div>
-                  <h1 className="text-3xl font-bold tracking-tight">{t('app_name')}</h1>
+                  <h1 className="text-3xl font-bold tracking-tight">PharmAply</h1>
                </motion.div>
 
                <motion.div 
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-950 rounded-t-[2rem] p-6 pt-8 pb-12 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
+                  className="absolute bottom-0 left-0 right-0 bg-[#f5f7fa] dark:bg-zinc-950 rounded-t-[2.5rem] p-8 pt-10 pb-16 z-20 shadow-[0_-20px_50px_rgba(0,0,0,0.15)]"
                >
                   {errorText && (
                     <div className="mb-4 p-3 bg-red-100 border border-red-200 text-red-700 text-sm rounded-xl text-center">
@@ -435,31 +435,31 @@ export function Onboarding() {
                     </div>
                   )}
 
-                  <h3 className="text-center font-bold text-gray-900 dark:text-white mb-6 tracking-wide">{t('select_user_type')}</h3>
+                  <h3 className="text-center font-bold text-gray-800 dark:text-gray-200 mb-8 tracking-wide uppercase text-sm">Select User Type:</h3>
                   
-                  <div className="space-y-3 px-2">
+                  <div className="space-y-4 px-2">
                      <button
                         onClick={() => handleRoleSelection('patient')}
                         disabled={loading}
-                        className="w-full flex items-center justify-center py-4 bg-[#344fb1] text-white rounded-xl font-bold hover:bg-[#2b4198] transition shadow-md shadow-indigo-200 gap-2 disabled:opacity-70"
+                        className="w-full flex items-center justify-center py-4 bg-white text-gray-900 shadow-md shadow-gray-200/50 rounded-[1.5rem] font-bold hover:scale-[1.02] transition-all disabled:opacity-70 text-lg border border-gray-100"
                      >
-                        {t('patient')}
+                        Patient
                      </button>
                      
                      <button
                         onClick={() => handleRoleSelection('pharmacy')}
                         disabled={loading}
-                        className="w-full flex items-center justify-center py-4 bg-gray-50 dark:bg-zinc-900 border border-gray-100 text-gray-900 dark:text-white rounded-xl font-bold hover:bg-gray-100 dark:bg-zinc-800 transition gap-2 disabled:opacity-70"
+                        className="w-full flex items-center justify-center py-4 bg-white text-gray-900 shadow-md shadow-gray-200/50 rounded-[1.5rem] font-bold hover:scale-[1.02] transition-all disabled:opacity-70 text-lg border border-gray-100"
                      >
-                        {t('pharmacist')}
+                        Pharmacist
                      </button>
 
                      <button
                         onClick={() => handleRoleSelection('driver')}
                         disabled={loading}
-                        className="w-full flex items-center justify-center py-4 bg-gray-50 dark:bg-zinc-900 border border-gray-100 text-gray-900 dark:text-white rounded-xl font-bold hover:bg-gray-100 dark:bg-zinc-800 transition gap-2 disabled:opacity-70"
+                        className="w-full flex items-center justify-center py-4 bg-white text-gray-900 shadow-md shadow-gray-200/50 rounded-[1.5rem] font-bold hover:scale-[1.02] transition-all disabled:opacity-70 text-lg border border-gray-100"
                      >
-                        {t('delivery')}
+                        Delivery
                      </button>
                   </div>
                </motion.div>
@@ -468,14 +468,10 @@ export function Onboarding() {
 
          {/* Email Auth Screen */}
          {step === 6 && (
-            <>
-               <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="absolute top-[10%] left-0 right-0 flex flex-col items-center justify-center z-10 text-white"
-               >
-                  <div className="mb-2 text-white scale-100">
-                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div className="fixed inset-0 bg-white dark:bg-zinc-950 z-30 flex flex-col pt-12 overflow-y-auto">
+               <div className="flex flex-col items-center justify-center pt-8 pb-4">
+                  <div className="mb-4 text-gray-900 dark:text-white p-3 rounded-full border-2 border-gray-100 dark:border-zinc-800">
+                     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M10 6a2 2 0 1 0 4 0v12a2 2 0 1 0-4 0z" />
                         <path d="M12 2v2" />
                         <path d="M12 20v2" />
@@ -485,91 +481,91 @@ export function Onboarding() {
                         <path d="M19.5 16.5c-3 3-7.5 3-7.5-4.5" />
                      </svg>
                   </div>
-                  <h1 className="text-xl font-bold tracking-tight">{t('app_name')}</h1>
-               </motion.div>
+                  <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white uppercase mb-1">WELCOME TO PHARMAPLY</h1>
+                  <p className="text-gray-500 text-sm font-medium">Your trusted way to better health</p>
+               </div>
 
-               <motion.div 
-                  initial={{ y: "100%" }}
-                  animate={{ y: 0 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-950 rounded-t-[2rem] p-6 pt-8 pb-8 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] flex flex-col h-[75vh]"
-               >
-                  <div className="flex items-center mb-6 relative">
-                     <button onClick={() => { setStep(5); setAuthMode('login'); }} className="absolute left-0 p-2 -ml-2 text-gray-500 hover:bg-gray-100 dark:bg-zinc-800 rounded-full transition">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                           <path d="M19 12H5M12 19l-7-7 7-7"/>
-                        </svg>
-                     </button>
-                     <h3 className="w-full text-center font-bold text-gray-900 dark:text-white text-lg">
-                        {authMode === 'login' ? 'Welcome Back' : 'Create Account'}
-                     </h3>
-                  </div>
-
+               <div className="px-6 pb-8 flex-1 flex flex-col">
                   {errorText && (
                     <div className="mb-4 p-3 bg-red-100 border border-red-200 text-red-700 text-sm rounded-xl text-center">
                       {errorText}
                     </div>
                   )}
 
-                  <form onSubmit={handleEmailAuth} className="space-y-4 flex-1 overflow-y-auto px-1">
+                  {selectedRole !== 'pharmacy' && selectedRole !== 'driver' && (
+                     <>
+                        <button
+                           type="button"
+                           onClick={handleGoogleAuth}
+                           disabled={loading}
+                           className="w-full flex items-center justify-center py-4 bg-white dark:bg-zinc-900 border-2 border-gray-100 dark:border-zinc-800 text-gray-800 dark:text-gray-100 rounded-2xl font-bold hover:bg-gray-50 dark:hover:bg-zinc-800 transition my-6 disabled:opacity-70"
+                        >
+                           <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                           </svg>
+                           Continue with Google
+                        </button>
+
+                        <div className="relative flex items-center mb-6">
+                           <div className="flex-grow border-t border-gray-100 dark:border-zinc-800"></div>
+                           <span className="flex-shrink-0 mx-4 text-gray-400 text-xs tracking-wider">or sign up with your email</span>
+                           <div className="flex-grow border-t border-gray-100 dark:border-zinc-800"></div>
+                        </div>
+                     </>
+                  )}
+
+                  <form onSubmit={handleEmailAuth} className="space-y-4 flex-1">
                      {authMode === 'signup' && (
                         <div>
-                           <label className="block text-sm font-medium text-gray-700 mb-1"> {t('full_name', 'Full Name')} </label>
-                           <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 dark:bg-zinc-900 focus:bg-white dark:bg-zinc-950 focus:ring-2 focus:ring-[#344fb1] outline-none transition" placeholder={t('john_doe', 'John Doe')} required />
+                           <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border-b-2 border-gray-200 dark:border-zinc-800 p-3 bg-transparent text-gray-900 dark:text-white outline-none focus:border-gray-500 transition placeholder-gray-400" placeholder="Full Name" required />
                         </div>
                      )}
                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1"> {t('email_address', 'Email Address')} </label>
-                        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 dark:bg-zinc-900 focus:bg-white dark:bg-zinc-950 focus:ring-2 focus:ring-[#344fb1] outline-none transition" placeholder={t('email_example_com', 'email@example.com')} required />
+                        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border-b-2 border-gray-200 dark:border-zinc-800 p-3 bg-transparent text-gray-900 dark:text-white outline-none focus:border-gray-500 transition placeholder-gray-400" placeholder="Email" required />
                      </div>
                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1"> {t('password', 'Password')} </label>
-                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border border-gray-200 rounded-xl p-3 bg-gray-50 dark:bg-zinc-900 focus:bg-white dark:bg-zinc-950 focus:ring-2 focus:ring-[#344fb1] outline-none transition" placeholder="••••••••" required minLength={6} />
+                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border-b-2 border-gray-200 dark:border-zinc-800 p-3 bg-transparent text-gray-900 dark:text-white outline-none focus:border-gray-500 transition placeholder-gray-400" placeholder="Password" required minLength={6} />
                      </div>
+                     {authMode === 'signup' && (
+                        <div>
+                           <input type="password" className="w-full border-b-2 border-gray-200 dark:border-zinc-800 p-3 bg-transparent text-gray-900 dark:text-white outline-none focus:border-gray-500 transition placeholder-gray-400" placeholder="Confirm Password" required minLength={6} />
+                        </div>
+                     )}
                      
+                     {authMode === 'signup' && (
+                        <div className="flex items-center gap-2 mt-4 text-xs text-gray-500">
+                           <input type="checkbox" required className="rounded border-gray-300 w-4 h-4" />
+                           <label>I agree to the processing of <strong>Personal data</strong></label>
+                        </div>
+                     )}
+
                      {authMode === 'login' && (
-                       <div className="flex justify-end mt-2">
+                       <div className="flex justify-end pt-2">
                          <button 
                            type="button" 
                            onClick={() => navigate('/forget-password')} 
-                           className="text-sm font-bold text-[#344fb1] hover:underline"
+                           className="text-xs font-bold text-gray-500 hover:text-gray-900 dark:hover:text-white transition"
                          >
-                            {t('forget_password', 'Forget Password?')} </button>
+                            Forget Password?
+                         </button>
                        </div>
                      )}
 
                      <button
                         type="submit"
                         disabled={loading}
-                        className="w-full flex items-center justify-center py-4 mt-6 bg-[#344fb1] text-white rounded-xl font-bold hover:bg-[#2b4198] transition shadow-md shadow-indigo-200 disabled:opacity-70"
+                        className="w-full flex items-center justify-center py-4 mt-6 bg-[#0a1128] dark:bg-white text-white dark:text-gray-900 rounded-full font-bold hover:bg-black dark:hover:bg-gray-200 transition shadow-lg shadow-gray-200 dark:shadow-none disabled:opacity-70 text-lg uppercase tracking-wide"
                      >
                         {loading ? 'Processing...' : (authMode === 'login' ? 'Log In' : 'Sign Up')}
                      </button>
-                     
-                     <div className="relative flex items-center py-4">
-                        <div className="flex-grow border-t border-gray-200"></div>
-                        <span className="flex-shrink-0 mx-4 text-gray-400 text-sm"> {t('or_continue_with', 'Or continue with')} </span>
-                        <div className="flex-grow border-t border-gray-200"></div>
-                     </div>
-
-                     <button
-                        type="button"
-                        onClick={handleGoogleAuth}
-                        disabled={loading}
-                        className="w-full flex items-center justify-center py-4 bg-white dark:bg-zinc-950 border border-gray-200 text-gray-800 dark:text-gray-100 rounded-xl font-bold hover:bg-gray-50 dark:bg-zinc-900 transition shadow-sm mt-0 disabled:opacity-70"
-                     >
-                        <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                           <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                           <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                           <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                           <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                        </svg>
-                         {t('google', 'Google')} </button>
                   </form>
 
-                  <div className="mt-4 pt-4 border-t border-gray-100 text-center">
-                     <p className="text-sm text-gray-500">
-                        {authMode === 'login' ? "Don't have an account?" : "Already have an account?"}
+                  <div className="mt-8 text-center pb-6">
+                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        {authMode === 'login' ? "Don't have an account?" : "Do you have an account?"}
                         <button 
                            type="button" 
                            onClick={() => {
@@ -581,14 +577,20 @@ export function Onboarding() {
                                setAuthMode('login');
                              }
                            }}
-                           className="ml-2 font-bold text-[#344fb1] hover:underline focus:outline-none"
+                           className="ml-2 font-bold text-gray-900 dark:text-white hover:underline focus:outline-none"
                         >
-                           {authMode === 'login' ? 'Sign Up' : 'Log In'}
+                           {authMode === 'login' ? 'Sign Up' : 'Login'}
                         </button>
                      </p>
                   </div>
-               </motion.div>
-            </>
+               </div>
+               
+               <button onClick={() => { setStep(5); setAuthMode('login'); }} className="absolute top-10 left-4 p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                     <path d="M19 12H5M12 19l-7-7 7-7"/>
+                  </svg>
+               </button>
+            </div>
          )}
        </AnimatePresence>
     </div>

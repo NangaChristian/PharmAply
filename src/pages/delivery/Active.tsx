@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Package, MapPin, Phone, Camera, CheckCircle, Navigation } from "lucide-react";
+import { Package, MapPin, Phone, Camera, CheckCircle, Navigation, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import { RouteDisplay } from './RouteDisplay';
@@ -9,11 +9,8 @@ import { useAuth } from '../../components/AuthProvider';
 import { formatCurrency } from '../../lib/utils';
 import { useTranslation } from "react-i18next";
 
-const API_KEY =
-  process.env.GOOGLE_MAPS_PLATFORM_KEY ||
-  (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
-  (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
-  '';
+const rawApiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY || (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY || '';
+const API_KEY = rawApiKey === 'YOUR_GOOGLE_MAPS_API_KEY' || rawApiKey === 'YOUR_KEY_HERE' ? '' : rawApiKey;
 
 type DeliveryStatus = 'to_pharmacy' | 'at_pharmacy' | 'to_customer' | 'at_customer' | 'completed';
 
@@ -140,150 +137,132 @@ export function DeliveryActive() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500"> {t('loading_active_delivery', 'Loading active delivery...')} </div>;
-  if (!order) return <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-black text-gray-500 dark:text-gray-400 dark:text-gray-500"> {t('no_active_delivery', 'No active delivery')} </div>;
+  if (loading) return <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400"> {t('loading_active_delivery', 'Loading active delivery...')} </div>;
+  if (!order) return <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-black text-gray-500"> {t('no_active_delivery', 'No active delivery')} </div>;
+
+  const currentStep = status === 'to_pharmacy' ? 1 : (status === 'at_pharmacy' ? 1 : (status === 'to_customer' ? 2 : (status === 'at_customer' ? 2 : 3)));
 
   return (
-    <div className="flex-1 bg-slate-50 dark:bg-black flex flex-col h-full overflow-hidden">
-      <div className={`px-6 pt-12 pb-6 shadow-sm z-10 text-white rounded-b-[2rem] transition-colors ${status === 'completed' ? 'bg-green-600' : 'bg-indigo-600'}`}>
-         <h1 className="font-bold text-xl mb-1">{getStatusText()}</h1>
-         <p className="text-white/80 text-sm"> {t('order', 'Order #')} {order.id.slice(0, 8)}</p>
+    <div className="flex-1 bg-white dark:bg-black flex flex-col h-full overflow-hidden">
+      {/* Header */}
+      <div className="px-6 pt-12 pb-4 flex items-center justify-between bg-white dark:bg-black sticky top-0 z-20 shadow-sm border-b border-gray-100 dark:border-zinc-800">
+         <div className="flex items-center gap-2">
+           <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center -ml-2 text-gray-900 dark:text-white">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                 <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+           </button>
+           <h1 className="font-bold text-gray-900 dark:text-white text-lg">Delivery Progress</h1>
+         </div>
+         <div className="text-gray-900 dark:text-white font-bold p-2 bg-gray-100 rounded-full">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-         {/* Live Map wrapper */}
-         <div className="bg-indigo-100 rounded-3xl overflow-hidden relative border border-gray-100 shadow-sm h-48">
-             <APIProvider apiKey={API_KEY} version="weekly">
-                 <Map
-                   defaultCenter={{ lat: 31.500, lng: 34.450 }}
-                   center={order.driverLocation ? { lat: order.driverLocation.lat, lng: order.driverLocation.lng } : { lat: 31.500, lng: 34.450 }}
-                   defaultZoom={14}
-                   mapId="DEMO_MAP_ID"
-                   disableDefaultUI={true}
-                   internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
-                   style={{ width: '100%', height: '100%' }}
-                 >
-                   {order.driverLocation && (
-                     <AdvancedMarker position={{ lat: order.driverLocation.lat, lng: order.driverLocation.lng }}>
-                       <Pin background="#4f46e5" glyphColor="#fff" borderColor="#fff" />
-                     </AdvancedMarker>
-                   )}
-                   {order.driverLocation && (
-                      <RouteDisplay 
-                        origin={{ lat: order.driverLocation.lat, lng: order.driverLocation.lng }} 
-                        destination={status === 'to_pharmacy' || status === 'at_pharmacy' ? (order.pharmacyAddress || 'Pharmacy') : (order.deliveryAddress || 'Customer')} 
-                      />
-                   )}
-                 </Map>
-             </APIProvider>
-         </div>
-
-         {/* Order details context */}
-         <div className="bg-white dark:bg-black border-2 border-indigo-100 rounded-2xl p-5 shadow-sm shadow-indigo-100/50">
-            <div className="flex justify-between items-start mb-4 border-b border-gray-50 pb-4">
-               <div>
-                  <span className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md text-xs font-bold tracking-wide uppercase">
-                    {status === 'to_pharmacy' || status === 'at_pharmacy' ? 'Pickup' : 'Drop-off'}
-                  </span>
-                  <h2 className="font-bold text-gray-900 dark:text-white mt-2 line-clamp-1">
-                    {status === 'to_pharmacy' || status === 'at_pharmacy' ? (order.pharmacyName || t('pharmacy', 'Pharmacy')) : (order.patientName || t('customer', 'Customer'))}
-                  </h2>
-                  <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm mt-1">
-                    {status === 'to_pharmacy' || status === 'at_pharmacy' ? (order.pharmacyAddress || 'Local Pharmacy') : order.deliveryAddress}
-                  </p>
-               </div>
-               <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shrink-0">
-                  <Package size={24} />
+      <div className="flex-1 overflow-y-auto px-6 py-6 pb-24 space-y-8">
+         
+         {/* Progress Steps */}
+         <div className="flex items-center justify-between relative px-2 mb-2">
+            <div className="absolute left-[38px] right-[38px] top-6 h-0.5 bg-gray-100 dark:bg-zinc-800 -z-10">
+               <div className="h-full bg-[#1a3b8d] dark:bg-indigo-500 transition-all duration-500" style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '50%' : '100%' }}></div>
+            </div>
+            
+            <div className="flex flex-col items-center gap-2">
+               <div className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Pickup</div>
+               <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold transition-colors shadow-sm ${currentStep >= 1 ? 'bg-gray-900 dark:bg-indigo-600 text-white' : 'bg-white dark:bg-black border-2 border-gray-100 dark:border-zinc-800 text-gray-400'}`}>
+                  1
                </div>
             </div>
+            
+            <div className="flex flex-col items-center gap-2">
+               <div className="text-[11px] font-bold text-gray-500 dark:text-gray-400">En Route</div>
+               <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold transition-colors shadow-sm ${currentStep >= 2 ? 'bg-gray-900 dark:bg-indigo-600 text-white' : 'bg-white dark:bg-black border-2 border-gray-100 dark:border-zinc-800 text-gray-400'}`}>
+                  2
+               </div>
+            </div>
+            
+            <div className="flex flex-col items-center gap-2">
+               <div className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Complete</div>
+               <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold transition-colors shadow-sm ${currentStep >= 3 ? 'bg-green-600 dark:bg-green-500 text-white' : 'bg-white dark:bg-black border-2 border-gray-100 dark:border-zinc-800 text-gray-400'}`}>
+                  3
+               </div>
+            </div>
+         </div>
 
-            <div className="space-y-4">
-               <div className="flex gap-4">
-                  <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-black flex items-center justify-center shrink-0">
-                     <Navigation size={16} className="text-gray-400 dark:text-gray-500" />
-                  </div>
-                  <div className="flex-1 flex justify-between items-center">
-                     <div>
-                        <p className="font-bold text-gray-900 dark:text-white mt-0.5"> {t('navigate', 'Navigate')} </p>
-                     </div>
-                     <button className="bg-indigo-100 text-indigo-700 p-2 rounded-full">
-                        <Navigation size={16} className="fill-current" />
-                     </button>
-                  </div>
+         {/* Pickup Card */}
+         <div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider mb-2">Pickup</div>
+            <div className={`rounded-[1.5rem] p-5 shadow-sm border transition-colors ${currentStep === 1 ? 'bg-[#f5f6fc] border-[#e8ecf8] dark:bg-zinc-900 dark:border-zinc-800' : 'bg-white dark:bg-black border-gray-100 dark:border-zinc-800'}`}>
+               <h3 className="font-bold text-gray-900 dark:text-white text-[19px] mb-1">{order.pharmacyName || 'Pharmacy name'}</h3>
+               <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">{order.pharmacyAddress || 'From: Pharmacy location, Pharmacy Number To: Patient location, Patient Number'}</p>
+               
+               <div className="flex items-center gap-4 mb-6">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 flex items-center"><MapPin size={12} className="mr-1" /> distance</span>
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 flex items-center"><Clock size={12} className="mr-1" /> time</span>
+                  <span className="text-xs font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">$ Visa Payment</span>
                </div>
                
-               <div className="flex gap-4">
-                  <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-black flex items-center justify-center shrink-0">
-                     <Phone size={16} className="text-gray-400 dark:text-gray-500" />
-                  </div>
-                  <div className="flex-1 flex justify-between items-center">
-                     <div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wide font-semibold"> {t('contact', 'Contact')} </p>
-                        <p className="font-bold text-gray-900 dark:text-white mt-0.5"> {t('customer', 'Customer')} </p>
-                     </div>
-                     <div className="flex gap-2">
-                        <button className="bg-indigo-100 text-indigo-700 p-2 rounded-full" onClick={() => navigate(`/patient/messages/${order.id}`)}>
-                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                        </button>
-                        <button className="bg-green-100 text-green-700 p-2 rounded-full" onClick={() => window.location.href = `tel:${order?.patientPhone || ''}`}>
-                           <Phone size={16} className="fill-current" />
-                        </button>
-                     </div>
-                  </div>
+               <div className="flex gap-3">
+                  <button 
+                     onClick={handleNextStatus}
+                     disabled={currentStep > 1}
+                     className={`flex-1 font-bold py-3.5 rounded-xl text-sm transition-colors ${currentStep === 1 ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-lg' : 'bg-gray-100 dark:bg-zinc-900 text-gray-400 dark:text-gray-600 cursor-not-allowed'}`}
+                  >
+                     <CheckCircle size={16} className="inline mr-2 -mt-0.5" /> Mark as pickup
+                  </button>
+                  <button className="bg-gray-200 dark:bg-zinc-800 text-gray-900 dark:text-white font-bold py-3.5 px-6 rounded-xl text-sm hover:opacity-80 transition flex items-center">
+                     <MapPin size={16} className="inline mr-1" /> location
+                  </button>
                </div>
             </div>
          </div>
 
-         {/* Proof of Delivery (only at customer) */}
-         {status === 'at_customer' && (
-           <div className="bg-white dark:bg-black rounded-2xl p-5 border border-gray-100 dark:border-zinc-800 shadow-sm text-center">
-             <h3 className="font-bold text-gray-900 dark:text-white mb-2"> {t('proof_of_delivery', 'Proof of Delivery')} </h3>
-             <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-4"> {t('please_take_a_photo_of_the_pac', 'Please take a photo of the package at the door.')} </p>
-             
-             {!proofUploaded ? (
-               <button 
-                 onClick={() => setProofUploaded(true)}
-                 className="w-full bg-gray-50 dark:bg-black border-2 border-dashed border-gray-200 dark:border-zinc-800 py-8 rounded-xl flex flex-col items-center gap-2 text-indigo-600 hover:bg-gray-100 dark:bg-zinc-900 transition"
-               >
-                 <Camera size={32} />
-                 <span className="font-bold text-sm"> {t('take_photo', 'Take Photo')} </span>
-               </button>
-             ) : (
-               <div className="bg-green-50 text-green-700 border border-green-200 py-6 rounded-xl flex flex-col items-center gap-2">
-                 <CheckCircle size={32} />
-                 <span className="font-bold text-sm"> {t('proof_uploaded', 'Proof Uploaded')} </span>
+         {/* Deliver To Card */}
+         <div className={currentStep < 2 ? 'opacity-50 pointer-events-none transition-opacity' : 'transition-opacity'}>
+            <div className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider mb-2">Deliver to</div>
+            <div className={`rounded-[1.5rem] p-5 shadow-sm border transition-colors ${currentStep === 2 ? 'bg-[#f5f6fc] border-[#e8ecf8] dark:bg-zinc-900 dark:border-zinc-800' : 'bg-white dark:bg-black border-gray-100 dark:border-zinc-800'}`}>
+               <h3 className="font-bold text-gray-900 dark:text-white text-[19px] mb-1">{order.patientName || 'Patient name'}</h3>
+               <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">{order.deliveryAddress || 'Patient location'}</p>
+               
+               <div className="flex items-center gap-4 mb-4">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 flex items-center"><MapPin size={12} className="mr-1" /> distance</span>
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 flex items-center"><Clock size={12} className="mr-1" /> time</span>
+                  <span className="text-xs font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">$ Visa Payment</span>
                </div>
-             )}
-           </div>
-         )}
-         
-         {status === 'completed' && (
-            <div className="bg-white dark:bg-black rounded-2xl p-8 border border-green-100 text-center flex flex-col items-center">
-              <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
-                 <CheckCircle size={32} />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white"> {t('delivery_successful', 'Delivery Successful!')} </h2>
-              <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-2"> {t('you_earned', 'You earned')} <span className="font-bold text-green-600">{formatCurrency(3)}</span></p>
-            </div>
-         )}
+               
+               <div className="bg-white dark:bg-black border border-gray-100 dark:border-zinc-800 p-3 rounded-xl mb-6">
+                  <div className="flex items-center gap-2 mb-1">
+                     <span className="text-[10px] font-bold bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded">!</span>
+                     <span className="text-xs font-bold text-gray-900 dark:text-white">Delivery Instructions</span>
+                  </div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 pl-6">"Leave at door."</p>
+               </div>
+               
+               {currentStep === 2 && !proofUploaded && (
+                 <button 
+                   onClick={() => setProofUploaded(true)}
+                   className="w-full bg-gray-50 dark:bg-black border-2 border-dashed border-gray-200 dark:border-zinc-800 py-6 mb-6 rounded-xl flex flex-col items-center justify-center gap-2 text-indigo-600 hover:bg-gray-100 dark:bg-zinc-900 transition"
+                 >
+                   <Camera size={24} />
+                   <span className="font-bold text-sm"> {t('take_photo', 'Take Photo of Delivery')} </span>
+                 </button>
+               )}
 
-         {/* Actions */}
-         <div className="mt-8">
-             <button 
-               className={`w-full text-white font-bold text-lg py-5 rounded-2xl shadow-xl transition-all ${
-                 (status === 'at_customer' && !proofUploaded) 
-                   ? 'bg-gray-300 shadow-none cursor-not-allowed' 
-                   : status === 'completed' 
-                   ? 'bg-green-600 shadow-green-200' 
-                   : 'bg-slate-900 shadow-slate-200 hover:bg-slate-800'
-               }`}
-               onClick={handleNextStatus}
-               disabled={status === 'at_customer' && !proofUploaded}
-             >
-                {getButtonText()}
-             </button>
+               <div className="flex gap-3">
+                  <button 
+                     onClick={handleNextStatus}
+                     disabled={currentStep > 2 || (currentStep === 2 && !proofUploaded)}
+                     className={`flex-1 font-bold py-3.5 rounded-xl text-sm transition-colors ${currentStep === 2 && proofUploaded ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-lg' : 'bg-gray-100 dark:bg-zinc-900 text-gray-400 dark:text-gray-600 cursor-not-allowed'}`}
+                  >
+                     <CheckCircle size={16} className="inline mr-2 -mt-0.5" /> Mark as delivery
+                  </button>
+                  <button className="bg-gray-200 dark:bg-zinc-800 text-gray-900 dark:text-white font-bold py-3.5 px-6 rounded-xl text-sm hover:opacity-80 transition flex items-center">
+                     <MapPin size={16} className="inline mr-1" /> location
+                  </button>
+               </div>
+            </div>
          </div>
-         <div className="h-8"></div>
+
       </div>
     </div>
   );

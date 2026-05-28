@@ -11,8 +11,8 @@ export function PatientCart() {
 
   return (
     <div className="flex-1 bg-gray-50 dark:bg-black flex flex-col h-full overflow-hidden">
-      <div className="bg-white dark:bg-zinc-900 px-6 pt-12 pb-4 shadow-sm z-10 flex items-center justify-between border-b border-gray-100 dark:border-zinc-800">
-         <h1 className="text-lg font-bold text-gray-900 dark:text-white">{t('cart', 'Cart')}</h1>
+      <div className="bg-white dark:bg-zinc-900 px-6 pt-12 pb-4 z-10 flex items-center justify-between">
+         <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">{t('cart', 'Cart')}</h1>
          <div className="w-8"></div>
       </div>
       
@@ -29,45 +29,60 @@ export function PatientCart() {
              </button>
            </div>
          ) : (
-           <div className="space-y-4">
-              {items.map(item => (
-                <div key={item.id} className="bg-white dark:bg-zinc-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-zinc-800 flex items-center gap-4">
-                  <div className="w-20 h-20 bg-gray-50 dark:bg-black rounded-xl flex items-center justify-center flex-shrink-0">
-                    {item.imageUrl ? (
-                       <img src={item.imageUrl} alt={item.name} className="w-16 h-16 object-contain" />
-                    ) : (
-                       <ShoppingCart size={24} className="text-gray-300" />
-                    )}
+           <div className="space-y-6">
+              
+              {/* Items List */}
+              <div className="space-y-4">
+                {items.map(item => (
+                  <div key={item.id} className="bg-white dark:bg-zinc-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-zinc-800 flex items-center gap-4">
+                    <div className="w-20 h-20 bg-gray-50 dark:bg-black rounded-xl flex items-center justify-center flex-shrink-0">
+                      {item.imageUrl ? (
+                         <img src={item.imageUrl} alt={item.name} className="w-16 h-16 object-contain" />
+                      ) : (
+                         <ShoppingCart size={24} className="text-gray-300" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                       <h3 className="font-bold text-gray-900 dark:text-white text-sm leading-tight mb-1">{item.name}</h3>
+                       <p className="text-[#1a3b8d] dark:text-indigo-400 font-bold mb-3">{formatCurrency(item.price)}</p>
+                       
+                       <div className="flex items-center justify-between">
+                          <div className="flex items-center bg-gray-50 dark:bg-black rounded-lg p-0.5 border border-gray-200 dark:border-zinc-800">
+                             <button onClick={() => updateQuantity(item.id, -1)} className="text-indigo-600 dark:text-indigo-400 p-2 shrink-0 touch-manipulation min-w-[36px] min-h-[36px] flex items-center justify-center"><Minus size={14}/></button>
+                             <span className="font-bold text-gray-900 dark:text-white mx-2 text-xs min-w-[16px] text-center">{item.quantity}</span>
+                             <button onClick={() => updateQuantity(item.id, 1)} className="text-indigo-600 dark:text-indigo-400 p-2 shrink-0 touch-manipulation min-w-[36px] min-h-[36px] flex items-center justify-center text-white bg-[#1a3b8d] rounded-md"><Plus size={14}/></button>
+                          </div>
+                       </div>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                     <h3 className="font-bold text-gray-900 dark:text-white text-sm leading-tight mb-1">{item.name}</h3>
-                     <p className="text-[#1a3b8d] dark:text-indigo-400 font-bold mb-3">{formatCurrency(item.price)}</p>
-                     
-                     <div className="flex items-center justify-between">
-                        <div className="flex items-center bg-gray-50 dark:bg-black rounded-lg p-1 border border-gray-200 dark:border-zinc-800">
-                           <button onClick={() => updateQuantity(item.id, -1)} className="text-indigo-600 dark:text-indigo-400 p-2 shrink-0 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"><Minus size={16}/></button>
-                           <span className="font-bold text-gray-900 dark:text-white mx-3 text-sm min-w-[20px] text-center">{item.quantity}</span>
-                           <button onClick={() => updateQuantity(item.id, 1)} className="text-indigo-600 dark:text-indigo-400 p-2 shrink-0 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"><Plus size={16}/></button>
-                        </div>
-                        <button onClick={() => removeFromCart(item.id)} className="w-11 h-11 flex items-center justify-center bg-red-50 dark:bg-red-950/30 text-red-500 rounded-full touch-manipulation">
-                           <Trash2 size={18} />
-                        </button>
-                     </div>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
+
+              {/* Add More Items Button */}
+              <button onClick={() => navigate('/patient')} className="w-full bg-white dark:bg-zinc-900 text-indigo-600 dark:text-indigo-400 font-bold py-4 min-h-[56px] rounded-[1.2rem] shadow-sm border-2 border-indigo-50 dark:border-zinc-800 transition-colors touch-manipulation outline-none flex justify-center items-center gap-2">
+                 <Plus size={20} /> Add More Items
+              </button>
            </div>
          )}
       </div>
 
-      {items.length > 0 && (
-        <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 p-4 px-6 pb-[calc(env(safe-area-inset-bottom)+5rem)] z-40">
-           <div className="flex justify-between items-center mb-4">
-              <span className="text-gray-500 dark:text-gray-400 font-medium">{t('total', 'Total')}</span>
-              <span className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(cartTotal)}</span>
+       {items.length > 0 && (
+        <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 p-6 pb-[calc(env(safe-area-inset-bottom)+5rem)] z-40 rounded-t-3xl shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
+           <h3 className="font-bold text-gray-900 dark:text-white mb-4">{t('order_bill', 'Order Bill')}</h3>
+           <div className="flex justify-between items-center mb-2">
+              <span className="text-gray-500 font-medium text-sm">{t('subtotal', 'Subtotal')}</span>
+              <span className="font-bold text-gray-900 dark:text-white text-sm">{formatCurrency(cartTotal)}</span>
            </div>
-           <button onClick={() => navigate('/patient/checkout')} className="w-full bg-[#16307b] hover:bg-[#122864] text-white font-bold py-4 min-h-[56px] rounded-[1.2rem] shadow-sm transition-colors touch-manipulation">
-              {t('checkout', 'Checkout')}
+           <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-100 dark:border-zinc-800">
+              <span className="text-gray-500 font-medium text-sm">{t('delivery', 'Delivery')}</span>
+              <span className="font-bold text-gray-900 dark:text-white text-sm">{formatCurrency(3.0)}</span>
+           </div>
+           <div className="flex justify-between items-center mb-6">
+              <span className="text-gray-900 dark:text-white font-bold">{t('total', 'Total')}</span>
+              <span className="text-xl font-bold text-gray-900 dark:text-white">{formatCurrency(cartTotal + 3.0)}</span>
+           </div>
+           <button onClick={() => navigate('/patient/checkout')} className="w-full bg-[#0a1128] hover:bg-black text-white font-bold py-4 min-h-[56px] rounded-2xl transition-colors touch-manipulation shadow-md">
+              {t('submit_order', 'Submit Order')}
            </button>
         </div>
       )}

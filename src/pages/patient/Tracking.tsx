@@ -5,12 +5,10 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from "react-i18next";
 import { doc, onSnapshot, db } from '../../lib/firebase';
 import { parseDate } from '../../lib/utils';
+import { RouteDisplay } from '../delivery/RouteDisplay';
 
-const API_KEY =
-  process.env.GOOGLE_MAPS_PLATFORM_KEY ||
-  (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
-  (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
-  '';
+const rawApiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY || (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY || '';
+const API_KEY = rawApiKey === 'YOUR_GOOGLE_MAPS_API_KEY' || rawApiKey === 'YOUR_KEY_HERE' ? '' : rawApiKey;
 
 export function PatientTracking() {
   const navigate = useNavigate();
@@ -20,12 +18,28 @@ export function PatientTracking() {
   const [order, setOrder] = useState<any>(null);
   const [driver, setDriver] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [truckPos, setTruckPos] = useState<[number, number]>([31.500, 34.450]);
+  const [truckPos, setTruckPos] = useState<[number, number]>([48.8566, 2.3522]); // Fallback to Paris
   const [eta, setEta] = useState(15);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const loc: [number, number] = [position.coords.latitude, position.coords.longitude];
+          setUserLocation(loc);
+          if (truckPos[0] === 48.8566 && truckPos[1] === 2.3522) {
+             setTruckPos(loc);
+          }
+        },
+        (error) => console.error("Error getting user location", error)
+      );
+    }
+  }, []);
 
   const destPos: [number, number] = order?.deliveryLocation 
     ? [order.deliveryLocation.lat, order.deliveryLocation.lng]
-    : [31.505, 34.465];
+    : userLocation || [48.8566, 2.3522]; // Paris as final fallback
 
   useEffect(() => {
     if (!id) return;
@@ -57,7 +71,7 @@ export function PatientTracking() {
   }, [order?.driverId]);
 
   useEffect(() => {
-    if (truckPos[0] !== 31.500) { // Assuming 31.500 is default and wait until updated
+    if (truckPos[0] !== 48.8566) { // Assuming 48.8566 is default and wait until updated
        const R = 6371; // Radius of the earth in km
        const dLat = (destPos[0] - truckPos[0]) * Math.PI / 180;
        const dLng = (destPos[1] - truckPos[1]) * Math.PI / 180;
@@ -80,6 +94,8 @@ export function PatientTracking() {
     }
   }, [truckPos, order?.status, destPos[0], destPos[1]]);
 
+   const isPickup = order?.deliveryMethod === 'pickup';
+
   const getTimelineDate = (type: string) => {
     if (!order) return "";
     
@@ -90,14 +106,20 @@ export function PatientTracking() {
     };
 
     if (type === 'placed') return extractDate(order.createdAt) || t('today', "Today");
-    if (type === 'preparing') return extractDate(order.preparedAt || order.acceptedAt) || (['preparing', 'driver_assigned', 'out_for_delivery', 'delivered'].includes(order.status) ? "Processing..." : "");
+    if (type === 'preparing') return extractDate(order.preparedAt || order.acceptedAt) || (['preparing', 'driver_assigned', 'out_for_delivery', 'ready', 'delivered'].includes(order.status) ? "Processing..." : "");
     if (type === 'out') return extractDate(order.dispatchedAt || order.outForDeliveryAt) || (['driver_assigned', 'out_for_delivery', 'delivered'].includes(order.status) ? "Dispatched" : "");
-    if (type === 'delivered') return extractDate(order.deliveredAt) || (order.status === 'delivered' ? "Delivered" : t('pending', "Pending"));
+    if (type === 'ready') return extractDate(order.readyAt) || (['ready', 'delivered'].includes(order.status) ? "Ready" : "");
+    if (type === 'delivered') return extractDate(order.deliveredAt) || (order.status === 'delivered' ? (isPickup ? "Picked up" : "Delivered") : t('pending', "Pending"));
 
     return "";
   };
 
-  const statuses = [
+  const statuses = isPickup ? [
+    { label: t('order_placed', "Order Placed"), date: getTimelineDate('placed'), completed: true, icon: CheckCircle },
+    { label: t('pharmacy_preparing', "Pharmacy Preparing"), date: getTimelineDate('preparing'), completed: ['preparing', 'ready', 'delivered'].includes(order?.status), active: order?.status === 'pending', icon: Package },
+    { label: t('ready_for_pickup', "Ready for Pickup"), date: getTimelineDate('ready'), completed: order?.status === 'delivered' || order?.status === 'ready', active: order?.status === 'preparing', icon: Home },
+    { label: t('picked_up', "Picked Up"), date: order?.status === 'delivered' ? getTimelineDate('delivered') : t('pending', "Pending"), completed: order?.status === 'delivered', icon: CheckCircle },
+  ] : [
     { label: t('order_placed', "Order Placed"), date: getTimelineDate('placed'), completed: true, icon: CheckCircle },
     { label: t('pharmacy_preparing', "Pharmacy Preparing"), date: getTimelineDate('preparing'), completed: ['preparing', 'driver_assigned', 'out_for_delivery', 'delivered'].includes(order?.status), active: order?.status === 'pending', icon: Package },
     { label: t('on_the_way', "On the way"), date: eta > 0 ? t('estimated', "Estimated") + ` ${eta} ${t('mins', 'mins')}` : getTimelineDate('out'), completed: order?.status === 'delivered', active: ['driver_assigned', 'out_for_delivery'].includes(order?.status), icon: Truck },
@@ -116,40 +138,62 @@ export function PatientTracking() {
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
          {/* Live Map Tracking */}
-         <div className="w-full h-64 bg-indigo-100 rounded-3xl overflow-hidden relative border-4 border-white shadow-sm z-0">
-             <APIProvider apiKey={API_KEY} version="weekly">
-                 <Map
-                   defaultCenter={{ lat: truckPos[0], lng: truckPos[1] }}
-                   center={{ lat: truckPos[0], lng: truckPos[1] }}
-                   defaultZoom={14}
-                   mapId="DEMO_MAP_ID"
-                   disableDefaultUI={true}
-                   internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
-                   style={{ width: '100%', height: '100%' }}
-                 >
-                   <AdvancedMarker position={{ lat: truckPos[0], lng: truckPos[1] }}>
-                     <Pin background="#4f46e5" glyphColor="#fff" borderColor="#fff" />
-                   </AdvancedMarker>
-
-                   <AdvancedMarker position={{ lat: destPos[0], lng: destPos[1] }}>
-                     <Pin background="#f97316" glyphColor="#fff" borderColor="#fff" />
-                   </AdvancedMarker>
-                 </Map>
-             </APIProvider>
-            
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-48 bg-white dark:bg-black/95 backdrop-blur-md p-3 rounded-2xl shadow-lg flex items-center gap-3">
-               <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600">
-                  <Truck size={18} />
-               </div>
-               <div>
-                  <p className="font-bold text-gray-900 dark:text-white text-sm">{t('arriving_in', 'Arriving in')}</p>
-                  <p className="font-bold text-indigo-600">{eta > 0 ? `${eta} ${t('mins', 'mins')}` : t('arrived', 'Arrived')}</p>
-               </div>
+         {!isPickup && (
+           <div className="w-full h-64 bg-indigo-100 rounded-3xl overflow-hidden relative border-4 border-white shadow-sm z-0">
+               {API_KEY ? (
+                   <APIProvider apiKey={API_KEY} version="weekly">
+                   <Map
+                     defaultCenter={{ lat: truckPos[0], lng: truckPos[1] }}
+                     center={{ lat: truckPos[0], lng: truckPos[1] }}
+                     defaultZoom={14}
+                     mapId="DEMO_MAP_ID"
+                     disableDefaultUI={true}
+                     internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
+                     style={{ width: '100%', height: '100%' }}
+                   >
+                     <AdvancedMarker position={{ lat: truckPos[0], lng: truckPos[1] }}>
+                       <Pin background="#4f46e5" glyphColor="#fff" borderColor="#fff" />
+                     </AdvancedMarker>
+  
+                     <AdvancedMarker position={{ lat: destPos[0], lng: destPos[1] }}>
+                       <Pin background="#f97316" glyphColor="#fff" borderColor="#fff" />
+                     </AdvancedMarker>
+  
+                     <RouteDisplay 
+                       origin={{ lat: truckPos[0], lng: truckPos[1] }} 
+                       destination={{ lat: destPos[0], lng: destPos[1] }} 
+                     />
+                   </Map>
+               </APIProvider>
+               ) : (
+                   <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
+                      <Truck className="w-8 h-8 text-indigo-400 mb-2 opacity-50" />
+                      <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Map Unavailable</p>
+                   </div>
+               )}
+              
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-48 bg-white dark:bg-black/95 backdrop-blur-md p-3 rounded-2xl shadow-lg flex items-center gap-3">
+                 <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600">
+                    <Truck size={18} />
+                 </div>
+                 <div>
+                    <p className="font-bold text-gray-900 dark:text-white text-sm">{t('arriving_in', 'Arriving in')}</p>
+                    <p className="font-bold text-indigo-600">{eta > 0 ? `${eta} ${t('mins', 'mins')}` : t('arrived', 'Arrived')}</p>
+                 </div>
+              </div>
+           </div>
+         )}
+         
+         {isPickup && (
+            <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900 p-6 rounded-3xl flex flex-col items-center justify-center text-center">
+               <Home className="w-12 h-12 text-indigo-600 mb-2" />
+               <h3 className="font-bold text-indigo-900 dark:text-indigo-100">{t('store_pickup', 'Store Pickup')}</h3>
+               <p className="text-sm text-indigo-700 dark:text-indigo-300 mt-1">{t('pickup_instructions', 'You will be notified when your order is ready to be picked up from the pharmacy.')}</p>
             </div>
-         </div>
+         )}
 
          {/* Driver Info */}
-         {order && order.driverId ? (
+         {!isPickup && (order && order.driverId ? (
             <div className="bg-white dark:bg-black p-4 rounded-2xl border border-gray-100 dark:border-zinc-800 flex items-center justify-between shadow-sm">
                <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden flex items-center justify-center">
@@ -191,7 +235,7 @@ export function PatientTracking() {
                   </div>
                </div>
             </div>
-         )}
+         ))}
 
          {/* Timeline */}
          <div className="bg-white dark:bg-black p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm">

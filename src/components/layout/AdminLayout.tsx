@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, Users, User, CircleDollarSign, Settings, FileText, LogOut, Package, Search, Bell, Globe, Store, Truck, 
-  Pill, Tags, CreditCard, FileBarChart, Ticket, HeadphonesIcon, UserCog, BookText, History, Plus, MessageSquare, Smartphone, Monitor, Folder, ChevronDown
+  Pill, Tags, CreditCard, FileBarChart, Ticket, HeadphonesIcon, UserCog, BookText, History, Plus, MessageSquare, Smartphone, Monitor, Folder, ChevronDown, MapPin
 } from "lucide-react";
 import { auth } from "../../lib/firebase";
 import { signOut } from '../../lib/firebase';
@@ -37,7 +37,8 @@ export function AdminLayout() {
     {
        label: t('admin_main_menu', "MAIN MENU"),
        items: [
-         { to: "/admin", icon: LayoutDashboard, label: t('admin_dashboard', "Dashboard / Overview"), end: true }
+         { to: "/admin", icon: LayoutDashboard, label: t('admin_dashboard', "Dashboard / Overview"), end: true },
+         { to: "/admin/live-map", icon: MapPin, label: "Live Map", end: true }
        ]
     },
     {

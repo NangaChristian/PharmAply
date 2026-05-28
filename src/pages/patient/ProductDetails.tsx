@@ -136,12 +136,23 @@ export function PatientProductDetails() {
          <div className="px-6 space-y-6">
             <div>
                <div className="flex justify-between items-start mb-2">
-                  <h2 className="text-[22px] font-bold text-gray-900 dark:text-white leading-tight">{product.name}</h2>
-                  <span className="text-[22px] font-bold text-[#1a3b8d] dark:text-indigo-400">{formatCurrency(product.price)}</span>
+                  <div>
+                    <h2 className="text-[22px] font-bold text-gray-900 dark:text-white leading-tight">{product.name}</h2>
+                    <p className="text-sm text-gray-500 font-medium mt-1">Generic Name • {product.form || '400mg, 10ml'}</p>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[22px] font-bold text-[#1a3b8d] dark:text-indigo-400">{formatCurrency(product.price)}</span>
+                    {product.compareAtPrice && <span className="text-sm text-gray-400 line-through">{formatCurrency(product.compareAtPrice)}</span>}
+                  </div>
                </div>
-               <div className="flex items-center gap-1.5 mt-1">
-                  <div className="text-gray-400 dark:text-gray-500">{getCategoryIcon(product.category, 14)}</div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t(product.category?.replace(/\s+/g, '_').toLowerCase(), product.category)}</p>
+               <div className="flex items-center gap-1.5 mt-2 text-xs">
+                  <div className="bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 px-2 flex items-center justify-center gap-1 py-1 rounded-full font-bold">
+                     <FileText size={12} /> {product.needsPrescription ? t('prescription_required', 'Prescription') : t('no_prescription', 'No Prescription')}
+                  </div>
+                  <div className="text-gray-400 dark:text-gray-500 flex items-center justify-center gap-1">
+                     <div className="text-gray-400 dark:text-gray-500">{getCategoryIcon(product.category, 14)}</div>
+                     <p className="font-medium">{t(product.category?.replace(/\s+/g, '_').toLowerCase(), product.category)}</p>
+                  </div>
                </div>
             </div>
 
@@ -155,6 +166,40 @@ export function PatientProductDetails() {
                   </div>
                </div>
             )}
+
+            {/* Nearby Pharmacies Array List */}
+            <div className="mt-8">
+               <h3 className="font-bold text-gray-900 dark:text-white text-lg mb-4">{t('nearby_pharmacies', 'Nearby Pharmacies')}</h3>
+               <div className="space-y-4">
+                 {/* Mocked Pharmacy 1 */}
+                 <div className="border border-gray-100 dark:border-zinc-800 rounded-2xl p-4 bg-white dark:bg-zinc-950 shadow-sm flex items-center justify-between">
+                    <div>
+                       <h4 className="font-bold text-gray-900 dark:text-white text-sm">Al-Shifa Pharmacy</h4>
+                       <p className="text-xs text-gray-500 mt-1">Deliver - 15 minutes • 2.55km</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                       <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(product.price)}</span>
+                       <div className="flex items-center gap-2">
+                          <button onClick={() => navigate(`/patient/checkout/${product.id}`)} className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold px-4 py-1.5 rounded-full hover:opacity-80 transition">{t('accept_order', 'Order')}</button>
+                       </div>
+                    </div>
+                 </div>
+
+                 {/* Mocked Pharmacy 2 */}
+                 <div className="border border-gray-100 dark:border-zinc-800 rounded-2xl p-4 bg-white dark:bg-zinc-950 shadow-sm flex items-center justify-between">
+                    <div>
+                       <h4 className="font-bold text-gray-900 dark:text-white text-sm">City Pharmacy</h4>
+                       <p className="text-xs text-gray-500 mt-1">Deliver - 20 minutes • 3.20km</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                       <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(Number(product.price) + 2)}</span>
+                       <div className="flex items-center gap-2">
+                          <button onClick={() => navigate(`/patient/checkout/${product.id}`)} className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold px-4 py-1.5 rounded-full hover:opacity-80 transition">{t('accept_order', 'Order')}</button>
+                       </div>
+                    </div>
+                 </div>
+               </div>
+            </div>
 
             {/* Tabs */}
             <div className="flex p-1 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800">

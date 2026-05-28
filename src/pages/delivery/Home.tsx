@@ -11,10 +11,8 @@ import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps
 import { RouteDisplay } from './RouteDisplay';
 import { NotificationBell } from "../../components/NotificationBell";
 
-const API_KEY =
-  process.env.GOOGLE_MAPS_PLATFORM_KEY ||
-  (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
-  '';
+const rawApiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY || '';
+const API_KEY = rawApiKey === 'YOUR_GOOGLE_MAPS_API_KEY' || rawApiKey === 'YOUR_KEY_HERE' ? '' : rawApiKey;
 
 export function DeliveryHome() {
   const [mapType, setMapType] = useState('roadmap');
@@ -28,7 +26,18 @@ export function DeliveryHome() {
   const [processing, setProcessing] = useState(false);
   const [todaysEarnings, setTodaysEarnings] = useState(0);
   const [driverProfile, setDriverProfile] = useState<any>(null);
-  const [driverPos, setDriverPos] = useState({ lat: 31.500, lng: 34.450 });
+  const [driverPos, setDriverPos] = useState({ lat: 48.8566, lng: 2.3522 }); // Fallback location
+  
+  useEffect(() => {
+    if (navigator.geolocation) {
+       navigator.geolocation.getCurrentPosition(
+         (position) => {
+           setDriverPos({ lat: position.coords.latitude, lng: position.coords.longitude });
+         },
+         (error) => console.error('Error getting initial location', error)
+       );
+    }
+  }, []);
 
   useEffect(() => {
      let unsub: () => void;
@@ -75,7 +84,7 @@ export function DeliveryHome() {
     let unsubscribe: () => void;
     if (user && isOnline) {
       try {
-        const q = query(collection(db, 'orders'), where('status', '==', 'ready'));
+        const q = query(collection(db, 'orders'), where('status', '==', 'ready'), where('deliveryMethod', '==', 'delivery'));
         unsubscribe = onSnapshot(q, (snapshot) => {
           const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
           setOrders(fetched);
@@ -182,35 +191,42 @@ export function DeliveryHome() {
       
       {/* Map Background */}
       <div className="absolute inset-0 z-0 bg-[#e5e3df] overflow-hidden">
-         <APIProvider apiKey={API_KEY} version="weekly">
-            <Map
-              defaultCenter={driverPos}
-              center={driverPos}
-              defaultZoom={15}
-              mapId="DEMO_MAP_ID"
-              disableDefaultUI={true}
-              mapTypeId={mapType}
-              internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
-              style={{ width: '100%', height: '100%' }}
-            >
-               {isOnline && (
-                 <AdvancedMarker position={driverPos}>
-                   <div className="flex flex-col items-center justify-center">
-                      <div className="w-16 h-16 bg-indigo-500/20 rounded-full absolute animate-ping"></div>
-                      <div className="w-8 h-8 bg-indigo-600 rounded-full border-4 border-white shadow-lg z-10 flex items-center justify-center">
-                         <Navigation size={12} className="text-white fill-current transform rotate-45" />
+         {API_KEY ? (
+            <APIProvider apiKey={API_KEY} version="weekly">
+               <Map
+                 defaultCenter={driverPos}
+                 center={driverPos}
+                 defaultZoom={15}
+                 mapId="DEMO_MAP_ID"
+                 disableDefaultUI={true}
+                 mapTypeId={mapType}
+                 internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
+                 style={{ width: '100%', height: '100%' }}
+               >
+                  {isOnline && (
+                    <AdvancedMarker position={driverPos}>
+                      <div className="flex flex-col items-center justify-center">
+                         <div className="w-16 h-16 bg-indigo-500/20 rounded-full absolute animate-ping"></div>
+                         <div className="w-8 h-8 bg-indigo-600 rounded-full border-4 border-white shadow-lg z-10 flex items-center justify-center">
+                            <Navigation size={12} className="text-white fill-current transform rotate-45" />
+                         </div>
                       </div>
-                   </div>
-                 </AdvancedMarker>
-               )}
-               {isOnline && currentRequest && (
-                  <RouteDisplay 
-                      origin={driverPos} 
-                      destination={currentRequest.pharmacyAddress || currentRequest.pharmacyName || 'Pharmacy'}
-                  />
-               )}
-            </Map>
-         </APIProvider>
+                    </AdvancedMarker>
+                  )}
+                  {isOnline && currentRequest && (
+                     <RouteDisplay 
+                         origin={driverPos} 
+                         destination={currentRequest.pharmacyAddress || currentRequest.pharmacyName || 'Pharmacy'}
+                     />
+                  )}
+               </Map>
+            </APIProvider>
+         ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
+               <MapPin className="w-8 h-8 text-gray-400 mb-2 opacity-50" />
+               <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Map Unavailable</p>
+            </div>
+         )}
       </div>
 
       {/* Map Toggle FAB */}

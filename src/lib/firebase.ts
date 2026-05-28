@@ -303,6 +303,12 @@ export const onSnapshot = (queryRef: any, callback: any, errorCallback?: any) =>
 
   const fetchAndNotify = async () => {
     try {
+      if (queryRef.type === 'doc') {
+         const snap = await getDoc(queryRef);
+         callback(snap);
+         return;
+      }
+      
       const snap = await getDocs(queryRef);
       const newDocsMap = new Map();
       const changes: any[] = [];

@@ -1,4 +1,3 @@
-// Fichier: scripts/sync-dpml.js
 const axios = require('axios');
 const cheerio = require('cheerio');
 const { createClient } = require('@supabase/supabase-js');
@@ -69,7 +68,7 @@ async function syncDPML() {
       console.log(`      ✅ Alerte consignée avec succès dans l'historique.`);
 
       // 3. Mettre à jour la table des produits pour désactiver les lots rappelés
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from('products')
         .update({ 
           is_active: false,

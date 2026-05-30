@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, CheckCircle, Package, Download, X, AlertTriangle, RefreshCcw, MessageCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, Package, Download, X, AlertTriangle, RefreshCcw, MessageCircle, FileText } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
@@ -109,7 +109,7 @@ export function PharmacistOrderDetails() {
            <div className={`inline-block px-5 py-1.5 rounded-full text-sm font-bold mb-5 ${
               order.status === 'pending' ? 'bg-[#c5ead5] text-[#2c8d50]' :
               order.status === 'preparing' ? 'bg-blue-100 text-blue-700' :
-              order.status === 'ready' ? 'bg-green-100 text-green-700' :
+              (order.status === 'ready' || order.status === 'ready_for_pickup') ? 'bg-green-100 text-green-700' :
               (order.status === 'cancelled' || order.status === 'rejected') ? 'bg-red-100 text-red-700' :
               'bg-gray-200 text-gray-700'
            }`}>
@@ -154,17 +154,37 @@ export function PharmacistOrderDetails() {
              {!(order.items?.length > 0) && <div className="bg-white dark:bg-black p-4 rounded-2xl border border-gray-100 dark:border-zinc-800 text-center text-gray-500 text-sm shadow-sm">No items</div>}
            </div>
 
-           {/* Prescription */}
-           <div className="bg-gray-50 dark:bg-zinc-900/70 dark:bg-black/40 rounded-3xl p-5 mb-5">
-             <h3 className="font-bold text-gray-700 dark:text-gray-200 text-[15px] mb-3">Prescription</h3>
-             {order.hasPrescription && order.prescriptionUrl ? (
-               <div className="text-center py-3">
-                 <button onClick={() => window.open(order.prescriptionUrl, '_blank')} className="text-[13px] font-bold text-gray-700 dark:text-gray-300 underline underline-offset-4 decoration-gray-400">View Prescription Image</button>
+           {/* Prescription DPML Validation */}
+           {order.hasPrescription && (
+             <div className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-3xl p-5 mb-5 space-y-4">
+               <div className="flex items-center gap-2">
+                 <AlertTriangle size={20} className="text-red-500 shrink-0" />
+                 <h3 className="font-bold text-red-900 dark:text-red-400 text-[15px]">Validation DPML (Ordonnance Obligatoire)</h3>
                </div>
-             ) : (
-               <p className="text-[13px] text-gray-500 text-center py-2 underline underline-offset-4 decoration-gray-300 w-full block">No prescription</p>
-             )}
-           </div>
+               
+               {order.prescriptionUrl ? (
+                 <div className="bg-white dark:bg-black rounded-2xl p-4 flex justify-between items-center shadow-sm">
+                   <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center text-red-600">
+                         <FileText size={18} />
+                      </div>
+                      <div>
+                         <p className="font-bold text-gray-900 dark:text-white text-sm">Ordonnance Téléchargée</p>
+                         <p className="text-xs text-gray-500 mt-0.5">Veuillez vérifier l'authenticité</p>
+                      </div>
+                   </div>
+                   <button onClick={() => window.open(order.prescriptionUrl, '_blank')} className="bg-red-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-red-700 transition">
+                     Ouvrir le document
+                   </button>
+                 </div>
+               ) : (
+                 <div className="bg-white dark:bg-black rounded-2xl p-4 shadow-sm border-l-4 border-red-500">
+                    <p className="font-bold text-gray-900 dark:text-white text-sm">Document Manquant</p>
+                    <p className="text-xs text-gray-500 mt-1">Le patient n'a pas téléchargé d'ordonnance valide.</p>
+                 </div>
+               )}
+             </div>
+           )}
 
            {/* Note */}
            {order.notes && (
@@ -234,11 +254,11 @@ export function PharmacistOrderDetails() {
          )}
          
          {order.status === 'preparing' && (
-           <button disabled={processing} onClick={() => handleUpdateStatus('ready')} className="w-full py-4 bg-green-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl shadow-green-200 hover:bg-green-700 transition-all active:scale-[0.98]">
+           <button disabled={processing} onClick={() => handleUpdateStatus(order.deliveryMethod === 'pickup' ? 'ready_for_pickup' : 'ready')} className="w-full py-4 bg-green-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl shadow-green-200 hover:bg-green-700 transition-all active:scale-[0.98]">
               <CheckCircle size={20} />  {order.deliveryMethod === 'pickup' ? t('mark_as_ready_for_pickup', 'Mark as Ready for Pickup') : t('mark_as_ready_for_delivery', 'Mark as Ready for Delivery')} </button>
          )}
          
-         {order.status === 'ready' && order.deliveryMethod === 'pickup' && (
+         {order.status === 'ready_for_pickup' && order.deliveryMethod === 'pickup' && (
            <button disabled={processing} onClick={() => handleUpdateStatus('delivered')} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all active:scale-[0.98]">
               <CheckCircle size={20} />  {t('confirm_patient_pickup', 'Confirm Patient Picked Up')} </button>
          )}

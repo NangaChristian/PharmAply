@@ -26,7 +26,12 @@ export function ProductCard({ product, basePath, onClick, showSaleBadge = false,
     }
   };
 
-  const isRx = String(product.RequiresPrescription || product.requiresPrescription || product.Prescription || '').toLowerCase() === 'true';
+  const isRx = String(product.is_prescription_required || product.requires_prescription || product.RequiresPrescription || product.requiresPrescription || product.Prescription || '').toLowerCase() === 'true';
+
+  const title = product.commercial_name || product.name;
+  const subtitle = product.dci || product.scientific_name || product.active_ingredient;
+  const categoryName = product.ux_categories?.name || product.category || product.Category;
+  const categoryIcon = product.ux_categories?.icon || product.category || product.Category;
 
   return (
     <div 
@@ -46,40 +51,53 @@ export function ProductCard({ product, basePath, onClick, showSaleBadge = false,
              <Heart size={16} fill={isWishlisted ? "currentColor" : "none"} className={isWishlisted ? "text-red-500" : ""} />
           </button>
         )}
-        {(product.imageUrl || product.ImageURL || product.image || product.Image) ? (
-          <img src={product.imageUrl || product.ImageURL || product.image || product.Image} alt={product.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
+        {(product.image_url || product.imageUrl || product.ImageURL || product.image || product.Image) ? (
+          <img src={product.image_url || product.imageUrl || product.ImageURL || product.image || product.Image} alt={title} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
         ) : (
           <div className="text-gray-300 dark:text-gray-600">
-             {getCategoryIcon(product.category || product.Category, 32)}
+             {getCategoryIcon(categoryIcon, 32)}
           </div>
         )}
       </div>
       
       <div className="flex flex-col">
         <div className="flex items-start justify-between mb-1.5">
-          <h3 className="font-extrabold text-[#1a1f36] dark:text-gray-100 text-sm sm:text-base leading-tight truncate mr-2">{product.name}</h3>
+          <div>
+            <h3 className="font-extrabold text-[#1a1f36] dark:text-gray-100 text-sm sm:text-base leading-tight truncate">{title}</h3>
+            {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">{subtitle}</p>}
+          </div>
           <button className="w-5 h-5 shrink-0 border border-indigo-900/20 dark:border-indigo-400/20 rounded-full flex items-center justify-center text-indigo-900 dark:text-indigo-400 transition-colors">
-            {getCategoryIcon(product.category || product.Category, 10)}
+            {getCategoryIcon(categoryIcon, 10)}
           </button>
         </div>
         
         <div className="flex flex-wrap gap-1 mb-1">
-          <span className="bg-[#FDF9EE] dark:bg-yellow-900/20 text-[#786345] dark:text-yellow-500 px-1.5 py-0.5 rounded-sm text-[10px] font-bold tracking-tight">
-            {isRx ? 'Prescription' : 'OTC'}
+          {product.is_recalled && (
+             <span className="bg-red-600 text-white px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-tight flex items-center gap-0.5 animate-pulse w-full mb-1">
+               ⚠ ALERTE DPML: LOT RETIRÉ
+             </span>
+          )}
+          {product.is_essentiel && (
+             <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-tight flex items-center gap-0.5">
+               Médicament Essentiel
+             </span>
+          )}
+          <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-tight flex items-center gap-0.5">
+            AMM Validée
           </span>
-          {product.dosage && (
+          {isRx && (
+             <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-tight flex items-center gap-0.5">
+               Ordonnance Obligatoire
+             </span>
+          )}
+          {product.dosage && !isRx && (
              <span className="bg-[#FDF9EE] dark:bg-yellow-900/20 text-[#786345] dark:text-yellow-500 px-1.5 py-0.5 rounded-sm text-[10px] font-bold tracking-tight truncate max-w-[80px]">
                {product.dosage}
              </span>
           )}
-          {product.brand && product.brand !== 'Generic' && (
+          {product.form && !isRx && (
              <span className="bg-[#FDF9EE] dark:bg-yellow-900/20 text-[#786345] dark:text-yellow-500 px-1.5 py-0.5 rounded-sm text-[10px] font-bold tracking-tight truncate max-w-[80px]">
-               {product.brand}
-             </span>
-          )}
-          {product.category && (
-             <span className="bg-[#FDF9EE] dark:bg-yellow-900/20 text-[#786345] dark:text-yellow-500 px-1.5 py-0.5 rounded-sm text-[10px] font-bold tracking-tight truncate max-w-[80px] flex items-center gap-1">
-               {product.category}
+               {product.form}
              </span>
           )}
         </div>

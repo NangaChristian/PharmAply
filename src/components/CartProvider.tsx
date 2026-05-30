@@ -28,7 +28,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(() => {
     try {
       const stored = localStorage.getItem("pharmaply_cart");
-      return stored ? JSON.parse(stored) : [];
+      if (stored) {
+         const parsed = JSON.parse(stored);
+         return Array.isArray(parsed) ? parsed : [];
+      }
+      return [];
     } catch {
       return [];
     }
@@ -69,16 +73,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateQuantity = (id: string, delta: number) => {
-    setItems((prev) =>
-      prev.map((item) => {
+    setItems((prev) => {
+      const item = prev.find((i) => i.id === id);
+      if (item && item.quantity + delta < 1) {
+        return prev.filter((i) => i.id !== id);
+      }
+      return prev.map((item) => {
         if (item.id === id) {
-          const newQuantity = Math.max(1, item.quantity + delta);
-          // if (item.stock && newQuantity > item.stock) { toast.error("Not enough stock"); return item; }
-          return { ...item, quantity: newQuantity };
+          return { ...item, quantity: item.quantity + delta };
         }
         return item;
-      })
-    );
+      });
+    });
   };
 
   const clearCart = () => setItems([]);

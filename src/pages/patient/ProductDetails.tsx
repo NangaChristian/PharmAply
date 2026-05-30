@@ -87,6 +87,7 @@ export function PatientProductDetails() {
 
   const handleAddToCart = () => {
      addToCart(product, quantity);
+     toast.success(t('added_to_cart_success', 'Added to cart successfully!'));
   };
 
   if (loading) return <div className="p-8 text-center text-sm text-gray-500">{t('loading_product', 'Loading product...')}</div>;
@@ -137,8 +138,8 @@ export function PatientProductDetails() {
             <div>
                <div className="flex justify-between items-start mb-2">
                   <div>
-                    <h2 className="text-[22px] font-bold text-gray-900 dark:text-white leading-tight">{product.name}</h2>
-                    <p className="text-sm text-gray-500 font-medium mt-1">Generic Name • {product.form || '400mg, 10ml'}</p>
+                    <h2 className="text-[22px] font-bold text-gray-900 dark:text-white leading-tight">{product.commercial_name || product.name}</h2>
+                    <p className="text-sm text-gray-500 font-medium mt-1">{product.dci || 'Generic Name'} • {product.form || 'Unknown'} {product.dosage || ''}</p>
                   </div>
                   <div className="flex flex-col items-end">
                     <span className="text-[22px] font-bold text-[#1a3b8d] dark:text-indigo-400">{formatCurrency(product.price)}</span>
@@ -147,17 +148,17 @@ export function PatientProductDetails() {
                </div>
                <div className="flex items-center gap-1.5 mt-2 text-xs">
                   <div className="bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 px-2 flex items-center justify-center gap-1 py-1 rounded-full font-bold">
-                     <FileText size={12} /> {product.needsPrescription ? t('prescription_required', 'Prescription') : t('no_prescription', 'No Prescription')}
+                     <FileText size={12} /> {(product.is_prescription_required || product.needsPrescription) ? t('prescription_required', 'Prescription') : t('no_prescription', 'No Prescription')}
                   </div>
                   <div className="text-gray-400 dark:text-gray-500 flex items-center justify-center gap-1">
-                     <div className="text-gray-400 dark:text-gray-500">{getCategoryIcon(product.category, 14)}</div>
-                     <p className="font-medium">{t(product.category?.replace(/\s+/g, '_').toLowerCase(), product.category)}</p>
+                     <div className="text-gray-400 dark:text-gray-500">{getCategoryIcon(product.ux_categories?.icon || product.category, 14)}</div>
+                     <p className="font-medium">{t(product.ux_categories?.name?.replace(/\s+/g, '_').toLowerCase() || product.category?.replace(/\s+/g, '_').toLowerCase(), product.ux_categories?.name || product.category)}</p>
                   </div>
                </div>
             </div>
 
             {/* Prescription Warning */}
-            {product.needsPrescription && (
+            {(product.is_prescription_required || product.needsPrescription) && (
                <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-100 dark:border-orange-900/50 rounded-2xl p-4 flex gap-3">
                   <ShieldAlert className="text-orange-500 shrink-0" size={24} />
                   <div>

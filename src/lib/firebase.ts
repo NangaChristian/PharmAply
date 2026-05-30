@@ -247,7 +247,11 @@ export const limit = (n: number) => {
 };
 
 export const getDocs = async (queryRef: any) => {
-  const table = queryRef.table;
+  let table = queryRef.table;
+  
+  // Fallback for ux_categories if the user hasn't run the migration yet
+  const isUxCategory = table === 'ux_categories';
+  
   let builder: any = supabase.from(table).select('*');
   
   if (queryRef.constraints) {
@@ -270,8 +274,20 @@ export const getDocs = async (queryRef: any) => {
     }
   }
 
-  const { data, error } = await builder;
-  if (error) throw new Error(error.message);
+  let { data, error } = await builder;
+  
+  if (error) {
+     // Graceful fallback for unapplied migrations
+     if (isUxCategory && error.message.includes('Could not find the table')) {
+        console.warn("Table 'ux_categories' not found, falling back to 'categories'. Have you run the SQL migration?");
+        const fallbackBuilder = supabase.from('categories').select('*');
+        const fallbackResult = await (queryRef.constraints?.find((c:any) => c.type === 'limit') ? fallbackBuilder.limit(queryRef.constraints.find((c:any) => c.type === 'limit').n) : fallbackBuilder);
+        data = fallbackResult.data;
+        error = fallbackResult.error;
+     }
+     
+     if (error) throw new Error(error.message);
+  }
 
   const docs = (data || []).map((d: any) => {
      const parsed: any = { ...(d.data || {}) };

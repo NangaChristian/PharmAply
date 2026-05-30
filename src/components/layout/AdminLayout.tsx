@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, Users, User, CircleDollarSign, Settings, FileText, LogOut, Package, Search, Bell, Globe, Store, Truck, 
-  Pill, Tags, CreditCard, FileBarChart, Ticket, HeadphonesIcon, UserCog, BookText, History, Plus, MessageSquare, Smartphone, Monitor, Folder, ChevronDown, MapPin
+  Pill, Tags, CreditCard, FileBarChart, Ticket, HeadphonesIcon, UserCog, BookText, History, Plus, MessageSquare, Smartphone, Monitor, Folder, ChevronDown, MapPin, ShieldAlert
 } from "lucide-react";
 import { auth } from "../../lib/firebase";
 import { signOut } from '../../lib/firebase';
@@ -45,7 +45,8 @@ export function AdminLayout() {
        label: t('admin_medications', "MEDICATIONS"),
        items: [
          { to: "/admin/products", icon: Pill, label: t('admin_products', "Products"), end: true },
-         { to: "/admin/categories", icon: Tags, label: t('admin_categories', "Categories"), end: true }
+         { to: "/admin/categories", icon: Tags, label: t('admin_categories', "Categories"), end: true },
+         { to: "/admin/dpml", icon: ShieldAlert, label: "DPML Alerts", end: true }
        ]
     },
     {

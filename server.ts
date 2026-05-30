@@ -146,6 +146,59 @@ async function startServer() {
     }
   });
 
+  // DPML Webhook to receive alerts and automatically quarantine products
+  app.post("/api/dpml/alerts", async (req: express.Request, res: express.Response): Promise<any> => {
+    try {
+      const { titre, description, num_lot_concerne, dci_concerne, nom_commercial_concerne, action_requise } = req.body;
+      
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey) {
+         return res.status(500).json({ success: false, error: "Supabase credentials missing" });
+      }
+
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      // 1. Insert alert
+      const { data: alert, error: alertError } = await supabase
+         .from('dpml_alertes')
+         .insert([{
+            titre,
+            description,
+            num_lot_concerne,
+            dci_concerne,
+            nom_commercial_concerne,
+            action_requise,
+            statut: 'Actif'
+         }])
+         .select()
+         .single();
+         
+      if (alertError) throw alertError;
+
+      // 2. Put products in quarantine automatically (is_active = false)
+      let productsQuery = supabase.from('products').update({ is_active: false });
+      
+      if (dci_concerne) {
+         productsQuery = productsQuery.ilike('dci', `%${dci_concerne}%`);
+      } else if (nom_commercial_concerne) {
+         productsQuery = productsQuery.ilike('nom_commercial', `%${nom_commercial_concerne}%`);
+      } else {
+         throw new Error("Must provide dci_concerne or nom_commercial_concerne");
+      }
+      
+      const { error: updateError } = await productsQuery;
+      if (updateError) throw updateError;
+      
+      res.json({ success: true, message: "Alert received and products quarantined.", alert });
+    } catch (err: any) {
+      console.error("DPML Webhook Error:", err.message);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");

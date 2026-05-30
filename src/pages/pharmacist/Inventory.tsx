@@ -95,16 +95,21 @@ export function PharmacistInventory() {
       if (!selectedProduct) throw new Error("Invalid product selected");
 
       await addDoc(collection(db, 'products'), {
-        name: selectedProduct.name,
+        name: selectedProduct.commercial_name || selectedProduct.name,
+        commercial_name: selectedProduct.commercial_name,
+        dci: selectedProduct.dci,
         category: selectedProduct.category,
+        ux_category_id: selectedProduct.ux_category_id,
+        form: selectedProduct.form,
         dosage: selectedProduct.dosage || '',
         brand: selectedProduct.brand || 'Generic',
         price: parseFloat(newProductPrice),
         stock: parseInt(newProductStock),
         expiryDate: newProductExpiry,
-        needsPrescription: false,
+        is_prescription_required: selectedProduct.is_prescription_required || false,
+        needsPrescription: selectedProduct.is_prescription_required || false,
         pharmacyId: pharmacyId,
-        imageUrl: selectedProduct.imageUrl,
+        imageUrl: selectedProduct.image_url || selectedProduct.imageUrl,
         createdAt: serverTimestamp(),
       });
       setShowAdd(false);
@@ -122,7 +127,7 @@ export function PharmacistInventory() {
     try {
       const newStock = parseInt(editingProduct.stock);
       await updateDoc(doc(db, 'products', editingProduct.id), {
-        name: editingProduct.name,
+        name: editingProduct.commercial_name || editingProduct.name,
         dosage: editingProduct.dosage,
         category: editingProduct.category,
         brand: editingProduct.brand,
@@ -198,7 +203,7 @@ export function PharmacistInventory() {
                   <option value="" disabled> {t('select_a_product', 'Select a product...')} </option>
                   {globalProducts.map(p => (
                      <option key={p.id} value={p.id}>
-                        {p.name} {p.dosage ? `(${p.dosage})` : ''} - {p.category}
+                        {p.commercial_name || p.name} {p.dci ? `[${p.dci}]` : ''} {p.dosage ? `(${p.dosage})` : ''} - {p.category}
                      </option>
                   ))}
                </select>

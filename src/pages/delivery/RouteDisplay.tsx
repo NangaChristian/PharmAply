@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { useMap, useMapsLibrary } from '@vis.gl/react-google-maps';
 
-export function RouteDisplay({ origin, destination }: {
+export function RouteDisplay({ origin, destination, onDuration }: {
   origin: string | google.maps.LatLngLiteral;
   destination: string | google.maps.LatLngLiteral;
+  onDuration?: (millis: number) => void;
 }) {
   const map = useMap();
   const routesLib = useMapsLibrary('routes');
@@ -52,6 +53,7 @@ export function RouteDisplay({ origin, destination }: {
              });
              polylinesRef.current = newPolylines;
              if (routes[0].viewport) map.fitBounds(routes[0].viewport, 40);
+             if (onDuration && routes[0].durationMillis) onDuration(routes[0].durationMillis);
            }
        } catch (err) {
            console.error("Route computation failed", err);

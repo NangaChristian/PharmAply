@@ -1,11 +1,10 @@
-# Fichier: .github/workflows/dpml-sync.yml
 name: DPML Alerts Sync Cron Job
 
 on:
   schedule:
     # Exécution tous les jours à 01:00 UTC (02:00 heure de Douala, GMT+1)
     - cron: '0 1 * * *'
-  workflow_dispatch: # Permet de déclencher le script manuellement depuis l'UI GitHub en cas d'urgence
+  workflow_dispatch: # Permet de déclencher le script manuellement depuis GitHub en cas d'urgence
 
 jobs:
   scrape-and-sync:
@@ -26,6 +25,6 @@ jobs:
       - name: Run DPML Sync Node.js Script
         run: node scripts/sync-dpml.js
         env:
-          # Injection de façon très sécurisée des variables depuis les secrets GitHub
+          # Injection des variables depuis les secrets GitHub
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}

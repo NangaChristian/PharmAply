@@ -43,7 +43,7 @@ export function PatientCart() {
                       )}
                     </div>
                     <div className="flex-1">
-                       <h3 className="font-bold text-gray-900 dark:text-white text-sm leading-tight mb-1">{item.name}</h3>
+                       <h3 className="font-bold text-gray-900 dark:text-white text-sm leading-tight mb-1">{item.commercial_name || item.name}</h3>
                        <p className="text-[#1a3b8d] dark:text-indigo-400 font-bold mb-3">{formatCurrency(item.price)}</p>
                        
                        <div className="flex items-center justify-between">
@@ -52,6 +52,9 @@ export function PatientCart() {
                              <span className="font-bold text-gray-900 dark:text-white mx-2 text-xs min-w-[16px] text-center">{item.quantity}</span>
                              <button onClick={() => updateQuantity(item.id, 1)} className="text-indigo-600 dark:text-indigo-400 p-2 shrink-0 touch-manipulation min-w-[36px] min-h-[36px] flex items-center justify-center text-white bg-[#1a3b8d] rounded-md"><Plus size={14}/></button>
                           </div>
+                          <button onClick={() => removeFromCart(item.id)} className="text-red-500 hover:text-red-700 p-2 bg-red-50 dark:bg-red-900/20 rounded-lg shrink-0 flex items-center justify-center touch-manipulation" title="Remove">
+                             <Trash2 size={18} />
+                          </button>
                        </div>
                     </div>
                   </div>
@@ -68,6 +71,14 @@ export function PatientCart() {
 
        {items.length > 0 && (
         <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 p-6 pb-[calc(env(safe-area-inset-bottom)+5rem)] z-40 rounded-t-3xl shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
+           {items.some(item => item.classification_liste === 'Liste_1' || item.classification_liste === 'Liste_2' || item.classification_liste === 'Stupefiant') && (
+             <div className="mb-4 bg-red-50 dark:bg-red-900/20 p-2.5 rounded-lg flex items-start gap-2 border border-red-100 dark:border-red-900/50">
+               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500 shrink-0 mt-0.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+               <p className="text-xs text-red-700 dark:text-red-400 font-medium leading-tight">
+                 Garde-Fou DPML: Votre panier contient des médicaments sur ordonnance. Vous devrez télécharger une ordonnance valide à l'étape suivante.
+               </p>
+             </div>
+           )}
            <h3 className="font-bold text-gray-900 dark:text-white mb-4">{t('order_bill', 'Order Bill')}</h3>
            <div className="flex justify-between items-center mb-2">
               <span className="text-gray-500 font-medium text-sm">{t('subtotal', 'Subtotal')}</span>

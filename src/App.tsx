@@ -89,6 +89,7 @@ import { DarkModeProvider } from './components/DarkModeProvider';
 import { AppUpdater } from './components/AppUpdater';
 
 import { AdminLiveMap } from './pages/admin/LiveMap';
+import { AdminDPML } from './pages/admin/AdminDPML';
 
 export default function App() {
   return (
@@ -158,6 +159,7 @@ export default function App() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminHome />} />
             <Route path="live-map" element={<AdminLiveMap />} />
+            <Route path="dpml" element={<AdminDPML />} />
             <Route path="products" element={<AdminProducts />} />
             <Route path="categories" element={<AdminCategories />} />
              <Route path="clients" element={<AdminUsers type="clients" />} />

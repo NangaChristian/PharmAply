@@ -69,6 +69,8 @@ const PharmacyMarkers = React.memo(({ pharmacies }: { pharmacies: any[] }) => {
   );
 });
 
+import { PatientSearchBar } from '../../components/PatientSearchBar';
+
 export function PatientHome() {
   const navigate = useNavigate();
   const { user, userData } = useAuth();
@@ -101,10 +103,14 @@ export function PatientHome() {
   
   const { unreadCount } = useNotifications();
 
+  const uniqueSymptoms = Array.from(new Set(products.flatMap(p => p.symptoms || [])));
+
   const autocompleteSuggestions = search ? [
     ...categories.map(c => ({ type: 'category', text: c.name })),
     ...pharmacies.map(p => ({ type: 'pharmacy', text: p.name })),
-    ...products.map(p => ({ type: 'product', text: p.name }))
+    ...products.map(p => ({ type: 'product', text: p.commercial_name || p.name })),
+    ...products.filter(p => p.dci).map(p => ({ type: 'product', text: p.dci })),
+    ...uniqueSymptoms.map(s => ({ type: 'symptom', text: s as string }))
   ].filter(s => (s.text?.toLowerCase() || '').includes(search.toLowerCase())).slice(0, 10) : [];
 
     const handleSearchClick = (item: any) => {
@@ -133,12 +139,12 @@ export function PatientHome() {
     
     const fetchCategories = async () => {
       try {
-        const cq = query(collection(db, 'categories'), limit(6));
+        const cq = query(collection(db, 'ux_categories'), limit(6));
         const snapshot = await getDocs(cq);
         const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setCategories(fetched);
       } catch (error) {
-        console.error("Failed to fetch categories", error);
+        console.error("Failed to fetch ux_categories", error);
       }
     };
     
@@ -182,41 +188,8 @@ export function PatientHome() {
         </div>
 
         {/* Search Bar with Autosuggest */}
-        <div className="relative mt-2 flex items-center">
-          <Search className="absolute left-4 text-gray-400 dark:text-gray-500 z-10" size={20} />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onFocus={() => setShowSuggestions(true)}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-            onKeyDown={handleKeyDown}
-            placeholder={t('search_placeholder', 'Search medicine, pharmacy...')}
-            className="w-full pl-12 pr-12 py-3.5 bg-gray-100 dark:bg-zinc-900 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-shadow relative"
-          />
-          <button className="absolute right-3 bg-indigo-50 dark:bg-zinc-800 p-2 rounded-xl text-indigo-600 dark:text-indigo-400 z-10">
-             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-          </button>
-          
-          {showSuggestions && search && (
-             <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-black rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-zinc-800 z-50">
-                {autocompleteSuggestions.length > 0 ? (
-                   autocompleteSuggestions.map((s, i) => (
-                      <div key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:bg-black cursor-pointer border-b border-gray-50 last:border-0" onClick={() => handleSearchClick(s)}>
-                         <div className="text-gray-400 dark:text-gray-500">
-                            {s.type === 'product' && <Pill size={16} />}
-                            {s.type === 'category' && <Search size={16} />}
-                            {s.type === 'pharmacy' && <Store size={16} />}
-                         </div>
-                         <span className="text-sm font-medium text-gray-900 dark:text-white">{s.text}</span>
-                         <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase ml-auto">{s.type}</span>
-                      </div>
-                   ))
-                ) : (
-                   <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500"> {t('no_results_found', 'No results found')} </div>
-                )}
-             </div>
-          )}
+        <div className="relative mt-2 flex items-center z-50">
+          <PatientSearchBar />
         </div>
       </div>
 
@@ -326,7 +299,7 @@ export function PatientHome() {
         {/* Categories */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900 dark:text-white text-[19px] tracking-tight">{t('categories', 'Categories')}</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white text-[19px] tracking-tight">Symptômes & Besoins</h3>
             <button onClick={() => navigate('/patient/search')} className="text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full text-xs font-semibold">{t('see_all', 'see all')} <ChevronRight size={12} className="inline opacity-70" /></button>
           </div>
           <div className="flex overflow-x-auto gap-4 hide-scrollbar -mx-6 px-6 pb-2 snap-x">

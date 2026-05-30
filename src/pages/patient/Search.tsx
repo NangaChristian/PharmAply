@@ -84,7 +84,7 @@ export function PatientSearch() {
         setPharmacies(snapshotPharmacies.docs.map(d => ({ id: d.id, ...d.data() })));
 
         // Fetch categories
-        const qCategories = query(collection(db, 'categories'), limit(20));
+        const qCategories = query(collection(db, 'ux_categories'), limit(20));
         const snapshotCategories = await getDocs(qCategories);
         setCategories(snapshotCategories.docs.map(d => ({ id: d.id, ...d.data() })));
 
@@ -102,10 +102,14 @@ export function PatientSearch() {
 
   const filteredProducts = products.filter(p => 
     (p.name?.toLowerCase() || '').includes(sq) || 
+    (p.commercial_name?.toLowerCase() || '').includes(sq) || 
+    (p.dci?.toLowerCase() || '').includes(sq) || 
     (p.category?.toLowerCase() || '').includes(sq) ||
     (p.description?.toLowerCase() || '').includes(sq) ||
+    (p.scientific_name?.toLowerCase() || '').includes(sq) ||
     (p.active_ingredient?.toLowerCase() || '').includes(sq) ||
-    (p.brand?.toLowerCase() || '').includes(sq)
+    (p.brand?.toLowerCase() || '').includes(sq) ||
+    (Array.isArray(p.symptoms) && p.symptoms.some((sym: string) => sym.toLowerCase().includes(sq)))
   );
 
   const filteredPharmacies = pharmacies.filter(p => 

@@ -37,9 +37,11 @@ export function PatientTracking() {
     }
   }, []);
 
-  const destPos: [number, number] = order?.deliveryLocation 
-    ? [order.deliveryLocation.lat, order.deliveryLocation.lng]
-    : userLocation || [48.8566, 2.3522]; // Paris as final fallback
+  const destPos: [number, number] = (order?.destLat && order?.destLng) 
+    ? [Number(order.destLat), Number(order.destLng)]
+    : order?.deliveryLocation 
+      ? [order.deliveryLocation.lat, order.deliveryLocation.lng]
+      : userLocation || [48.8566, 2.3522]; // Paris as final fallback
 
   useEffect(() => {
     if (!id) return;
@@ -64,7 +66,11 @@ export function PatientTracking() {
     if (!order?.driverId) return;
     const unsub = onSnapshot(doc(db, 'drivers', order.driverId), (docObj) => {
        if (docObj.exists()) {
-          setDriver({ id: docObj.id, ...docObj.data() });
+          const driverData = docObj.data();
+          setDriver({ id: docObj.id, ...driverData });
+          if (driverData.lat && driverData.lng) {
+             setTruckPos([driverData.lat, driverData.lng]);
+          }
        }
     });
     return () => unsub();
@@ -106,23 +112,23 @@ export function PatientTracking() {
     };
 
     if (type === 'placed') return extractDate(order.createdAt) || t('today', "Today");
-    if (type === 'preparing') return extractDate(order.preparedAt || order.acceptedAt) || (['preparing', 'driver_assigned', 'out_for_delivery', 'ready', 'delivered'].includes(order.status) ? "Processing..." : "");
+    if (type === 'preparing') return extractDate(order.preparedAt || order.acceptedAt) || (['preparing', 'driver_assigned', 'out_for_delivery', 'ready', 'ready_for_pickup', 'delivered'].includes(order.status) ? "Processing..." : "");
     if (type === 'out') return extractDate(order.dispatchedAt || order.outForDeliveryAt) || (['driver_assigned', 'out_for_delivery', 'delivered'].includes(order.status) ? "Dispatched" : "");
-    if (type === 'ready') return extractDate(order.readyAt) || (['ready', 'delivered'].includes(order.status) ? "Ready" : "");
+    if (type === 'ready') return extractDate(order.readyAt) || (['ready', 'ready_for_pickup', 'delivered'].includes(order.status) ? "Ready" : "");
     if (type === 'delivered') return extractDate(order.deliveredAt) || (order.status === 'delivered' ? (isPickup ? "Picked up" : "Delivered") : t('pending', "Pending"));
 
     return "";
   };
 
   const statuses = isPickup ? [
-    { label: t('order_placed', "Order Placed"), date: getTimelineDate('placed'), completed: true, icon: CheckCircle },
-    { label: t('pharmacy_preparing', "Pharmacy Preparing"), date: getTimelineDate('preparing'), completed: ['preparing', 'ready', 'delivered'].includes(order?.status), active: order?.status === 'pending', icon: Package },
-    { label: t('ready_for_pickup', "Ready for Pickup"), date: getTimelineDate('ready'), completed: order?.status === 'delivered' || order?.status === 'ready', active: order?.status === 'preparing', icon: Home },
-    { label: t('picked_up', "Picked Up"), date: order?.status === 'delivered' ? getTimelineDate('delivered') : t('pending', "Pending"), completed: order?.status === 'delivered', icon: CheckCircle },
+    { label: t('order_placed_status', "Commande passée"), date: getTimelineDate('placed'), completed: true, icon: CheckCircle },
+    { label: t('pharmacy_preparing_status', "Préparation par la pharmacie"), date: getTimelineDate('preparing'), completed: ['preparing', 'ready_for_pickup', 'ready', 'delivered'].includes(order?.status), active: order?.status === 'pending', icon: Package },
+    { label: t('ready_for_pickup_status', "Ready for Pickup at Pharmacy"), date: getTimelineDate('ready'), completed: order?.status === 'delivered' || order?.status === 'ready' || order?.status === 'ready_for_pickup', active: order?.status === 'preparing', icon: Home },
+    { label: t('picked_up_status', "Picked Up"), date: order?.status === 'delivered' ? getTimelineDate('delivered') : t('pending', "Pending"), completed: order?.status === 'delivered', icon: CheckCircle },
   ] : [
-    { label: t('order_placed', "Order Placed"), date: getTimelineDate('placed'), completed: true, icon: CheckCircle },
-    { label: t('pharmacy_preparing', "Pharmacy Preparing"), date: getTimelineDate('preparing'), completed: ['preparing', 'driver_assigned', 'out_for_delivery', 'delivered'].includes(order?.status), active: order?.status === 'pending', icon: Package },
-    { label: t('on_the_way', "On the way"), date: eta > 0 ? t('estimated', "Estimated") + ` ${eta} ${t('mins', 'mins')}` : getTimelineDate('out'), completed: order?.status === 'delivered', active: ['driver_assigned', 'out_for_delivery'].includes(order?.status), icon: Truck },
+    { label: t('order_placed_status', "Commande passée"), date: getTimelineDate('placed'), completed: true, icon: CheckCircle },
+    { label: t('pharmacy_preparing_status', "Préparation par la pharmacie"), date: getTimelineDate('preparing'), completed: ['preparing', 'driver_assigned', 'out_for_delivery', 'delivered'].includes(order?.status), active: order?.status === 'pending', icon: Package },
+    { label: t('on_the_way_status', "En route"), date: eta > 0 ? t('estimated', "Estimated") + ` ${eta} ${t('mins', 'mins')}` : getTimelineDate('out'), completed: order?.status === 'delivered', active: ['driver_assigned', 'out_for_delivery'].includes(order?.status), icon: Truck },
     { label: t('delivered_status', "Delivered"), date: order?.status === 'delivered' ? getTimelineDate('delivered') : t('pending', "Pending"), completed: order?.status === 'delivered', icon: Home },
   ];
 
@@ -138,7 +144,7 @@ export function PatientTracking() {
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
          {/* Live Map Tracking */}
-         {!isPickup && (
+         {!isPickup && order && ['driver_assigned', 'en_route_to_pharmacy', 'delivering', 'out_for_delivery', 'en_route', 'delivered'].includes(order.status) && (
            <div className="w-full h-64 bg-indigo-100 rounded-3xl overflow-hidden relative border-4 border-white shadow-sm z-0">
                {API_KEY ? (
                    <APIProvider apiKey={API_KEY} version="weekly">
@@ -161,7 +167,8 @@ export function PatientTracking() {
   
                      <RouteDisplay 
                        origin={{ lat: truckPos[0], lng: truckPos[1] }} 
-                       destination={{ lat: destPos[0], lng: destPos[1] }} 
+                       destination={{ lat: destPos[0], lng: destPos[1] }}
+                       onDuration={(millis) => setEta(Math.round(millis / 60000))}
                      />
                    </Map>
                </APIProvider>
@@ -173,22 +180,32 @@ export function PatientTracking() {
                )}
               
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-48 bg-white dark:bg-black/95 backdrop-blur-md p-3 rounded-2xl shadow-lg flex items-center gap-3">
-                 <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600">
+                 <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                     <Truck size={18} />
                  </div>
                  <div>
                     <p className="font-bold text-gray-900 dark:text-white text-sm">{t('arriving_in', 'Arriving in')}</p>
-                    <p className="font-bold text-indigo-600">{eta > 0 ? `${eta} ${t('mins', 'mins')}` : t('arrived', 'Arrived')}</p>
+                    <p className="font-bold text-indigo-600 dark:text-indigo-400">{eta > 0 ? `${eta} ${t('mins', 'mins')}` : t('arrived', 'Arrived')}</p>
                  </div>
               </div>
            </div>
          )}
          
+         {!isPickup && (!order || ['pending', 'preparing', 'ready'].includes(order.status)) && (
+            <div className="bg-gray-50 dark:bg-zinc-900/50 border border-gray-100 dark:border-zinc-800 p-6 rounded-3xl flex flex-col items-center justify-center text-center">
+               <div className="w-16 h-16 bg-white dark:bg-zinc-800 rounded-full shadow-sm flex items-center justify-center mb-4">
+                  <Truck className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+               </div>
+               <h3 className="font-bold text-gray-900 dark:text-white">{t('awaiting_driver_assignment', 'Awaiting driver assignment')}</h3>
+               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-[250px]">{t('driver_assignment_desc', 'We are preparing your order. A map will appear here once a driver is assigned.')}</p>
+            </div>
+         )}
+
          {isPickup && (
             <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900 p-6 rounded-3xl flex flex-col items-center justify-center text-center">
                <Home className="w-12 h-12 text-indigo-600 mb-2" />
-               <h3 className="font-bold text-indigo-900 dark:text-indigo-100">{t('store_pickup', 'Store Pickup')}</h3>
-               <p className="text-sm text-indigo-700 dark:text-indigo-300 mt-1">{t('pickup_instructions', 'You will be notified when your order is ready to be picked up from the pharmacy.')}</p>
+               <h3 className="font-bold text-indigo-900 dark:text-indigo-100">{['ready_for_pickup', 'ready'].includes(order?.status) ? t('head_to_pharmacy', 'Head to the pharmacy for pickup') : t('store_pickup', 'Store Pickup')}</h3>
+               <p className="text-sm text-indigo-700 dark:text-indigo-300 mt-1">{['ready_for_pickup', 'ready'].includes(order?.status) ? t('pickup_ready_desc', 'Your order is ready to be picked up. Please show your ID at the counter.') : t('pickup_instructions', 'You will be notified when your order is ready to be picked up from the pharmacy.')}</p>
             </div>
          )}
 

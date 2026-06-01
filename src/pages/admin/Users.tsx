@@ -1,12 +1,15 @@
-import { Search, Store, ShieldCheck, User, ShieldAlert, CheckCircle, Truck, Ban, Trash2, Filter, CheckSquare, CircleDollarSign, X, FileText, VenetianMask } from "lucide-react";
+import { Search, Store, ShieldCheck, User, ShieldAlert, CheckCircle, Truck, Ban, Trash2, Filter, CheckSquare, CircleDollarSign, X, FileText, VenetianMask, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
+import { supabase } from '../../lib/supabase';
 import { collection, query, getDocs, doc, updateDoc, where, onSnapshot, deleteDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { format } from 'date-fns';
 import { parseDate } from '../../lib/utils';
 import { useNavigate } from "react-router-dom";
+import { DocumentViewer } from "../../components/DocumentViewer";
 
 export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'drivers' | 'all' | 'cashiers' }) {
   const { t } = useTranslation();
@@ -21,6 +24,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
   const [roleFilter, setRoleFilter] = useState("all");
   const [activeTab, setActiveTab] = useState<'users' | 'approvals'>('users');
   const [viewDocumentUrl, setViewDocumentUrl] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
   
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
@@ -71,22 +75,31 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
     }
   };
   
-  const handleApproveDriver = async (userId: string) => {
+  const handleApproveDriver = async (userId: string, driverName: string) => {
+    setProcessingId(userId);
     try {
-      const res = await fetch('/api/admin/driver/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ driverId: userId })
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || 'Failed to approve');
+      const { error: supabaseError } = await supabase
+        .from('driver_profiles')
+        .update({ kyc_status: 'approved', is_active: true })
+        .eq('id', userId);
+
+      if (supabaseError) {
+        throw new Error(supabaseError.message);
+      }
 
       // Update local state to reflect UI changes instantly
       setDrivers(drivers.filter(d => d.id !== userId));
       setUsers(users.map(u => u.id === userId ? { ...u, status: 'approved', kyc_status: 'approved' } : u));
-    } catch (error) {
+      
+      // Update Firebase auth users db as fallback
+      await updateDoc(doc(db, 'users', userId), { status: 'approved', kyc_status: 'approved' });
+      
+      toast.success(`Le livreur ${driverName || 'inconnu'} a été approuvé avec succès et son compte est désormais actif.`);
+    } catch (error: any) {
       console.error("Error approving driver:", error);
-      handleFirestoreError(error, OperationType.UPDATE, 'users');
+      toast.error(`Erreur lors de l'approbation du livreur : ${error.message}`);
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -563,8 +576,10 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                         
                         <div className="flex gap-3">
                            <button className="flex-1 py-3 text-red-600 bg-red-50 hover:bg-red-100 font-bold rounded-xl transition text-sm"> {t('reject', 'Reject')} </button>
-                           <button onClick={() => handleApproveDriver(driver.id)} className="flex-1 py-3 bg-blue-600 text-white hover:bg-blue-700 font-bold rounded-xl transition text-sm flex items-center justify-center gap-2">
-                             <CheckCircle size={16} />  {t('approve_driver', 'Approve Driver')} </button>
+                           <button disabled={processingId === driver.id} onClick={() => handleApproveDriver(driver.id, driver.name)} className="flex-1 py-3 bg-blue-600 text-white hover:bg-blue-700 font-bold rounded-xl transition text-sm flex items-center justify-center gap-2 disabled:bg-blue-300 disabled:cursor-not-allowed">
+                             {processingId === driver.id ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                             {processingId === driver.id ? t('approving', 'Approving...') : t('approve_driver', 'Approve Driver')}
+                           </button>
                         </div>
                      </div>
                    ))}
@@ -575,37 +590,13 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
          )}
       </div>
       
-      {/* Document Viewer Modal */}
+      {/* Document Viewer Modal using the new component */}
       {viewDocumentUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setViewDocumentUrl(null)}>
-          <div className="relative max-w-5xl w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-white font-bold text-xl drop-shadow-md"> {t('document_verification', 'Document Verification')} </h3>
-              <button 
-                onClick={() => setViewDocumentUrl(null)}
-                className="p-2 bg-white dark:bg-zinc-950/10 hover:bg-white dark:bg-zinc-950/20 text-white rounded-full transition backdrop-blur-md"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-auto rounded-2xl bg-black/50 border border-white/10 flex items-center justify-center min-h-[50vh]">
-              {viewDocumentUrl.toLowerCase().includes('.pdf') ? (
-                <iframe src={`${viewDocumentUrl}#toolbar=0`} className="w-full h-[80vh] rounded-2xl bg-white dark:bg-zinc-950" title={t('document_viewer', 'Document Viewer')} />
-              ) : (
-                <img src={viewDocumentUrl} alt="Document View" className="max-w-full max-h-[80vh] object-contain rounded-xl" />
-              )}
-            </div>
-            <div className="mt-4 flex justify-between gap-4">
-               <a 
-                 href={viewDocumentUrl} 
-                 target="_blank" 
-                 rel="noreferrer" 
-                 className="flex-1 py-3 bg-white dark:bg-zinc-950/10 hover:bg-white dark:bg-zinc-950/20 text-white text-center font-bold rounded-xl transition backdrop-blur-md border border-white/10"
-               >
-                  {t('open_in_new_tab', 'Open in New Tab')} </a>
-            </div>
-          </div>
-        </div>
+        <DocumentViewer 
+          filePath={viewDocumentUrl} 
+          bucket="drivers" 
+          onClose={() => setViewDocumentUrl(null)} 
+        />
       )}
     </div>
   );

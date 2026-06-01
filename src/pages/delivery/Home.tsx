@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Bell, MapPin, Clock, DollarSign, CheckCircle, Navigation, Menu, Power, X, Moon, Sun, Layers, Star, AlertTriangle } from "lucide-react";
-import { collection, query, where, getDocs, onSnapshot, updateDoc, doc, setDoc, addDoc, serverTimestamp } from '../../lib/firebase';
+import { collection, query, where, getDocs, onSnapshot, updateDoc, doc, setDoc, addDoc, serverTimestamp, getDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { supabase } from '../../lib/supabase';
@@ -52,7 +52,6 @@ export function DeliveryHome() {
               // Self-healing: if drivers says pending, check users table
               if (data.status === 'pending_verification' || !data.status) {
                   try {
-                      const { getDoc } = await import('../../lib/firebase');
                       const uSnap = await getDoc(doc(db, 'users', user.uid));
                       if (uSnap.exists()) {
                          const uData = uSnap.data();

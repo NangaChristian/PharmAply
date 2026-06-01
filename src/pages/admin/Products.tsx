@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { collection, query, getDocs, doc, updateDoc, deleteDoc, onSnapshot, addDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType, supabase } from "../../lib/firebase";
-import { Search, Plus, Edit2, Trash2, Tag, AlertCircle, Database, Upload, ArrowUpDown, Image as ImageIcon, Package } from "lucide-react";
+import { Search, Plus, Edit2, Trash2, Tag, AlertCircle, Database, Upload, ArrowUpDown, Image as ImageIcon, Package, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import Papa from "papaparse";
 import { formatCurrency } from "../../lib/utils";
@@ -65,7 +65,7 @@ export function AdminProducts() {
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [seeding, setSeeding] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
   
   // Filters & Sorting
   const [sortBy, setSortBy] = useState<"name" | "price" | "stock" | "brand" | "category">("name");
@@ -133,7 +133,7 @@ export function AdminProducts() {
 
   const handleSeed = async () => {
      if (!window.confirm("Êtes-vous sûr de vouloir insérer les produits de base ? Les entrées en double pourraient survenir.")) return;
-     setSeeding(true);
+     setIsSeeding(true);
      try {
         toast.loading(`Seeding ${produitsPatientsData.length} produits globaux...`, { id: 'seed' });
         const { error } = await supabase.from('produits_patients').insert(produitsPatientsData);
@@ -146,7 +146,7 @@ export function AdminProducts() {
         toast.error("Erreur lors de l'insertion.", { id: 'seed' });
         console.error(e);
      } finally {
-        setSeeding(false);
+        setIsSeeding(false);
      }
   };
 
@@ -417,9 +417,9 @@ export function AdminProducts() {
                >
                   <Upload size={18} /> {t('csv_import', 'CSV Import')}
                </button>
-               <button onClick={handleSeed} disabled={seeding} className="bg-slate-100 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-200 transition flex items-center gap-2">
-                  <Database size={18} />
-                  {seeding ? t('seeding', "Seeding...") : t('seed_db', "Seed Global Database")}
+               <button onClick={handleSeed} disabled={isSeeding} className="bg-slate-100 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-200 transition flex items-center gap-2">
+                  {isSeeding ? <Loader2 size={18} className="animate-spin" /> : <Database size={18} />}
+                  {isSeeding ? t('seeding', "Seeding...") : t('seed_db', "Seed Global Database")}
                </button>
                <button onClick={handleGenerateInfo} className="bg-orange-100 text-orange-700 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-orange-200 transition flex items-center gap-2">
                   <Package size={18} />

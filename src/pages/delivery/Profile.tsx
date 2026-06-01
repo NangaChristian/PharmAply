@@ -21,7 +21,23 @@ export function DeliveryProfile() {
         const docRef = doc(db, 'drivers', auth.currentUser.uid);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setDriver({ id: docSnap.id, ...docSnap.data() });
+          const profileData = docSnap.data();
+          
+          if (profileData.status === 'pending_verification' || !profileData.status) {
+              try {
+                  const uSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+                  if (uSnap.exists()) {
+                     const uData = uSnap.data();
+                     if (uData.status === 'approved' || uData.kyc_status === 'approved') {
+                         profileData.status = 'approved';
+                         profileData.kyc_status = 'approved';
+                         await updateDoc(doc(db, 'drivers', auth.currentUser.uid), { status: 'approved', kyc_status: 'approved' });
+                     }
+                  }
+              } catch(e) {}
+          }
+          
+          setDriver({ id: docSnap.id, ...profileData });
         } else {
           setDriver({ id: auth.currentUser.uid });
         }
@@ -195,7 +211,7 @@ export function DeliveryProfile() {
                 <h2 className="font-bold text-gray-900 dark:text-white text-xl">{driver?.name || auth.currentUser?.displayName || 'Driver Account'}</h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">{driver?.phoneNumber || auth.currentUser?.email}</p>
                 <div className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded text-xs font-bold mt-1">
-                   {driver?.status === 'approved' ? (
+                   {driver?.status === 'approved' || driver?.kyc_status === 'approved' ? (
                      <><ShieldCheck size={14} />  {t('verified_driver', 'Verified Driver')} </>
                    ) : (
                      <><Clock size={14} />  {t('pending_kyc', 'Pending KYC')} </>

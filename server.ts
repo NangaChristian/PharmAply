@@ -146,6 +146,78 @@ async function startServer() {
     }
   });
 
+  // KYC Approval Route
+  app.post("/api/admin/driver/approve", async (req: express.Request, res: express.Response): Promise<any> => {
+    try {
+      const { driverId } = req.body;
+      if (!driverId) {
+        return res.status(400).json({ success: false, error: "Missing driverId" });
+      }
+      
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+      if (!supabaseUrl || !supabaseKey) {
+        return res.status(500).json({ success: false, error: "Supabase not configured on backend." });
+      }
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      // Single source of truth update: Fetch current data and update kyc_status and status
+      const { data: driverData, error: fetchErr } = await supabase
+        .from('drivers')
+        .select('data')
+        .eq('id', driverId)
+        .single();
+        
+      if (fetchErr && fetchErr.code !== 'PGRST116') throw fetchErr;
+      
+      const newDriverData = { 
+        ...(driverData?.data || {}), 
+        status: 'approved',
+        kyc_status: 'approved'
+      };
+
+      const { error: drvErr } = await supabase
+        .from('drivers')
+        .upsert({ 
+          id: driverId, 
+          data: newDriverData,
+          status: 'approved'
+        }, { onConflict: 'id' });
+        
+      if (drvErr) throw drvErr;
+
+      // Update public.users as well
+      const { data: userData, error: fetchUsrErr } = await supabase
+        .from('users')
+        .select('data')
+        .eq('id', driverId)
+        .single();
+        
+      if (fetchUsrErr && fetchUsrErr.code !== 'PGRST116') throw fetchUsrErr;
+
+      const newUserdata = {
+        ...(userData?.data || {}),
+        status: 'approved',
+        kyc_status: 'approved'
+      };
+
+      const { error: usrErr } = await supabase
+        .from('users')
+        .upsert({ 
+          id: driverId, 
+          data: newUserdata 
+        }, { onConflict: 'id' });
+
+      if (usrErr) throw usrErr;
+
+      res.json({ success: true, message: "Driver KYC approved successfully." });
+    } catch (error) {
+      console.error("Error approving driver:", error);
+      res.status(500).json({ success: false, error: "Failed to approve driver KYC" });
+    }
+  });
+
   // DPML Webhook to receive alerts and automatically quarantine products
   app.post("/api/dpml/alerts", async (req: express.Request, res: express.Response): Promise<any> => {
     try {

@@ -4,6 +4,7 @@ import { User, Bell, MapPin, Clock, DollarSign, CheckCircle, Navigation, Menu, P
 import { collection, query, where, getDocs, onSnapshot, updateDoc, doc, setDoc, addDoc, serverTimestamp } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
+import { supabase } from '../../lib/supabase';
 import { useDarkMode } from "../../components/DarkModeProvider";
 import { formatCurrency } from '../../lib/utils';
 import { useTranslation } from "react-i18next";
@@ -42,15 +43,55 @@ export function DeliveryHome() {
   useEffect(() => {
      let unsub: () => void;
      if (user) {
-        unsub = onSnapshot(doc(db, 'drivers', user.uid), (snap) => {
+        // Fallback or local onSnapshot using fake-firestore wrapper
+        unsub = onSnapshot(doc(db, 'drivers', user.uid), async (snap) => {
            if (snap.exists()) {
               const data = snap.data();
               setIsOnline(data.isOnline || false);
-              setDriverProfile(data);
+              
+              // Self-healing: if drivers says pending, check users table
+              if (data.status === 'pending_verification' || !data.status) {
+                  try {
+                      const { getDoc } = await import('../../lib/firebase');
+                      const uSnap = await getDoc(doc(db, 'users', user.uid));
+                      if (uSnap.exists()) {
+                         const uData = uSnap.data();
+                         if (uData.status === 'approved' || uData.kyc_status === 'approved') {
+                             data.status = 'approved';
+                             data.kyc_status = 'approved';
+                             // fix it in backend for next time
+                             await updateDoc(doc(db, 'drivers', user.uid), { status: 'approved', kyc_status: 'approved' });
+                         }
+                      }
+                  } catch(e) { console.error("Self-heal check failed", e); }
+              }
+              
+              setDriverProfile(prev => ({ ...prev, ...data }));
            }
         });
+        
+        // Phase 3: Explicit Supabase Realtime subscription for KYC updates 
+        // to bypass any mock-firestore layer latency and ensure driver profile data is exact
+        const kycSub = supabase.channel('driver-kyc-changes')
+           .on('postgres_changes', { 
+              event: 'UPDATE', 
+              schema: 'public', 
+              table: 'drivers',
+              filter: `id=eq.${user.uid}`
+           }, (payload) => {
+              if (payload.new && payload.new.data) {
+                 if (payload.new.data.kyc_status === 'approved' || payload.new.data.status === 'approved') {
+                    setDriverProfile((prev: any) => ({ ...prev, status: 'approved', kyc_status: 'approved' }));
+                 }
+              }
+           })
+           .subscribe();
+
+        return () => {
+           if (unsub) unsub();
+           supabase.removeChannel(kycSub);
+        }
      }
-     return () => { if (unsub) unsub(); }
   }, [user]);
 
   useEffect(() => {
@@ -275,7 +316,7 @@ export function DeliveryHome() {
       </div>
 
       {/* KYC Warning Banner */}
-      {driverProfile?.status === 'pending_verification' && (
+      {(driverProfile?.status === 'pending_verification' && driverProfile?.kyc_status !== 'approved') && (
          <div className="absolute top-32 left-6 right-20 z-10 bg-orange-500 text-white p-3 rounded-2xl shadow-lg flex items-start gap-3 pointer-events-auto animate-in slide-in-from-top-4">
              <AlertTriangle size={20} className="shrink-0 mt-0.5" />
              <div className="text-xs">
@@ -299,7 +340,7 @@ export function DeliveryHome() {
                <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm text-center mb-6"> {t('go_online_to_start_receiving_d', 'Go online to start receiving delivery requests')} </p>
                <button 
                   onClick={() => toggleOnlineStatus(true)}
-                  disabled={driverProfile?.status === 'pending_verification'}
+                  disabled={driverProfile?.status === 'pending_verification' && driverProfile?.kyc_status !== 'approved'}
                   className="w-full bg-indigo-600 disabled:bg-indigo-300 disabled:cursor-not-allowed border border-indigo-700 disabled:border-indigo-300 shadow-indigo-200 shadow-lg text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 disabled:hover:bg-indigo-300 transition flex justify-center items-center gap-2 text-lg uppercase tracking-wide"
                >
                   <Power size={22} className="mr-1" />  {t('go_online', 'Go Online')} </button>

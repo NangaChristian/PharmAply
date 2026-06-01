@@ -73,10 +73,19 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
   
   const handleApproveDriver = async (userId: string) => {
     try {
-      await updateDoc(doc(db, 'users', userId), { status: 'approved' });
+      const res = await fetch('/api/admin/driver/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driverId: userId })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Failed to approve');
+
+      // Update local state to reflect UI changes instantly
       setDrivers(drivers.filter(d => d.id !== userId));
-      setUsers(users.map(u => u.id === userId ? { ...u, status: 'approved' } : u));
+      setUsers(users.map(u => u.id === userId ? { ...u, status: 'approved', kyc_status: 'approved' } : u));
     } catch (error) {
+      console.error("Error approving driver:", error);
       handleFirestoreError(error, OperationType.UPDATE, 'users');
     }
   };
@@ -508,13 +517,13 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                         <div className="space-y-2 mb-6">
                            <div className="flex justify-between items-start text-sm">
                               <span className="text-gray-500 mt-1"> {t('national_id', 'National ID:')} </span>
-                              {driver.nationalIdUrl ? (
-                                <button onClick={() => setViewDocumentUrl(driver.nationalIdUrl)} className="flex flex-col items-end gap-1 group">
+                              {driver.idCardUrl ? (
+                                <button onClick={() => setViewDocumentUrl(driver.idCardUrl)} className="flex flex-col items-end gap-1 group">
                                   <div className="w-24 h-16 rounded bg-gray-50 dark:bg-zinc-900 overflow-hidden border border-gray-200 group-hover:border-blue-400 transition relative flex items-center justify-center">
-                                    {driver.nationalIdUrl.toLowerCase().includes('.pdf') ? (
+                                    {driver.idCardUrl.toLowerCase().includes('.pdf') ? (
                                       <FileText size={24} className="text-gray-400" />
                                     ) : (
-                                      <img src={driver.nationalIdUrl} alt="National ID" className="w-full h-full object-cover" />
+                                      <img src={driver.idCardUrl} alt="National ID" className="w-full h-full object-cover" />
                                     )}
                                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
                                       <Search size={16} className="text-white" />
@@ -528,13 +537,13 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                            </div>
                            <div className="flex justify-between items-start text-sm">
                               <span className="text-gray-500 mt-1"> {t('driver_license', 'Driver License:')} </span>
-                              {driver.driverLicenseUrl ? (
-                                <button onClick={() => setViewDocumentUrl(driver.driverLicenseUrl)} className="flex flex-col items-end gap-1 group">
+                              {driver.drivingLicenseUrl ? (
+                                <button onClick={() => setViewDocumentUrl(driver.drivingLicenseUrl)} className="flex flex-col items-end gap-1 group">
                                   <div className="w-24 h-16 rounded bg-gray-50 dark:bg-zinc-900 overflow-hidden border border-gray-200 group-hover:border-blue-400 transition relative flex items-center justify-center">
-                                    {driver.driverLicenseUrl.toLowerCase().includes('.pdf') ? (
+                                    {driver.drivingLicenseUrl.toLowerCase().includes('.pdf') ? (
                                       <FileText size={24} className="text-gray-400" />
                                     ) : (
-                                      <img src={driver.driverLicenseUrl} alt="Driver License" className="w-full h-full object-cover" />
+                                      <img src={driver.drivingLicenseUrl} alt="Driver License" className="w-full h-full object-cover" />
                                     )}
                                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
                                       <Search size={16} className="text-white" />

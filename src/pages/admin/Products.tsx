@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { collection, query, getDocs, doc, updateDoc, deleteDoc, onSnapshot, addDoc } from '../../lib/firebase';
-import { db, handleFirestoreError, OperationType } from "../../lib/firebase";
+import { db, handleFirestoreError, OperationType, supabase } from "../../lib/firebase";
 import { Search, Plus, Edit2, Trash2, Tag, AlertCircle, Database, Upload, ArrowUpDown, Image as ImageIcon, Package } from "lucide-react";
 import toast from "react-hot-toast";
 import Papa from "papaparse";
@@ -9,6 +9,55 @@ import { useTranslation } from "react-i18next";
 
 import { seedData } from '../../seed_data';
 import { getCategoryIcon } from '../../lib/icons';
+
+const produitsPatientsData = [
+  {"dci": "Paracétamol", "commercial_name": "Doliprane, Efferalgan, Panadol", "dosage": "500mg", "form": "Comprimé", "is_prescription_required": false, "ux_category": "Douleurs & Fièvre"},
+  {"dci": "Paracétamol", "commercial_name": "Doliprane Pédiatrique", "dosage": "2.4%", "form": "Sirop / Suspension", "is_prescription_required": false, "ux_category": "Douleurs & Fièvre"},
+  {"dci": "Ibuprofène", "commercial_name": "Advil, Brufen, Nurofen", "dosage": "400mg", "form": "Comprimé", "is_prescription_required": false, "ux_category": "Douleurs & Fièvre"},
+  {"dci": "Diclofénac", "commercial_name": "Voltarène, Olfen", "dosage": "50mg", "form": "Comprimé", "is_prescription_required": true, "ux_category": "Douleurs & Fièvre"},
+  {"dci": "Artemether + Lumefantrine", "commercial_name": "Coartem, Lumartem, Artefan", "dosage": "20mg/120mg", "form": "Comprimé", "is_prescription_required": false, "ux_category": "Paludisme"},
+  {"dci": "Oméprazole", "commercial_name": "Mopral, Zoltum, Inipomp", "dosage": "20mg", "form": "Gélule", "is_prescription_required": true, "ux_category": "Maux d'estomac & Digestion"},
+  {"dci": "Diosmectite", "commercial_name": "Smecta", "dosage": "3g", "form": "Sachet", "is_prescription_required": false, "ux_category": "Maux d'estomac & Digestion"},
+  {"dci": "Sels de Réhydratation Orale (SRO)", "commercial_name": "Adidiar, Orasel", "dosage": "Standard", "form": "Sachet", "is_prescription_required": false, "ux_category": "Maux d'estomac & Digestion"},
+  {"dci": "Phloroglucinol", "commercial_name": "Spasfon", "dosage": "80mg", "form": "Comprimé Lyoc", "is_prescription_required": false, "ux_category": "Maux d'estomac & Digestion"},
+  {"dci": "Salbutamol", "commercial_name": "Ventoline", "dosage": "100µg/dose", "form": "Aérosol / Inhalateur", "is_prescription_required": true, "ux_category": "Toux, Rhume & Asthme"},
+  {"dci": "Loratadine", "commercial_name": "Clarityne", "dosage": "10mg", "form": "Comprimé", "is_prescription_required": false, "ux_category": "Allergies"},
+  {"dci": "Amoxicilline", "commercial_name": "Clamoxyl, Amoxil", "dosage": "500mg", "form": "Gélule", "is_prescription_required": true, "ux_category": "Infections & Antibiotiques"},
+  {"dci": "Albendazole", "commercial_name": "Zentel", "dosage": "400mg", "form": "Comprimé", "is_prescription_required": false, "ux_category": "Antiparasitaires"}
+];
+
+/*
+ARCHITECTURE D'ACCÈS POUR LES PHARMACIES :
+
+La table `produits_patients` sert de catalogue de base (référentiel global) pour toutes les pharmacies.
+Les pharmacies ne dupliquent pas ces produits dans leur base, mais utilisent une table de liaison
+`pharmacy_inventory` pour indiquer qu'elles possèdent un produit, son prix et sa quantité.
+
+Table de liaison suggérée :
+CREATE TABLE pharmacy_inventory (
+  id uuid PRIMARY KEY,
+  pharmacy_id text NOT NULL,
+  produit_id uuid REFERENCES produits_patients(id),
+  stock int DEFAULT 0,
+  price numeric(10,2) NOT NULL
+);
+
+Requête Supabase pour lister les produits pour une pharmacie connectée :
+const { data, error } = await supabase
+  .from('produits_patients')
+  .select(`
+    *,
+    pharmacy_inventory (
+      stock,
+      price
+    )
+  `)
+  .eq('pharmacy_inventory.pharmacy_id', supabase.auth.user().id);
+
+Les pharmacies peuvent ainsi consulter le catalogue global complet via :
+await supabase.from('produits_patients').select('*');
+et ajouter/cocher les produits correspondants dans leur 'pharmacy_inventory'.
+*/
 
 export function AdminProducts() {
   const { t } = useTranslation();
@@ -32,12 +81,43 @@ export function AdminProducts() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const fetchGlobalProducts = async () => {
+     try {
+        const { data, error } = await supabase.from('produits_patients').select('*');
+        if (data && !error) {
+           const mappedOut = data.map((d: any) => ({
+               id: d.id,
+               name: d.commercial_name,
+               description: d.dci,
+               dosage: d.dosage,
+               category: d.ux_category,
+               requiresPrescription: d.is_prescription_required,
+               price: 0,
+               stock: 0,
+               imageUrl: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
+               isGlobal: true,
+               pharmacyId: null
+           }));
+           // we prepend these global reference catalogs
+           setProducts(prev => {
+               // filter out existing seeded to avoid duplicates in the UI
+               const withoutGlobals = prev.filter(p => !mappedOut.find(m => m.name === p.name));
+               return [...mappedOut, ...withoutGlobals];
+           });
+        }
+     } catch (err) {
+         console.error('Error fetching global catalog', err);
+     }
+  };
+
   useEffect(() => {
     const q = query(collection(db, "products"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setProducts(data);
       setLoading(false);
+      // after loading local firebase products, load the real supabase global table
+      fetchGlobalProducts();
     }, (error) => {
       console.error(error);
       setLoading(false);
@@ -52,46 +132,18 @@ export function AdminProducts() {
   }, []);
 
   const handleSeed = async () => {
-     if (!window.confirm("Are you sure you want to seed the database? This might take a while and duplicate entries if run multiple times.")) return;
+     if (!window.confirm("Êtes-vous sûr de vouloir insérer les produits de base ? Les entrées en double pourraient survenir.")) return;
      setSeeding(true);
      try {
-        let successCount = 0;
-        toast.loading(`Seeding ${seedData.length} products...`, { id: 'seed' });
-
-        const chunkSize = 100;
-        for (let i = 0; i < seedData.length; i += chunkSize) {
-            const chunk = seedData.slice(i, i + chunkSize);
-            const promises = chunk.map(p => {
-                let imageUrl = "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80";
-                if (p.dosage.toLowerCase().includes('solution') || p.dosage.toLowerCase().includes('injectable') || p.dosage.toLowerCase().includes('perfusion')) {
-                   imageUrl = "https://images.unsplash.com/photo-1628771065518-0d82f1938462?w=400&q=80"; // syringe
-                } else if (p.dosage.toLowerCase().includes('sirop') || p.dosage.toLowerCase().includes('buvable') || p.dosage.toLowerCase().includes('suspension')) {
-                   imageUrl = "https://images.unsplash.com/photo-1588691583091-c918c54ff9db?w=400&q=80"; // bottle
-                } else if (p.dosage.toLowerCase().includes('crème') || p.dosage.toLowerCase().includes('pommade')) {
-                   imageUrl = "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=400&q=80"; // tube
-                }
-    
-                return addDoc(collection(db, 'products'), {
-                   name: p.name,
-                   dosage: p.dosage,
-                   category: p.category,
-                   brand: 'Generic',
-                   price: Math.floor(Math.random() * 5000) + 500, // Suggestion pricing
-                   stock: Math.floor(Math.random() * 100),
-                   imageUrl,
-                   createdAt: new Date().toISOString(),
-                   isGlobal: true, 
-                   pharmacyId: null 
-                });
-            });
-            await Promise.all(promises);
-            successCount += chunk.length;
-        }
+        toast.loading(`Seeding ${produitsPatientsData.length} produits globaux...`, { id: 'seed' });
+        const { error } = await supabase.from('produits_patients').insert(produitsPatientsData);
+        if (error) throw error;
         
-        toast.success(`Successfully seeded ${successCount} products!`, { id: 'seed' });
-        setTimeout(() => window.location.reload(), 1500);
+        toast.success(`${produitsPatientsData.length} Produits ajoutés au catalogue global !`, { id: 'seed' });
+        
+        fetchGlobalProducts();
      } catch(e) {
-        toast.error("Failed to seed database.", { id: 'seed' });
+        toast.error("Erreur lors de l'insertion.", { id: 'seed' });
         console.error(e);
      } finally {
         setSeeding(false);

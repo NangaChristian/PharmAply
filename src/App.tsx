@@ -37,6 +37,7 @@ import { PharmacistOrders } from './pages/pharmacist/Orders';
 import { PharmacistReports } from './pages/pharmacist/Reports';
 import { PharmacistProfile } from './pages/pharmacist/Profile';
 import { PharmacistPrescriptions } from './pages/pharmacist/Prescriptions';
+import { PharmacistSupport } from './pages/pharmacist/Support';
 
 import { DeliveryHome } from './pages/delivery/Home';
 import { DeliveryOrderDetails } from './pages/delivery/OrderDetails';
@@ -138,6 +139,7 @@ export default function App() {
             <Route path="reports" element={<PharmacistReports />} />
             <Route path="prescriptions" element={<PharmacistPrescriptions />} />
             <Route path="profile" element={<PharmacistProfile />} />
+            <Route path="support" element={<PharmacistSupport />} />
           </Route>
           
           <Route path="/pharmacist/order/:id" element={<PharmacistOrderDetails />} />

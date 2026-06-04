@@ -106,7 +106,7 @@ export function NotificationListener() {
     }
 
     // 2. Message Notifications
-    if (role === 'patient' || role === 'driver' || role === 'pharmacy') {
+    if (role === 'patient' || role === 'driver' || role === 'pharmacist' || role === 'pharmacy' || role === 'admin') {
       const messagesQ = query(collection(db, 'messages'), where('receiverId', '==', user.uid));
       const unsubMessages = onSnapshot(messagesQ, (snapshot) => {
         snapshot.docChanges().forEach((change) => {

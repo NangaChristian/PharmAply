@@ -174,22 +174,83 @@ export const doc = (dbObj: any, pathOrCollection: any, ...segments: string[]) =>
   return { type: 'doc', table, id, path: `${table}/${id}` };
 };
 
+const toDatabaseRecord = (table: string, id: string, docData: any) => {
+  if (table === 'products') {
+     return {
+        id: id,
+        nom_commercial: docData.name || docData.nom_commercial || docData.commercial_name || '',
+        dci: docData.description || docData.dci || '',
+        dosage: docData.dosage || '',
+        form: docData.form || '',
+        is_prescription_required: docData.requiresPrescription !== undefined ? !!docData.requiresPrescription : (!!docData.is_prescription_required || false),
+        price: docData.price ? Number(docData.price) : 0,
+        pharmacy_id: docData.pharmacyId || docData.pharmacy_id || null,
+        ux_category_id: docData.category || docData.ux_category_id || null,
+        symptoms: docData.symptoms || [],
+        created_at: docData.createdAt || docData.created_at || new Date().toISOString()
+     };
+  }
+  if (table === 'ux_categories') {
+     return {
+        id: id,
+        name: docData.name || '',
+        slug: docData.slug || docData.name?.toLowerCase().replace(/\s+/g, '-') || '',
+        icon: docData.icon || '',
+        description: docData.description || '',
+        created_at: docData.createdAt || docData.created_at || new Date().toISOString()
+     };
+  }
+  return { id, data: docData };
+};
+
+const parseRecordData = (table: string, row: any) => {
+  if (!row) return undefined;
+  let parsed: any;
+  if (row.data) {
+     parsed = { ...row.data };
+  } else if (table === 'products') {
+     parsed = {
+        name: row.nom_commercial || row.commercial_name || '',
+        description: row.dci || row.description || '',
+        dosage: row.dosage || '',
+        form: row.form || '',
+        requiresPrescription: row.is_prescription_required !== undefined ? !!row.is_prescription_required : (!!row.requires_prescription || false),
+        price: row.price ? Number(row.price) : 0,
+        stock: row.stock || 0,
+        imageUrl: row.image_url || row.image || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
+        category: row.ux_category_id || '',
+        pharmacyId: row.pharmacy_id || null,
+        isGlobal: row.is_global !== undefined ? row.is_global : (row.pharmacy_id === null),
+        createdAt: row.created_at || null
+     };
+  } else if (table === 'ux_categories') {
+     parsed = {
+        name: row.name || '',
+        slug: row.slug || '',
+        icon: row.icon || '',
+        description: row.description || '',
+        createdAt: row.created_at || null
+     };
+  } else {
+     parsed = { ...row };
+     delete parsed.id;
+     delete parsed.data;
+  }
+  for (const k in parsed) {
+     if (typeof parsed[k] === 'string' && parsed[k].includes('T') && parsed[k].endsWith('Z')) {
+        const date = new Date(parsed[k]);
+        if (!isNaN(date.getTime())) parsed[k] = new MockTimestamp(date);
+     }
+  }
+  return parsed;
+};
+
 export const getDoc = async (docRef: any) => {
   const { data, error } = await supabase.from(docRef.table).select('*').eq('id', docRef.id).maybeSingle();
   return {
     id: docRef.id,
     exists: () => !!data,
-    data: () => {
-      if (!data) return undefined;
-      const parsed: any = { ...(data.data || {}) };
-      for (const k in parsed) {
-         if (typeof parsed[k] === 'string' && parsed[k].includes('T') && parsed[k].endsWith('Z')) {
-            const d = new Date(parsed[k]);
-            if (!isNaN(d.getTime())) parsed[k] = new MockTimestamp(d);
-         }
-      }
-      return parsed;
-    }
+    data: () => parseRecordData(docRef.table, data)
   };
 };
 
@@ -201,8 +262,8 @@ export const setDoc = async (docRef: any, documentData: any, options: { merge?: 
           finalData = { ...existing.data(), ...documentData };
       }
   }
-  const payload = { id: docRef.id, data: finalData };
-  const { error } = await supabase.from(docRef.table).upsert(payload);
+  const payload = toDatabaseRecord(docRef.table, docRef.id, finalData);
+  const { error } = await supabase.from(docRef.table).upsert(payload as any);
   if (error) throw new Error(error.message);
 };
 
@@ -212,8 +273,8 @@ export const updateDoc = async (docRef: any, documentData: any) => {
   if (existing.exists()) {
       finalData = { ...existing.data(), ...documentData };
   }
-  const payload = { id: docRef.id, data: finalData };
-  const { error } = await supabase.from(docRef.table).update(payload).eq('id', docRef.id);
+  const payload = toDatabaseRecord(docRef.table, docRef.id, finalData);
+  const { error } = await supabase.from(docRef.table).update(payload as any).eq('id', docRef.id);
   if (error) throw new Error(error.message);
 };
 
@@ -224,8 +285,8 @@ export const deleteDoc = async (docRef: any) => {
 
 export const addDoc = async (collRef: any, documentData: any) => {
   const id = genId();
-  const payload = { id, data: documentData };
-  const { error } = await supabase.from(collRef.table).insert(payload);
+  const payload = toDatabaseRecord(collRef.table, id, documentData);
+  const { error } = await supabase.from(collRef.table).insert(payload as any);
   if (error) throw new Error(error.message);
   return doc(db, collRef.table, id);
 };
@@ -251,23 +312,56 @@ export const getDocs = async (queryRef: any) => {
   
   // Fallback for ux_categories if the user hasn't run the migration yet
   const isUxCategory = table === 'ux_categories';
+  const isStructured = ['products', 'ux_categories', 'categories', 'produits_patients', 'dpml_alertes'].includes(table);
   
   let builder: any = supabase.from(table).select('*');
   
   if (queryRef.constraints) {
     for (const c of queryRef.constraints) {
       if (c.type === 'where') {
-        const fieldName = `data->>${c.field}`;
+        let fieldName = `data->>${c.field}`;
+        if (isStructured) {
+          if (table === 'products') {
+            if (c.field === 'pharmacyId') fieldName = 'pharmacy_id';
+            else if (c.field === 'isGlobal') fieldName = 'is_global';
+            else if (c.field === 'requiresPrescription') fieldName = 'is_prescription_required';
+            else if (c.field === 'category') fieldName = 'ux_category_id';
+            else if (c.field === 'price') fieldName = 'price';
+            else if (c.field === 'name') fieldName = 'nom_commercial';
+            else if (c.field === 'description') fieldName = 'dci';
+            else fieldName = c.field;
+          } else {
+            fieldName = c.field;
+          }
+        }
+        
         if (c.op === '==') builder = builder.eq(fieldName, c.val);
         else if (c.op === '>') builder = builder.gt(fieldName, c.val);
         else if (c.op === '<') builder = builder.lt(fieldName, c.val);
         else if (c.op === '>=') builder = builder.gte(fieldName, c.val);
         else if (c.op === '<=') builder = builder.lte(fieldName, c.val);
         else if (c.op === '!=') builder = builder.neq(fieldName, c.val);
-        else if (c.op === 'array-contains') builder = builder.contains(`data->${c.field}`, [c.val]);
+        else if (c.op === 'array-contains') {
+          if (isStructured) {
+            builder = builder.contains(fieldName, [c.val]);
+          } else {
+            builder = builder.contains(`data->${c.field}`, [c.val]);
+          }
+        }
         else if (c.op === 'in') builder = builder.in(fieldName, c.val);
       } else if (c.type === 'orderBy') {
-        builder = builder.order(`data->>${c.field}`, { ascending: c.direction === 'asc' });
+        let fieldName = `data->>${c.field}`;
+        if (isStructured) {
+          if (table === 'products') {
+            if (c.field === 'name') fieldName = 'nom_commercial';
+            else if (c.field === 'pharmacyId') fieldName = 'pharmacy_id';
+            else if (c.field === 'requiresPrescription') fieldName = 'is_prescription_required';
+            else fieldName = c.field;
+          } else {
+            fieldName = c.field;
+          }
+        }
+        builder = builder.order(fieldName, { ascending: c.direction === 'asc' });
       } else if (c.type === 'limit') {
         builder = builder.limit(c.n);
       }
@@ -290,13 +384,7 @@ export const getDocs = async (queryRef: any) => {
   }
 
   const docs = (data || []).map((d: any) => {
-     const parsed: any = { ...(d.data || {}) };
-     for (const k in parsed) {
-         if (typeof parsed[k] === 'string' && parsed[k].includes('T') && parsed[k].endsWith('Z')) {
-            const date = new Date(parsed[k]);
-            if (!isNaN(date.getTime())) parsed[k] = new MockTimestamp(date);
-         }
-     }
+     const parsed = parseRecordData(table, d);
      return {
         id: d.id,
         data: () => parsed,

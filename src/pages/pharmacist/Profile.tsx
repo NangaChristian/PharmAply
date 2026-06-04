@@ -354,6 +354,23 @@ export function PharmacistProfile() {
                  <div className="space-y-4">
                     <h3 className="font-bold text-gray-900 dark:text-white text-sm ml-1"> {t('app_settings', 'App Settings')} </h3>
                     <div className="bg-white dark:bg-black rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm divide-y divide-gray-50">
+                        <div 
+                            onClick={() => navigate('/pharmacist/support')}
+                            className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-zinc-900 transition rounded-t-2xl cursor-pointer"
+                        >
+                            <div className="flex items-center gap-3">
+                               <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600 dark:text-indigo-400"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                               </div>
+                               <div>
+                                  <p className="font-bold text-gray-900 dark:text-white text-sm">{t('admin_support_chat', 'Support Chat with Admin')}</p>
+                                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{t('chat_with_admins_desc', 'Resolve issues directly with our team')}</p>
+                               </div>
+                            </div>
+                            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                                {t('chat_now', 'Chat Now')} &rarr;
+                            </span>
+                        </div>
                        <div className="p-4 flex items-center justify-between hover:bg-gray-50 dark:bg-black transition rounded-2xl">
                            <div className="flex items-center gap-3">
                               <div className="w-10 h-10 bg-slate-50 dark:bg-black text-slate-600 rounded-xl flex items-center justify-center">

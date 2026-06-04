@@ -96,11 +96,21 @@ export function PharmacistOrderDetails() {
 
   return (
     <div className="flex-1 bg-[#f4f5f9] dark:bg-black/95 flex flex-col h-full overflow-hidden relative">
-      <div className="px-6 pt-12 pb-4 flex items-center gap-4 z-10">
-         <button onClick={() => navigate(-1)} className="flex items-center justify-center transition-colors">
-            <ArrowLeft size={24} className="text-gray-700 dark:text-white" />
+      <div className="px-6 pt-12 pb-4 flex items-center justify-between z-10">
+         <div className="flex items-center gap-4">
+            <button onClick={() => navigate(-1)} className="flex items-center justify-center transition-colors">
+               <ArrowLeft size={24} className="text-gray-700 dark:text-white" />
+            </button>
+            <h1 className="font-bold text-gray-800 dark:text-white text-[19px] tracking-tight"> {t('order', 'Order #')} {order.id.slice(0, 8).toUpperCase()}</h1>
+         </div>
+         <button 
+           type="button"
+           onClick={() => navigate(`/pharmacist/messages/${order.id}`)}
+           className="px-4 py-2 bg-indigo-50 dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-bold shadow-sm hover:bg-indigo-100 dark:hover:bg-zinc-700 transition flex items-center gap-1.5"
+         >
+           <MessageCircle size={16} />
+           {t('chat_with_patient', 'Chat with Patient')}
          </button>
-         <h1 className="font-bold text-gray-800 dark:text-white text-[19px] tracking-tight"> {t('order', 'Order #')} {order.id.slice(0, 3)}</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pb-40">

@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 
 import { seedData } from '../../seed_data';
 import { getCategoryIcon } from '../../lib/icons';
+import { seedProducts } from '../../lib/seed';
 
 const produitsPatientsData = [
   {"dci": "Paracétamol", "commercial_name": "Doliprane, Efferalgan, Panadol", "dosage": "500mg", "form": "Comprimé", "is_prescription_required": false, "ux_category": "Douleurs & Fièvre"},
@@ -66,7 +67,8 @@ export function AdminProducts() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isSeeding, setIsSeeding] = useState(false);
-  
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   // Filters & Sorting
   const [sortBy, setSortBy] = useState<"name" | "price" | "stock" | "brand" | "category">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -136,15 +138,15 @@ export function AdminProducts() {
      setIsSeeding(true);
      try {
         toast.loading(`Seeding ${produitsPatientsData.length} produits globaux...`, { id: 'seed' });
-        const { error } = await supabase.from('produits_patients').insert(produitsPatientsData);
-        if (error) throw error;
+        
+        await seedProducts(produitsPatientsData);
         
         toast.success(`${produitsPatientsData.length} Produits ajoutés au catalogue global !`, { id: 'seed' });
         
         fetchGlobalProducts();
-     } catch(e) {
-        toast.error("Erreur lors de l'insertion.", { id: 'seed' });
-        console.error(e);
+     } catch(e: any) {
+        toast.error(`Erreur: ${e.message || "Erreur lors de l'insertion."}`, { id: 'seed' });
+        console.error("Erreur complète:", e);
      } finally {
         setIsSeeding(false);
      }
@@ -179,10 +181,10 @@ export function AdminProducts() {
 
   const handleDownloadTemplate = () => {
     const csvContent = [
-      ["Name", "Dosage", "Category", "Brand", "Price", "Stock", "ImageURL", "RequiresPrescription"],
-      ["Paracetamol", "500mg Tablets", "Douleurs & Fièvre", "Sanofi", "1500", "150", "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80", "false"],
-      ["Ibuprofène", "400mg Tablets", "Douleurs & Fièvre", "Advil", "2500", "80", "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=400&q=80", "false"],
-      ["Amoxicilline", "500mg Capsules", "Infections & Antibiotiques", "Clamoxyl", "3500", "50", "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80", "true"]
+      ["dci", "nom_commercial", "dosage", "forme", "categorie_ux", "ordonnance_requise"],
+      ["Paracétamol", "Doliprane", "500mg", "Comprimé", "Douleurs & Fièvre", "false"],
+      ["Ibuprofène", "Advil", "400mg", "Comprimé", "Douleurs & Fièvre", "false"],
+      ["Amoxicilline", "Clamoxyl", "500mg", "Gélule", "Infections & Antibiotiques", "true"]
     ].map(e => e.map(val => `"${val.replace(/"/g, '""')}"`).join(",")).join("\n");
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -205,50 +207,29 @@ export function AdminProducts() {
         header: true,
         skipEmptyLines: true,
         complete: async (results) => {
-           let successCount = 0;
-           let updateCount = 0;
            toast.loading(`Processing ${results.data.length} products...`, { id: 'csv' });
            
            try {
-              const promises = results.data.map(async (row: any) => {
-                 const name = row.Name || row.name || '';
-                 if (!name) return;
+              // Convert parsed CSV rows to match seedProducts expectations
+              const dataToInsert = results.data.map((row: any) => ({
+                 dci: row.dci || row.Name || row.name || row.DCI || '',
+                 nom_commercial: row.nom_commercial || row.Brand || row.brand || row.commercial_name || '',
+                 dosage: row.dosage || row.Dosage || '',
+                 forme: row.forme || row.form || row.Form || '',
+                 categorie_ux: row.categorie_ux || row.Category || row.category || row.ux_category || 'Uncategorized',
+                 ordonnance_requise: String(row.ordonnance_requise || row.RequiresPrescription || row.requiresPrescription || row.is_prescription_required || 'false').toLowerCase() === 'true'
+              })).filter((item: any) => item.dci && item.nom_commercial); // filter out invalid rows
+              
+              if (dataToInsert.length === 0) {
+                 toast.error("No valid products found in CSV. Make sure 'dci' and 'nom_commercial' are provided.", { id: 'csv' });
+                 return;
+              }
 
-                 // Check if product exists by name to update, otherwise insert
-                 const existingProduct = products.find(p => p.name?.toLowerCase() === name.toLowerCase());
-                 
-                 const rowPrice = parseFloat(row.Price || row.price || '0');
-                 const rowStock = parseInt(row.Stock || row.stock || '0', 10);
-                 const rowRx = String(row.RequiresPrescription || row.requiresPrescription || row.Prescription || '').toLowerCase() === 'true';
-                 
-                 if (existingProduct) {
-                    await updateDoc(doc(db, 'products', existingProduct.id), {
-                       price: rowPrice,
-                       stock: rowStock,
-                       requiresPrescription: rowRx
-                    });
-                    updateCount++;
-                 } else {
-                    await addDoc(collection(db, 'products'), {
-                       name: name || 'Unnamed',
-                       dosage: row.Dosage || row.dosage || '',
-                       category: row.Category || row.category || 'Uncategorized',
-                       brand: row.Brand || row.brand || 'Generic',
-                       price: rowPrice,
-                       stock: rowStock,
-                       imageUrl: row.ImageURL || row.Image || row.imageUrl || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
-                       requiresPrescription: rowRx,
-                       createdAt: new Date().toISOString(),
-                       isGlobal: true,
-                       pharmacyId: null
-                    });
-                    successCount++;
-                 }
-              });
-              await Promise.all(promises.filter(Boolean));
-              toast.success(`Imported ${successCount} new, Updated ${updateCount} stock/pricing!`, { id: 'csv' });
-           } catch(err) {
-              toast.error("Error importing products", { id: 'csv' });
+              await seedProducts(dataToInsert);
+              toast.success(`Imported ${dataToInsert.length} products successfully!`, { id: 'csv' });
+              fetchGlobalProducts(); // Refresh the global catalog list
+           } catch(err: any) {
+              toast.error(`Error importing products: ${err.message || 'Unknown error'}`, { id: 'csv' });
               console.error(err);
            }
            if (fileInputRef.current) fileInputRef.current.value = "";
@@ -381,6 +362,42 @@ export function AdminProducts() {
      return sortOrder === "asc" ? comparison : -comparison;
   });
 
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredProducts.length && filteredProducts.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredProducts.map(p => p.id)));
+    }
+  };
+
+  const toggleSelection = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedIds.size} products?`)) return;
+    
+    let successCount = 0;
+    try {
+      for (const id of selectedIds) {
+        await deleteDoc(doc(db, "products", id));
+        successCount++;
+      }
+      toast.success(`Deleted ${successCount} products`);
+      setSelectedIds(new Set());
+    } catch (e) {
+      toast.error("Failed to delete some products");
+      console.error(e);
+    }
+  };
+
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden relative">
       <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
@@ -423,6 +440,15 @@ export function AdminProducts() {
              </div>
              
              <div className="flex gap-3">
+               {selectedIds.size > 0 && (
+                 <button 
+                    onClick={handleBulkDelete}
+                    className="bg-red-50 text-red-600 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-red-100 transition flex items-center gap-2"
+                 >
+                    <Trash2 size={18} />
+                    Delete Selected ({selectedIds.size})
+                 </button>
+               )}
                <input 
                   type="file" 
                   accept=".csv" 
@@ -469,6 +495,14 @@ export function AdminProducts() {
                    <table className="w-full text-sm text-left">
                       <thead className="text-xs text-slate-500 bg-slate-50/50 border-b border-slate-100 uppercase mt-2">
                          <tr>
+                            <th className="py-4 px-6 font-semibold w-12">
+                              <input 
+                                type="checkbox" 
+                                className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 border-gray-300 cursor-pointer"
+                                checked={selectedIds.size === filteredProducts.length && filteredProducts.length > 0}
+                                onChange={toggleSelectAll}
+                              />
+                            </th>
                             <th className="py-4 px-6 font-semibold cursor-pointer select-none hover:bg-slate-100 transition" onClick={() => toggleSort("name")}>
                                <div className="flex items-center gap-1"> {t('product_info', 'Product Info')} {sortBy === 'name' && <ArrowUpDown size={14}/>}</div>
                             </th>
@@ -491,6 +525,14 @@ export function AdminProducts() {
                       <tbody className="divide-y divide-slate-100">
                          {filteredProducts.map((p) => (
                            <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="py-4 px-6">
+                                <input 
+                                  type="checkbox" 
+                                  className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 border-gray-300 cursor-pointer"
+                                  checked={selectedIds.has(p.id)}
+                                  onChange={() => toggleSelection(p.id)}
+                                />
+                              </td>
                               <td className="py-4 px-6">
                                  <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
@@ -548,7 +590,7 @@ export function AdminProducts() {
                          ))}
                          {filteredProducts.length === 0 && (
                            <tr>
-                              <td colSpan={7} className="py-8 text-center text-slate-500"> {t('no_products_found', 'No products found.')} </td>
+                              <td colSpan={8} className="py-8 text-center text-slate-500"> {t('no_products_found', 'No products found.')} </td>
                            </tr>
                          )}
                       </tbody>

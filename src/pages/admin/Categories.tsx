@@ -18,6 +18,47 @@ export function AdminCategories() {
   const [newCatImage, setNewCatImage] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const filteredCategories = categories.filter(c => 
+    (c.name?.toLowerCase() || "").includes(search.toLowerCase())
+  );
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredCategories.length && filteredCategories.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredCategories.map(c => c.id)));
+    }
+  };
+
+  const toggleSelection = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedIds.size} categories?`)) return;
+    
+    let successCount = 0;
+    try {
+      for (const id of selectedIds) {
+        await deleteDoc(doc(db, "categories", id));
+        successCount++;
+      }
+      toast.success(`Deleted ${successCount} categories`);
+      setSelectedIds(new Set());
+    } catch (e) {
+      toast.error("Failed to delete some categories");
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     const q = query(collection(db, "categories"));
@@ -110,10 +151,6 @@ export function AdminCategories() {
     }
   };
 
-  const filteredCategories = categories.filter(c => 
-    (c.name?.toLowerCase() || "").includes(search.toLowerCase())
-  );
-
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden relative">
       <div className="bg-white dark:bg-zinc-950 px-8 pt-6 pb-6 shadow-sm z-10 border-b border-gray-200 shrink-0 flex items-center justify-between">
@@ -136,6 +173,15 @@ export function AdminCategories() {
                 />
              </div>
              <div className="flex gap-3">
+               {selectedIds.size > 0 && (
+                 <button 
+                    onClick={handleBulkDelete}
+                    className="bg-red-50 text-red-600 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-red-100 transition flex items-center gap-2"
+                 >
+                    <Trash2 size={18} />
+                    Delete Selected ({selectedIds.size})
+                 </button>
+               )}
                <button 
                   onClick={handleSeed}
                   disabled={seeding}
@@ -165,6 +211,14 @@ export function AdminCategories() {
                    <table className="w-full text-sm text-left">
                       <thead className="text-xs text-slate-500 bg-slate-50/50 border-b border-slate-100 uppercase mt-2">
                          <tr>
+                            <th className="py-4 px-6 font-semibold w-12">
+                              <input 
+                                type="checkbox" 
+                                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 cursor-pointer"
+                                checked={selectedIds.size === filteredCategories.length && filteredCategories.length > 0}
+                                onChange={toggleSelectAll}
+                              />
+                            </th>
                             <th className="py-4 px-6 font-semibold"> {t('icon', 'Icon')} </th>
                             <th className="py-4 px-6 font-semibold"> {t('name', 'Name')} </th>
                             <th className="py-4 px-6 font-semibold"> {t('status', 'Status')} </th>
@@ -174,6 +228,14 @@ export function AdminCategories() {
                       <tbody className="divide-y divide-slate-100">
                          {filteredCategories.map((c) => (
                            <tr key={c.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="py-4 px-6">
+                                <input 
+                                  type="checkbox" 
+                                  className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 cursor-pointer"
+                                  checked={selectedIds.has(c.id)}
+                                  onChange={() => toggleSelection(c.id)}
+                                />
+                              </td>
                               <td className="py-4 px-6">
                                  <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 text-slate-500">
                                     {c.imageUrl ? (
@@ -207,7 +269,7 @@ export function AdminCategories() {
                          ))}
                          {filteredCategories.length === 0 && (
                            <tr>
-                              <td colSpan={4} className="py-8 text-center text-slate-500"> {t('no_categories_found', 'No categories found.')} </td>
+                              <td colSpan={5} className="py-8 text-center text-slate-500"> {t('no_categories_found', 'No categories found.')} </td>
                            </tr>
                          )}
                       </tbody>

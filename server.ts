@@ -147,6 +147,34 @@ async function startServer() {
   });
 
   // KYC Approval Route
+  app.post("/api/admin/seed-products", async (req: express.Request, res: express.Response): Promise<any> => {
+    try {
+      const { data } = req.body;
+      if (!data || !Array.isArray(data)) {
+        return res.status(400).json({ success: false, error: "Missing or invalid 'data' array" });
+      }
+      
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+      if (!supabaseUrl || !supabaseKey) {
+        return res.status(500).json({ success: false, error: "Supabase not configured on backend." });
+      }
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      const { data: insertedData, error } = await supabase
+        .from('produits_patients')
+        .insert(data);
+        
+      if (error) throw error;
+      
+      res.json({ success: true, data: insertedData, message: "Products seeded successfully." });
+    } catch (error: any) {
+      console.error("Error seeding products:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to seed products" });
+    }
+  });
+
   app.post("/api/admin/driver/approve", async (req: express.Request, res: express.Response): Promise<any> => {
     try {
       const { driverId } = req.body;

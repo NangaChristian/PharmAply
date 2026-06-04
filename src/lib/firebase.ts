@@ -61,9 +61,16 @@ export const onAuthStateChanged = (authObj: any, cb: (user: any) => void) => {
     }
   });
   // Trigger immediately
-  supabase.auth.getSession().then(({data}) => {
-    if (data.session?.user) {
-      auth.currentUser = {
+  supabase.auth.getSession().then(({data, error}) => {
+    if (error) {
+       console.warn("Auth session error:", error.message);
+       if (error.message.includes("Refresh Token Not Found") || error.message.includes("Invalid Refresh Token")) {
+          supabase.auth.signOut();
+       }
+    }
+    if (data.session?.user && !error) {
+       auth.currentUser = {
+
         uid: data.session.user.id,
         email: data.session.user.email,
         emailVerified: data.session.user.email_confirmed_at != null,
@@ -178,7 +185,7 @@ const toDatabaseRecord = (table: string, id: string, docData: any) => {
   if (table === 'products') {
      return {
         id: id,
-        nom_commercial: docData.name || docData.nom_commercial || docData.commercial_name || '',
+        commercial_name: docData.name || docData.commercial_name || docData.nom_commercial || '',
         dci: docData.description || docData.dci || '',
         dosage: docData.dosage || '',
         form: docData.form || '',
@@ -210,18 +217,23 @@ const parseRecordData = (table: string, row: any) => {
      parsed = { ...row.data };
   } else if (table === 'products') {
      parsed = {
-        name: row.nom_commercial || row.commercial_name || '',
+        name: row.nom_commercial || row.commercial_name || row.name || '',
+        commercial_name: row.nom_commercial || row.commercial_name || row.name || '',
+        nom_commercial: row.nom_commercial || row.commercial_name || row.name || '',
         description: row.dci || row.description || '',
+        dci: row.dci || row.description || '',
         dosage: row.dosage || '',
         form: row.form || '',
         requiresPrescription: row.is_prescription_required !== undefined ? !!row.is_prescription_required : (!!row.requires_prescription || false),
+        is_prescription_required: row.is_prescription_required !== undefined ? !!row.is_prescription_required : (!!row.requires_prescription || false),
         price: row.price ? Number(row.price) : 0,
         stock: row.stock || 0,
         imageUrl: row.image_url || row.image || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
         category: row.ux_category_id || '',
         pharmacyId: row.pharmacy_id || null,
         isGlobal: row.is_global !== undefined ? row.is_global : (row.pharmacy_id === null),
-        createdAt: row.created_at || null
+        createdAt: row.created_at || null,
+        ...row 
      };
   } else if (table === 'ux_categories') {
      parsed = {
@@ -229,7 +241,8 @@ const parseRecordData = (table: string, row: any) => {
         slug: row.slug || '',
         icon: row.icon || '',
         description: row.description || '',
-        createdAt: row.created_at || null
+        createdAt: row.created_at || null,
+        ...row
      };
   } else {
      parsed = { ...row };
@@ -312,7 +325,7 @@ export const getDocs = async (queryRef: any) => {
   
   // Fallback for ux_categories if the user hasn't run the migration yet
   const isUxCategory = table === 'ux_categories';
-  const isStructured = ['products', 'ux_categories', 'categories', 'produits_patients', 'dpml_alertes'].includes(table);
+  const isStructured = ['products', 'ux_categories', 'categories', 'produits_patients'].includes(table);
   
   let builder: any = supabase.from(table).select('*');
   
@@ -326,8 +339,7 @@ export const getDocs = async (queryRef: any) => {
             else if (c.field === 'isGlobal') fieldName = 'is_global';
             else if (c.field === 'requiresPrescription') fieldName = 'is_prescription_required';
             else if (c.field === 'category') fieldName = 'ux_category_id';
-            else if (c.field === 'price') fieldName = 'price';
-            else if (c.field === 'name') fieldName = 'nom_commercial';
+            else if (c.field === 'name') fieldName = 'commercial_name';
             else if (c.field === 'description') fieldName = 'dci';
             else fieldName = c.field;
           } else {
@@ -353,12 +365,11 @@ export const getDocs = async (queryRef: any) => {
         let fieldName = `data->>${c.field}`;
         if (isStructured) {
           if (table === 'products') {
-            if (c.field === 'name') fieldName = 'nom_commercial';
-            else if (c.field === 'pharmacyId') fieldName = 'pharmacy_id';
-            else if (c.field === 'requiresPrescription') fieldName = 'is_prescription_required';
-            else fieldName = c.field;
+             if (c.field === 'name') fieldName = 'commercial_name';
+             else if (c.field === 'pharmacyId') fieldName = 'pharmacy_id';
+             else fieldName = c.field;
           } else {
-            fieldName = c.field;
+             fieldName = c.field;
           }
         }
         builder = builder.order(fieldName, { ascending: c.direction === 'asc' });

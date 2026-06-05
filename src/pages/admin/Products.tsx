@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import Papa from "papaparse";
 import { formatCurrency } from "../../lib/utils";
 import { useTranslation } from "react-i18next";
+import { fetchApi } from "../../lib/apiClient";
 
 import { seedData } from '../../seed_data';
 import { getCategoryIcon } from '../../lib/icons';
@@ -210,23 +211,24 @@ export function AdminProducts() {
            toast.loading(`Processing ${results.data.length} products...`, { id: 'csv' });
            
            try {
-              // Convert parsed CSV rows to match seedProducts expectations
-              const dataToInsert = results.data.map((row: any) => ({
-                 dci: row.dci || row.Name || row.name || row.DCI || '',
-                 nom_commercial: row.nom_commercial || row.Brand || row.brand || row.commercial_name || '',
-                 dosage: row.dosage || row.Dosage || '',
-                 forme: row.forme || row.form || row.Form || '',
-                 categorie_ux: row.categorie_ux || row.Category || row.category || row.ux_category || 'Uncategorized',
-                 ordonnance_requise: String(row.ordonnance_requise || row.RequiresPrescription || row.requiresPrescription || row.is_prescription_required || 'false').toLowerCase() === 'true'
-              })).filter((item: any) => item.dci && item.nom_commercial); // filter out invalid rows
+              // Strict mapping to match Supabase database expectations
+              const formattedProducts = results.data.map((row: any) => ({
+                 nom_commercial: row.Name || row.Brand || '',
+                 dosage: row.Dosage || '',
+                 categorie_ux: row.Category || 'Uncategorized',
+                 prix: Number(row.Price) || 0,
+                 stock: Number(row.Stock) || 0,
+                 image_url: row.ImageURL || '',
+                 ordonnance_requise: String(row.RequiresPrescription).toLowerCase() === 'true'
+              })).filter((item: any) => item.nom_commercial); // filter out rows without a name
               
-              if (dataToInsert.length === 0) {
-                 toast.error("No valid products found in CSV. Make sure 'dci' and 'nom_commercial' are provided.", { id: 'csv' });
+              if (formattedProducts.length === 0) {
+                 toast.error("Aucun produit valide trouvé dans le CSV. Assurez-vous que 'Name' ou 'Brand' sont fournis.", { id: 'csv' });
                  return;
               }
 
-              await seedProducts(dataToInsert);
-              toast.success(`Imported ${dataToInsert.length} products successfully!`, { id: 'csv' });
+              await seedProducts(formattedProducts);
+              toast.success(`Imported ${formattedProducts.length} products successfully!`, { id: 'csv' });
               fetchGlobalProducts(); // Refresh the global catalog list
            } catch(err: any) {
               toast.error(`Error importing products: ${err.message || 'Unknown error'}`, { id: 'csv' });
@@ -279,43 +281,78 @@ export function AdminProducts() {
   };
 
   const handleCreateOrUpdate = async () => {
-    if (!formData.name.trim()) {
-       toast.error("Product name is required");
+    // 1. Strict Client-side Validation
+    const commercialName = formData.name?.trim();
+    if (!commercialName) {
+       toast.error("Le nom commercial du produit est requis (Product Name)");
        return;
     }
+    
+    const dci = formData.description?.trim() || commercialName;
+    if (!dci) {
+        toast.error("La description ou DCI du produit est requise");
+        return;
+    }
+
+    // Convert formData to Supabase payload matching database schema types
+    const payload = {
+        id: editingId || undefined,
+        commercial_name: commercialName,
+        dci: dci,
+        dosage: formData.dosage?.trim() || null,
+        form: formData.dosage?.trim() || null, // mapping "format/dosage" to form as a fallback
+        is_prescription_required: Boolean(formData.requiresPrescription),
+        ux_category: formData.category?.trim() || 'Uncategorized'
+    };
+
     try {
-      if (editingId) {
-        await updateDoc(doc(db, "products", editingId), {
-          ...formData,
-          price: parseFloat(formData.price) || 0,
-          stock: parseInt(formData.stock, 10) || 0,
-        });
-        toast.success("Product updated successfully");
-      } else {
-        await addDoc(collection(db, "products"), {
-          ...formData,
-          price: parseFloat(formData.price) || 0,
-          stock: parseInt(formData.stock, 10) || 0,
-          createdAt: new Date().toISOString(),
-          isGlobal: true,
-          pharmacyId: null
-        });
-        toast.success("Product created successfully");
+      const response = await fetchApi('/api/admin/upsert-product', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+      });
+      
+      const responseData = await response.json();
+      if (!response.ok || !responseData.success) {
+          throw new Error(responseData.error || "Failed to save product");
       }
+      
+      toast.success(editingId ? "Produit mis à jour avec succès" : "Produit créé avec succès !");
       setShowModal(false);
       setEditingId(null);
       setFormData({ name: "", dosage: "", category: "", brand: "", price: "", stock: "", imageUrl: "", requiresPrescription: false, description: "", effects: "", directions: "" });
-    } catch (e) {
-      handleFirestoreError(e, editingId ? OperationType.UPDATE : OperationType.CREATE, `products`);
+      fetchGlobalProducts();
+    } catch (e: any) {
+       toast.error(`Erreur: ${e.message}`);
+       console.error("Upsert product error", e);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce produit ?")) return;
+    
+    // Optimistic deletion
+    const previousProducts = [...products];
+    setProducts(products.filter(p => p.id !== id));
+    
     try {
-      await deleteDoc(doc(db, "products", id));
-    } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, `products/${id}`);
+      const response = await fetchApi('/api/admin/delete-product', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+      });
+      
+      const responseData = await response.json();
+      if (!response.ok || !responseData.success) {
+          throw new Error(responseData.error || "Failed to delete product");
+      }
+      
+      toast.success("Produit supprimé avec succès");
+    } catch (e: any) {
+       // Rollback the optimistic update
+       setProducts(previousProducts);
+       toast.error(`Erreur lors de la suppression: ${e.message}`);
+       console.error("Delete product error", e);
     }
   };
 

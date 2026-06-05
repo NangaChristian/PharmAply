@@ -154,24 +154,145 @@ async function startServer() {
         return res.status(400).json({ success: false, error: "Missing or invalid 'data' array" });
       }
       
+      const authHeader = req.headers.authorization;
+      const userToken = authHeader ? authHeader.split(' ')[1] : undefined;
+
       const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-      if (!supabaseUrl || !supabaseKey) {
-        return res.status(500).json({ success: false, error: "Supabase not configured on backend." });
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl) {
+        return res.status(500).json({ success: false, error: "Supabase URL not configured on backend." });
       }
+      
       const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(supabaseUrl, supabaseKey);
+      let supabase;
+      
+      if (serviceKey) {
+        // Use service role key to completely bypass RLS
+        supabase = createClient(supabaseUrl, serviceKey);
+      } else if (anonKey) {
+        // Fallback to anon key: supply user token if available so it operates as authenticated admin
+        const options = userToken ? { global: { headers: { Authorization: `Bearer ${userToken}` } } } : {};
+        supabase = createClient(supabaseUrl, anonKey, options);
+      } else {
+        return res.status(500).json({ success: false, error: "No Supabase keys configured on backend." });
+      }
 
       const { data: insertedData, error } = await supabase
         .from('produits_patients')
         .insert(data);
         
-      if (error) throw error;
+      if (error) {
+         if (error.message.includes('row-level security policy')) {
+             throw new Error("Erreur RLS : L'opération a été bloquée. Veuillez ajouter la clé 'SUPABASE_SERVICE_ROLE_KEY' dans vos Secrets AI Studio, ou exécutez le script SQL 'phase8_produits_patients.sql' dans votre base.");
+         }
+         throw error;
+      }
       
       res.json({ success: true, data: insertedData, message: "Products seeded successfully." });
     } catch (error: any) {
       console.error("Error seeding products:", error);
       res.status(500).json({ success: false, error: error.message || "Failed to seed products" });
+    }
+  });
+
+  // UPSERT route for single product Create or Update
+  app.post("/api/admin/upsert-product", async (req: express.Request, res: express.Response): Promise<any> => {
+    try {
+      const { id, dci, commercial_name, dosage, form, is_prescription_required, ux_category } = req.body;
+      
+      const authHeader = req.headers.authorization;
+      const userToken = authHeader ? authHeader.split(' ')[1] : undefined;
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl) return res.status(500).json({ success: false, error: "Supabase URL not configured on backend." });
+      
+      const { createClient } = await import('@supabase/supabase-js');
+      let supabase;
+      if (serviceKey) {
+        supabase = createClient(supabaseUrl, serviceKey);
+      } else if (anonKey) {
+        const options = userToken ? { global: { headers: { Authorization: `Bearer ${userToken}` } } } : {};
+        supabase = createClient(supabaseUrl, anonKey, options);
+      } else {
+        return res.status(500).json({ success: false, error: "No Supabase keys configured." });
+      }
+
+      const payload = {
+         dci,
+         commercial_name,
+         dosage,
+         form,
+         is_prescription_required: is_prescription_required === true || is_prescription_required === 'true',
+         ux_category
+      };
+
+      let query;
+      if (id) {
+         query = supabase.from('produits_patients').update(payload).eq('id', id);
+      } else {
+         query = supabase.from('produits_patients').insert([payload]);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) {
+         if (error.message.includes('row-level security policy')) {
+            throw new Error("Erreur RLS : L'opération a été bloquée. Veuillez ajouter la clé 'SUPABASE_SERVICE_ROLE_KEY' dans vos Secrets AI Studio, ou exécutez le script SQL 'phase8_produits_patients.sql' dans votre base.");
+         }
+         throw error;
+      }
+      
+      res.json({ success: true, data });
+    } catch (error: any) {
+      console.error("Backend upsert error:", error);
+      res.status(500).json({ success: false, error: error.message || "Upsert failed" });
+    }
+  });
+
+  // DELETE route for single product
+  app.post("/api/admin/delete-product", async (req: express.Request, res: express.Response): Promise<any> => {
+    try {
+      const { id } = req.body;
+      if (!id) {
+        return res.status(400).json({ success: false, error: "Product ID is required" });
+      }
+
+      const authHeader = req.headers.authorization;
+      const userToken = authHeader ? authHeader.split(' ')[1] : undefined;
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl) return res.status(500).json({ success: false, error: "Supabase URL not configured on backend." });
+      
+      const { createClient } = await import('@supabase/supabase-js');
+      let supabase;
+      if (serviceKey) {
+        supabase = createClient(supabaseUrl, serviceKey);
+      } else if (anonKey) {
+        const options = userToken ? { global: { headers: { Authorization: `Bearer ${userToken}` } } } : {};
+        supabase = createClient(supabaseUrl, anonKey, options);
+      } else {
+        return res.status(500).json({ success: false, error: "No Supabase keys configured." });
+      }
+
+      const { data, error } = await supabase.from('produits_patients').delete().eq('id', id);
+      
+      if (error) {
+         if (error.message.includes('row-level security policy')) {
+            throw new Error("Erreur RLS : L'opération a été bloquée. Veuillez ajouter la clé 'SUPABASE_SERVICE_ROLE_KEY' dans vos Secrets AI Studio, ou exécutez le script SQL 'phase8_produits_patients.sql' dans votre base pour autoriser les suppressions.");
+         }
+         throw error;
+      }
+      
+      res.json({ success: true, data });
+    } catch (error: any) {
+      console.error("Backend delete error:", error);
+      res.status(500).json({ success: false, error: error.message || "Delete failed" });
     }
   });
 

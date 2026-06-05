@@ -11,6 +11,11 @@ CREATE TABLE IF NOT EXISTS public.produits_patients (
 
 ALTER TABLE public.produits_patients ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow all public selects on produits_patients" ON public.produits_patients;
+DROP POLICY IF EXISTS "Allow all public inserts on produits_patients" ON public.produits_patients;
+DROP POLICY IF EXISTS "Allow all public updates on produits_patients" ON public.produits_patients;
+DROP POLICY IF EXISTS "Allow all public deletes on produits_patients" ON public.produits_patients;
+
 CREATE POLICY "Allow all public selects on produits_patients"
 ON public.produits_patients FOR SELECT USING (true);
 
@@ -18,4 +23,7 @@ CREATE POLICY "Allow all public inserts on produits_patients"
 ON public.produits_patients FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Allow all public updates on produits_patients"
-ON public.produits_patients FOR UPDATE USING (true);
+ON public.produits_patients FOR UPDATE USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow all public deletes on produits_patients"
+ON public.produits_patients FOR DELETE USING (true);

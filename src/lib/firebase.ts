@@ -63,12 +63,13 @@ export const onAuthStateChanged = (authObj: any, cb: (user: any) => void) => {
   // Trigger immediately
   supabase.auth.getSession().then(({data, error}) => {
     if (error) {
-       console.warn("Auth session error:", error.message);
        if (error.message.includes("Refresh Token Not Found") || error.message.includes("Invalid Refresh Token")) {
           supabase.auth.signOut();
+       } else {
+          console.warn("Auth session error:", error.message);
        }
     }
-    if (data.session?.user && !error) {
+    if (data?.session?.user && !error) {
        auth.currentUser = {
 
         uid: data.session.user.id,

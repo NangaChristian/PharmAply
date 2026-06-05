@@ -1,6 +1,8 @@
+import { fetchApi } from './apiClient';
+
 export const sendEmail = async ({ to, subject, text, html }: { to: string, subject: string, text?: string, html?: string }) => {
   try {
-    const res = await fetch('/api/send-email', {
+    const res = await fetchApi('/api/send-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

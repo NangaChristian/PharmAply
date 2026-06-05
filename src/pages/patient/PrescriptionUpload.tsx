@@ -7,6 +7,8 @@ import { db, storage, handleFirestoreError, OperationType } from '../../lib/fire
 import { useAuth } from '../../components/AuthProvider';
 import { useTranslation } from "react-i18next";
 
+import { fetchApi } from '../../lib/apiClient';
+
 export function PatientPrescriptionUpload() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -68,7 +70,7 @@ export function PatientPrescriptionUpload() {
           reader.onload = async () => {
              const resultString = reader.result as string; 
              const base64Data = resultString.split(',')[1];
-             const ocrRes = await fetch('/api/ocr', {
+             const ocrRes = await fetchApi('/api/ocr', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ imageBase64: base64Data, mimeType: file.type })

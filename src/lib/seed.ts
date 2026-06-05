@@ -1,3 +1,5 @@
+import { fetchApi } from './apiClient';
+
 export async function seedProducts(data: any[]) {
   try {
     // 1. Validation and Mapping
@@ -29,7 +31,7 @@ export async function seedProducts(data: any[]) {
     }
 
     // 2. Database Insertion (via backend API with Service Role Key)
-    const response = await fetch('/api/admin/seed-products', {
+    const response = await fetchApi('/api/admin/seed-products', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

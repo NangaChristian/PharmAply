@@ -55,6 +55,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.warn('Failed to parse impersonation state');
     }
 
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+          // Gracefully clear corrupt state and handle redirect
+          setActualUser(null);
+          setActualRole(null);
+          setActualUserData(null);
+          setImpersonatedUser(null);
+          setImpersonatedRole(null);
+          setImpersonatedUserData(null);
+          localStorage.removeItem('impersonation_state');
+          supabase.auth.signOut();
+          
+          // Only redirect if we are not already on the login or onboarding pages
+          if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/signup')) {
+             window.location.href = '/login';
+          }
+        }
+      }
+    );
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setActualUser(currentUser);
       if (currentUser) {
@@ -84,7 +105,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      authSubscription.unsubscribe();
+    };
   }, []);
 
   const refreshUser = async () => {

@@ -213,7 +213,7 @@ export function PatientCheckout() {
       // Fapshi Sandbox API handling
       if (paymentMethod === 'Fapshi') {
          try {
-            const fapshiRes = await fetch('https://sandbox.fapshi.com/initiate-pay', {
+            const fapshiRes = await fetch('/api/fapshi/initiate-pay', {
                method: 'POST',
                headers: {
                   'Content-Type': 'application/json'
@@ -229,6 +229,9 @@ export function PatientCheckout() {
             if (payData && payData.link) {
                window.location.href = payData.link;
                return;
+            } else if (payData && !payData.success) {
+               console.error('Fapshi API Proxy Error:', payData.error);
+               alert(t('payment_initiation_failed', 'Failed to initialize payment: ' + payData.error));
             }
          } catch (fapshiErr) {
             console.error('Fapshi API Error:', fapshiErr);

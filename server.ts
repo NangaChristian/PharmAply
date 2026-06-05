@@ -20,6 +20,84 @@ async function startServer() {
   });
 
   // API Routes
+  app.post("/api/fapshi/initiate-pay", async (req: express.Request, res: express.Response): Promise<any> => {
+    try {
+      const { amount, email, externalId, redirectUrl } = req.body;
+      
+      const apiUser = process.env.FAPSHI_API_USER;
+      const apiKey = process.env.FAPSHI_API_KEY;
+
+      if (!apiUser || !apiKey) {
+        return res.status(500).json({ success: false, error: "Fapshi credentials are not configured on the backend. Please add FAPSHI_API_USER and FAPSHI_API_KEY." });
+      }
+
+      console.log('Initiating Fapshi payment for:', { amount, email, externalId });
+
+      const response = await fetch('https://sandbox.fapshi.com/initiate-pay', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apiuser': apiUser,
+          'apikey': apiKey
+        },
+        body: JSON.stringify({
+          amount,
+          email,
+          externalId,
+          redirectUrl
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        console.error('Fapshi initiate-pay error response:', data);
+        return res.status(response.status).json({ success: false, error: data.message || "Failed to initiate payment" });
+      }
+
+      res.json({ success: true, link: data.link });
+    } catch (error: any) {
+      console.error("Fapshi server error:", error);
+      res.status(500).json({ success: false, error: "Internal server error connecting to Fapshi" });
+    }
+  });
+
+  // Fapshi Webhook Endpoint
+  app.post("/api/fapshi/webhook", async (req: express.Request, res: express.Response): Promise<any> => {
+    try {
+      console.log('Received Fapshi webhook:', req.body);
+      const { externalId, status, transId } = req.body;
+      
+      if (status === 'SUCCESSFUL' && externalId) {
+        console.log(`Payment successful for order ${externalId}`);
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+        
+        if (supabaseUrl && supabaseKey) {
+           const { createClient } = await import('@supabase/supabase-js');
+           const supabase = createClient(supabaseUrl, supabaseKey);
+           
+           const { data: orderResponse, error: fetchError } = await supabase
+              .from('orders')
+              .select('data')
+              .eq('id', externalId)
+              .single();
+              
+           if (!fetchError && orderResponse?.data) {
+              const updatedData = { ...orderResponse.data, status: 'paid', fapshiTransId: transId };
+              await supabase.from('orders').update({ data: updatedData }).eq('id', externalId);
+              console.log('Successfully updated order status to paid in Supabase');
+           }
+        }
+      }
+
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error("Fapshi webhook error:", error);
+      res.status(500).json({ success: false, error: "Webhook failure" });
+    }
+  });
+
   app.post("/api/ocr", async (req: express.Request, res: express.Response) => {
     try {
       const { imageBase64, mimeType } = req.body;
@@ -330,8 +408,7 @@ async function startServer() {
         .from('drivers')
         .upsert({ 
           id: driverId, 
-          data: newDriverData,
-          status: 'approved'
+          data: newDriverData
         }, { onConflict: 'id' });
         
       if (drvErr) throw drvErr;

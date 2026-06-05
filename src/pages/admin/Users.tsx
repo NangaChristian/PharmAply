@@ -45,8 +45,6 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
     const unsubscribeUsers = onSnapshot(qUsers, (snapshot) => {
       const fetchedUsers: any[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       setUsers(fetchedUsers);
-      const pendingDrivers = fetchedUsers.filter(u => u.role === 'driver' && u.status === 'pending_verification');
-      setDrivers(pendingDrivers);
       setLoading(false);
     }, (error) => {
       console.error(error);
@@ -59,9 +57,16 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
       setPharmacies(fetchedPharmacies);
     });
 
+    const qDrivers = query(collection(db, 'drivers'), where('status', '==', 'pending_verification'));
+    const unsubscribeDrivers = onSnapshot(qDrivers, (dSnapshot) => {
+      const fetchedDrivers = dSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setDrivers(fetchedDrivers);
+    });
+
     return () => {
       unsubscribeUsers();
       unsubscribePharmacies();
+      unsubscribeDrivers();
     };
   }, [user]);
 
@@ -78,13 +83,15 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
   const handleApproveDriver = async (userId: string, driverName: string) => {
     setProcessingId(userId);
     try {
-      const { error: supabaseError } = await supabase
-        .from('driver_profiles')
-        .update({ kyc_status: 'approved', is_active: true })
-        .eq('id', userId);
-
-      if (supabaseError) {
-        throw new Error(supabaseError.message);
+      const response = await fetch('/api/admin/driver/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driverId: userId })
+      });
+      
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to approve driver");
       }
 
       // Update local state to reflect UI changes instantly
@@ -93,6 +100,7 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
       
       // Update Firebase auth users db as fallback
       await updateDoc(doc(db, 'users', userId), { status: 'approved', kyc_status: 'approved' });
+      await updateDoc(doc(db, 'drivers', userId), { status: 'approved', kyc_status: 'approved' });
       
       toast.success(`Le livreur ${driverName || 'inconnu'} a été approuvé avec succès et son compte est désormais actif.`);
     } catch (error: any) {

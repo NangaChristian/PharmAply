@@ -299,13 +299,13 @@ async function startServer() {
         return res.status(500).json({ success: false, error: "No Supabase keys configured." });
       }
 
-      const payload = {
+      const payload: any = {
          dci,
-         commercial_name,
+         nom_commercial: commercial_name,
          dosage,
-         form,
-         is_prescription_required: is_prescription_required === true || is_prescription_required === 'true',
-         ux_category
+         forme: form,
+         ordonnance_requise: is_prescription_required === true || is_prescription_required === 'true',
+         categorie_ux: ux_category
       };
 
       let query;

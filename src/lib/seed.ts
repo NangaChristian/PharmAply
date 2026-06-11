@@ -17,11 +17,11 @@ export async function seedProducts(data: any[]) {
 
       return {
         dci: dci,
-        commercial_name: nom_commercial,
+        nom_commercial: nom_commercial,
         dosage: item.dosage,
-        form: item.forme || item.form,
-        is_prescription_required: Boolean(item.ordonnance_requise ?? item.is_prescription_required ?? false),
-        ux_category: item.categorie_ux || item.ux_category,
+        forme: item.forme || item.form,
+        ordonnance_requise: Boolean(item.ordonnance_requise ?? item.is_prescription_required ?? false),
+        categorie_ux: item.categorie_ux || item.ux_category,
       };
     });
 

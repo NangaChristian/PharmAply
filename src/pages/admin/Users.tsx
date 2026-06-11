@@ -1,4 +1,4 @@
-import { Search, Store, ShieldCheck, User, ShieldAlert, CheckCircle, Truck, Ban, Trash2, Filter, CheckSquare, CircleDollarSign, X, FileText, VenetianMask, Loader2 } from "lucide-react";
+import { Search, Store, ShieldCheck, User, ShieldAlert, CheckCircle, Truck, Ban, Trash2, Filter, CheckSquare, CircleDollarSign, X, FileText, VenetianMask, Loader2, Mail } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
@@ -235,6 +235,45 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
   const filteredUsers = getFilteredUsers();
   const allSelected = filteredUsers.length > 0 && selectedUsers.length === filteredUsers.length;
 
+  const [isReminding, setIsReminding] = useState(false);
+
+  const handleSendReminders = async (e: any) => {
+    e.stopPropagation();
+    setIsReminding(true);
+    let count = 0;
+    const now = new Date();
+
+    const pendingUsers = filteredUsers.filter(u => 
+      u.status === 'pending_verification' && 
+      (u.role === 'pharmacist' || u.role === 'pharmacy' || u.role === 'driver')
+    );
+
+    for (const u of pendingUsers) {
+      if (u.createdAt && u.email) {
+        const createdAtDate = u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt);
+        const diffHours = (now.getTime() - createdAtDate.getTime()) / (1000 * 60 * 60);
+        if (diffHours >= 48) {
+          try {
+            await fetch('/api/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to: u.email,
+                subject: 'Rappel KYC - Complétez votre profil',
+                html: `Bonjour ${u.name || ''},<br/><br/>Votre compte est en attente de vérification KYC depuis plus de 48 heures. Merci de finaliser votre inscription en fournissant les documents requis.<br/><br/>L'équipe Pharmap.`
+              })
+            });
+            count++;
+          } catch (err) {
+            console.error("Erreur d'envoi", err);
+          }
+        }
+      }
+    }
+    setIsReminding(false);
+    toast.success(`${count} rappel(s) envoyé(s) avec succès.`);
+  };
+
   const getStatusBadge = (status?: string) => {
     switch (status) {
       case 'pending_verification':
@@ -316,15 +355,27 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
                  </div>
                </div>
                
-               {selectedUsers.length > 0 && (
-                 <div className="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-xl text-sm border border-indigo-100">
-                    <span className="font-bold text-indigo-900 border-r border-indigo-200 pr-3 mr-1">{selectedUsers.length}  {t('selected', 'selected')} </span>
-                    <button onClick={() => handleBulkAction('approve')} className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg transition" title={t('approve', 'Approve')}><CheckCircle size={18} /></button>
-                    <button onClick={() => handleBulkAction('suspend')} className="p-1.5 text-amber-600 hover:bg-amber-100 rounded-lg transition" title={t('suspend', 'Suspend')}><Ban size={18} /></button>
-                    <button onClick={() => handleBulkAction('make_cashier')} className="p-1.5 text-indigo-600 hover:bg-indigo-100 rounded-lg transition" title={t('make_cashier', 'Make Cashier')}><CircleDollarSign size={18} /></button>
-                    <button onClick={() => handleBulkAction('delete')} className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition" title={t('delete', 'Delete')}><Trash2 size={18} /></button>
-                 </div>
-               )}
+               <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                 {(type === 'vendors' || type === 'drivers' || type === 'all') && (
+                   <button
+                     onClick={handleSendReminders}
+                     className="flex items-center gap-2 bg-amber-100 text-amber-700 font-medium px-4 py-2.5 rounded-xl hover:bg-amber-200 transition text-sm whitespace-nowrap"
+                     disabled={isReminding}
+                   >
+                     {isReminding ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
+                     {isReminding ? t('sending', "Envoi...") : t('send_kyc_reminders', "Rappels KYC (> 48h)")}
+                   </button>
+                 )}
+                 {selectedUsers.length > 0 && (
+                   <div className="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-xl text-sm border border-indigo-100">
+                      <span className="font-bold text-indigo-900 border-r border-indigo-200 pr-3 mr-1">{selectedUsers.length}  {t('selected', 'selected')} </span>
+                      <button onClick={() => handleBulkAction('approve')} className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg transition" title={t('approve', 'Approve')}><CheckCircle size={18} /></button>
+                      <button onClick={() => handleBulkAction('suspend')} className="p-1.5 text-amber-600 hover:bg-amber-100 rounded-lg transition" title={t('suspend', 'Suspend')}><Ban size={18} /></button>
+                      <button onClick={() => handleBulkAction('make_cashier')} className="p-1.5 text-indigo-600 hover:bg-indigo-100 rounded-lg transition" title={t('make_cashier', 'Make Cashier')}><CircleDollarSign size={18} /></button>
+                      <button onClick={() => handleBulkAction('delete')} className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition" title={t('delete', 'Delete')}><Trash2 size={18} /></button>
+                   </div>
+                 )}
+               </div>
              </div>
 
              <div className="bg-white dark:bg-zinc-950 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">

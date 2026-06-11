@@ -3,12 +3,13 @@ import {
   LayoutDashboard, Users, User, CircleDollarSign, Settings, FileText, LogOut, Package, Search, Bell, Globe, Store, Truck, 
   Pill, Tags, CreditCard, FileBarChart, Ticket, HeadphonesIcon, UserCog, BookText, History, Plus, MessageSquare, Smartphone, Monitor, Folder, ChevronDown, MapPin, ShieldAlert
 } from "lucide-react";
-import { auth } from "../../lib/firebase";
+import { auth, db } from "../../lib/firebase";
 import { signOut } from '../../lib/firebase';
 import { useAuth } from "../../components/AuthProvider";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "motion/react";
+import { collection, query, where, onSnapshot } from "../../lib/firebase";
 
 import { DarkModeToggle } from '../DarkModeToggle';
 
@@ -18,11 +19,29 @@ export function AdminLayout() {
   const { user, role, loading: authLoading } = useAuth();
   const { t, i18n } = useTranslation();
 
+  const [pendingPharmaciesCount, setPendingPharmaciesCount] = useState(0);
+  const [pendingDriversCount, setPendingDriversCount] = useState(0);
+
   useEffect(() => {
     if (!authLoading && (!user || role !== 'admin')) {
       navigate('/admin-login');
     }
   }, [user, role, authLoading, navigate]);
+
+  useEffect(() => {
+    if (!user || role !== 'admin') return;
+    
+    const pQ = query(collection(db, 'pharmacies'), where('status', '==', 'pending_verification'));
+    const unsubP = onSnapshot(pQ, (snap) => setPendingPharmaciesCount(snap.size));
+    
+    const dQ = query(collection(db, 'drivers'), where('status', '==', 'pending_verification'));
+    const unsubD = onSnapshot(dQ, (snap) => setPendingDriversCount(snap.size));
+    
+    return () => {
+      unsubP();
+      unsubD();
+    };
+  }, [user, role]);
 
   if (authLoading || !user || role !== 'admin') {
     return <div className="h-screen w-screen flex items-center justify-center bg-[#F0F5F2]"> {t('loading', 'Loading...')} </div>;
@@ -53,8 +72,8 @@ export function AdminLayout() {
        label: t('admin_users', "USERS"),
        items: [
          { to: "/admin/clients", icon: Users, label: t('admin_patients', "Patients"), end: true },
-         { to: "/admin/vendors", icon: Store, label: t('admin_pharmacies', "Pharmacies"), end: true },
-         { to: "/admin/drivers", icon: Truck, label: t('admin_deliveries', "Deliveries"), end: true },
+         { to: "/admin/vendors", icon: Store, label: t('admin_pharmacies', "Pharmacies"), badge: pendingPharmaciesCount, end: true },
+         { to: "/admin/drivers", icon: Truck, label: t('admin_deliveries', "Deliveries"), badge: pendingDriversCount, end: true },
          { to: "/admin/cashiers", icon: CircleDollarSign, label: t('admin_cashiers', "Cashiers"), end: true }
        ]
     },
@@ -110,15 +129,22 @@ export function AdminLayout() {
                       to={link.to}
                       end={link.end}
                       className={({ isActive }) =>
-                        `flex items-center gap-3 px-4 py-2.5 rounded-2xl text-sm font-medium transition-colors ${
+                        `flex items-center justify-between px-4 py-2.5 rounded-2xl text-sm font-medium transition-colors ${
                           isActive
                             ? "bg-slate-900 text-white dark:bg-indigo-600"
                             : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-white dark:hover:bg-slate-700 dark:hover:text-white"
                         }`
                       }
                     >
-                      <Icon size={18} />
-                      {link.label}
+                      <div className="flex items-center gap-3">
+                        <Icon size={18} />
+                        {link.label}
+                      </div>
+                      {link.badge && link.badge > 0 ? (
+                        <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          {link.badge}
+                        </span>
+                      ) : null}
                     </NavLink>
                   );
                 })}

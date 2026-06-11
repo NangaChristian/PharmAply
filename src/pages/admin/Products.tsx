@@ -7,6 +7,7 @@ import Papa from "papaparse";
 import { formatCurrency } from "../../lib/utils";
 import { useTranslation } from "react-i18next";
 import { fetchApi } from "../../lib/apiClient";
+import { useForm } from "react-hook-form";
 
 import { seedData } from '../../seed_data';
 import { getCategoryIcon } from '../../lib/icons';
@@ -78,11 +79,25 @@ export function AdminProducts() {
   // Add/Edit Modal
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-     name: "", dosage: "", category: "", brand: "", price: "", stock: "", imageUrl: "", requiresPrescription: false, description: "", effects: "", directions: ""
-  });
+
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  type ProductFormValues = {
+    name: string;
+    dosage: string;
+    category: string;
+    brand: string;
+    price: number | string;
+    stock: number | string;
+    imageUrl: string;
+    requiresPrescription: boolean;
+    description: string;
+    effects: string;
+    directions: string;
+  };
+
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<ProductFormValues>();
 
   const fetchGlobalProducts = async () => {
      try {
@@ -90,11 +105,11 @@ export function AdminProducts() {
         if (data && !error) {
            const mappedOut = data.map((d: any) => ({
                id: d.id,
-               name: d.commercial_name,
+               name: d.nom_commercial || d.commercial_name,
                description: d.dci,
                dosage: d.dosage,
-               category: d.ux_category,
-               requiresPrescription: d.is_prescription_required,
+               category: d.categorie_ux,
+               requiresPrescription: d.ordonnance_requise,
                price: 0,
                stock: 0,
                imageUrl: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
@@ -250,7 +265,7 @@ export function AdminProducts() {
     const reader = new FileReader();
     reader.onload = (event) => {
        if (event.target?.result) {
-          setFormData({ ...formData, imageUrl: event.target.result as string });
+          setValue("imageUrl", event.target.result as string);
        }
     };
     reader.readAsDataURL(file);
@@ -258,19 +273,19 @@ export function AdminProducts() {
 
   const openAddModal = () => {
     setEditingId(null);
-    setFormData({ name: "", dosage: "", category: "", brand: "", price: "", stock: "", imageUrl: "", requiresPrescription: false });
+    reset({ name: "", dosage: "", category: "", brand: "", price: 0, stock: 0, imageUrl: "", requiresPrescription: false });
     setShowModal(true);
   };
 
   const openEditModal = (product: any) => {
     setEditingId(product.id);
-    setFormData({
+    reset({
        name: product.name || "",
        dosage: product.dosage || "",
        category: product.category || "",
        brand: product.brand || "",
-       price: product.price?.toString() || "0",
-       stock: product.stock?.toString() || "0",
+       price: product.price ? Number(product.price) : 0,
+       stock: product.stock ? Number(product.stock) : 0,
        imageUrl: product.imageUrl || "",
        requiresPrescription: !!product.requiresPrescription,
        description: product.description || "",
@@ -280,15 +295,14 @@ export function AdminProducts() {
     setShowModal(true);
   };
 
-  const handleCreateOrUpdate = async () => {
-    // 1. Strict Client-side Validation
-    const commercialName = formData.name?.trim();
+  const onSubmit = async (data: ProductFormValues) => {
+    const commercialName = data.name?.trim();
     if (!commercialName) {
        toast.error("Le nom commercial du produit est requis (Product Name)");
        return;
     }
     
-    const dci = formData.description?.trim() || commercialName;
+    const dci = data.description?.trim() || commercialName;
     if (!dci) {
         toast.error("La description ou DCI du produit est requise");
         return;
@@ -299,10 +313,12 @@ export function AdminProducts() {
         id: editingId || undefined,
         commercial_name: commercialName,
         dci: dci,
-        dosage: formData.dosage?.trim() || null,
-        form: formData.dosage?.trim() || null, // mapping "format/dosage" to form as a fallback
-        is_prescription_required: Boolean(formData.requiresPrescription),
-        ux_category: formData.category?.trim() || 'Uncategorized'
+        dosage: data.dosage?.trim() || null,
+        form: data.dosage?.trim() || null, // mapping "format/dosage" to form as a fallback
+        is_prescription_required: Boolean(data.requiresPrescription),
+        ux_category: data.category?.trim() || 'Uncategorized',
+        price: Number(data.price),
+        stock: Number(data.stock)
     };
 
     try {
@@ -320,7 +336,7 @@ export function AdminProducts() {
       toast.success(editingId ? "Produit mis à jour avec succès" : "Produit créé avec succès !");
       setShowModal(false);
       setEditingId(null);
-      setFormData({ name: "", dosage: "", category: "", brand: "", price: "", stock: "", imageUrl: "", requiresPrescription: false, description: "", effects: "", directions: "" });
+      reset({ name: "", dosage: "", category: "", brand: "", price: 0, stock: 0, imageUrl: "", requiresPrescription: false, description: "", effects: "", directions: "" });
       fetchGlobalProducts();
     } catch (e: any) {
        toast.error(`Erreur: ${e.message}`);
@@ -637,10 +653,11 @@ export function AdminProducts() {
           </div>
        </div>
 
-       {showModal && (
+      {showModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
            <div className="bg-white dark:bg-zinc-950 rounded-3xl w-full max-w-3xl h-[85vh] max-h-[850px] shadow-2xl border border-gray-100 dark:border-zinc-800 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
               
+              <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
               {/* Modal Header */}
               <div className="px-6 py-5 border-b border-gray-100 dark:border-zinc-900 flex justify-between items-center bg-gray-50/50 dark:bg-zinc-900/10 shrink-0">
                  <div>
@@ -669,8 +686,8 @@ export function AdminProducts() {
                     </h3>
                     <div className="bg-slate-50/40 dark:bg-zinc-900/20 p-5 rounded-2xl border border-gray-100 dark:border-zinc-850/50 space-y-4">
                        <div className="flex flex-col md:flex-row items-start md:items-center gap-6 pb-4 border-b border-dashed border-gray-100 dark:border-zinc-850">
-                          {(formData.imageUrl || formData.ImageURL || formData.image || formData.Image) ? (
-                             <img src={formData.imageUrl || formData.ImageURL || formData.image || formData.Image} className="w-20 h-20 rounded-2xl object-cover border border-slate-200 dark:border-zinc-800 shadow-sm bg-white" alt="Preview"/>
+                          {(watch('imageUrl')) ? (
+                             <img src={watch('imageUrl')} className="w-20 h-20 rounded-2xl object-cover border border-slate-200 dark:border-zinc-800 shadow-sm bg-white" alt="Preview"/>
                           ) : (
                              <div className="w-20 h-20 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex items-center justify-center shadow-sm shrink-0">
                                 <ImageIcon className="text-slate-400" size={32} />
@@ -693,8 +710,7 @@ export function AdminProducts() {
                              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5"> {t('product_name', 'Product Name *')} </label>
                              <input 
                                 type="text" 
-                                value={formData.name} 
-                                onChange={(e) => setFormData({...formData, name: e.target.value})} 
+                                {...register("name", { required: true })} 
                                 className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none transition" 
                                 placeholder={t('enter_product_name_placeholder', 'e.g. Paracetamol / Doliprane')}
                              />
@@ -703,8 +719,7 @@ export function AdminProducts() {
                              <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5"> {t('brand', 'Brand / Manufacturer')} </label>
                              <input 
                                 type="text" 
-                                value={formData.brand} 
-                                onChange={(e) => setFormData({...formData, brand: e.target.value})} 
+                                {...register("brand")} 
                                 className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none transition" 
                                 placeholder="e.g. Sanofi"
                              />
@@ -712,8 +727,7 @@ export function AdminProducts() {
                           <div>
                              <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5"> {t('category', 'Category')} </label>
                              <select
-                               value={formData.category}
-                               onChange={(e) => setFormData({...formData, category: e.target.value})}
+                               {...register("category")}
                                className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none transition"
                              >
                                <option value="">{t('select_category', 'Select Category...')}</option>
@@ -726,8 +740,7 @@ export function AdminProducts() {
                              <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5"> {t('image_url_label', 'Direct Image URL (Optional)')} </label>
                              <input 
                                 type="text" 
-                                value={formData.imageUrl} 
-                                onChange={(e) => setFormData({...formData, imageUrl: e.target.value})} 
+                                {...register("imageUrl")} 
                                 placeholder="https://..." 
                                 className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none transition" 
                              />
@@ -747,8 +760,7 @@ export function AdminProducts() {
                           <input 
                              type="number" 
                              step="0.01" 
-                             value={formData.price} 
-                             onChange={(e) => setFormData({...formData, price: e.target.value})} 
+                             {...register("price", { required: true, min: { value: 0, message: "Le prix doit être positif" }, valueAsNumber: true })} 
                              className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none transition" 
                              placeholder="e.g. 1500"
                           />
@@ -757,8 +769,7 @@ export function AdminProducts() {
                           <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5"> {t('initial_stock', 'Initial Stock (Units)')} </label>
                           <input 
                              type="number" 
-                             value={formData.stock} 
-                             onChange={(e) => setFormData({...formData, stock: e.target.value})} 
+                             {...register("stock", { required: true, min: { value: 0, message: "Le stock doit être positif" }, valueAsNumber: true })} 
                              className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none transition" 
                              placeholder="e.g. 50"
                           />
@@ -772,8 +783,7 @@ export function AdminProducts() {
                              <input 
                                 type="checkbox" 
                                 id="rx" 
-                                checked={formData.requiresPrescription} 
-                                onChange={(e) => setFormData({...formData, requiresPrescription: e.target.checked})} 
+                                {...register("requiresPrescription")} 
                                 className="w-5 h-5 text-teal-600 rounded-lg border-gray-300 dark:border-zinc-750 focus:ring-teal-500 transition cursor-pointer" 
                              />
                           </div>
@@ -791,8 +801,7 @@ export function AdminProducts() {
                           <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5"> {t('dosage_format_label', 'Dosage / Format (DCI)')} </label>
                           <input 
                              type="text" 
-                             value={formData.dosage} 
-                             onChange={(e) => setFormData({...formData, dosage: e.target.value})} 
+                             {...register("dosage")} 
                              placeholder="e.g. 500mg Tablets / 80mg per Lyoc" 
                              className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none transition" 
                           />
@@ -800,8 +809,7 @@ export function AdminProducts() {
                        <div>
                           <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5"> {t('therap_description', 'Product Description')} </label>
                           <textarea 
-                             value={formData.description} 
-                             onChange={(e) => setFormData({...formData, description: e.target.value})} 
+                             {...register("description")} 
                              rows={2} 
                              className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none transition resize-none" 
                              placeholder={t('explain_details_desc', 'Explain composition, clinical uses or active molecules...')}
@@ -810,8 +818,7 @@ export function AdminProducts() {
                        <div>
                           <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5"> {t('effects_side', 'Known Side Effects')} </label>
                           <textarea 
-                             value={formData.effects} 
-                             onChange={(e) => setFormData({...formData, effects: e.target.value})} 
+                             {...register("effects")} 
                              rows={2} 
                              className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none transition resize-none" 
                              placeholder={t('effects_placeholder', 'Drowsiness, stomach ache, allergic warnings, etc.')}
@@ -820,8 +827,7 @@ export function AdminProducts() {
                        <div>
                           <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5"> {t('directions_use', 'Directions & Method of Use')} </label>
                           <textarea 
-                             value={formData.directions} 
-                             onChange={(e) => setFormData({...formData, directions: e.target.value})} 
+                             {...register("directions")} 
                              rows={2} 
                              className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none transition resize-none" 
                              placeholder={t('directions_placeholder', 'e.g. Take 1 tablet three times a day after meals with water.')}
@@ -841,17 +847,15 @@ export function AdminProducts() {
                  > 
                     {t('cancel', 'Cancel')} 
                  </button>
-                 <button 
-                    type="button"
-                    onClick={handleCreateOrUpdate} 
+                 <button type="submit" 
                     className="px-6 py-3 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 rounded-xl shadow-md dark:shadow-none transition transform active:scale-95"
                  >
                     {editingId ? t('update_product', 'Update Product') : t('save_product', 'Save Product')}
                  </button>
               </div>
-
-           </div>
-        </div>
+              </form>
+            </div>
+         </div>
       )}
     </div>
   );

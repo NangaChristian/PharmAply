@@ -301,11 +301,11 @@ async function startServer() {
 
       const payload: any = {
          dci,
-         nom_commercial: commercial_name,
+         commercial_name: commercial_name,
          dosage,
-         forme: form,
-         ordonnance_requise: is_prescription_required === true || is_prescription_required === 'true',
-         categorie_ux: ux_category
+         form: form,
+         is_prescription_required: is_prescription_required === true || is_prescription_required === 'true',
+         ux_category: ux_category
       };
 
       let query;

@@ -64,8 +64,8 @@ export function AdminLogin() {
               userCredential = await createUserWithEmailAndPassword(auth, email, password);
            } catch (createError: any) {
               if (createError.code === 'auth/email-already-in-use' || createError.message?.includes('already registered')) {
-                 // The account exists, so the password was actually wrong or they used google.
-                 throw new Error("Invalid password or you signed up with Google. Please reset password to use email login.");
+                 // The account exists, so the password was actually wrong
+                 throw new Error("Invalid password.");
               }
               throw createError;
            }

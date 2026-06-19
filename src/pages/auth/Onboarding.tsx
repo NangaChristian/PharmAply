@@ -76,78 +76,6 @@ export function Onboarding() {
     setStep(6);
   };
 
-  const handleGoogleAuth = async () => {
-    setLoading(true);
-    setErrorText("");
-    try {
-      const result: any = await signInWithPopup(auth, googleProvider);
-      const userUid = result.user?.uid || result.user?.id || 'google_auth_placeholder';
-      const userDocRef = doc(db, 'users', userUid);
-      const userDoc = await getDoc(userDocRef);
-
-      const isAppAdmin = result.user?.email === 'admin@pharmaply.com';
-      let finalRole = isAppAdmin ? 'admin' : selectedRole;
-
-      if (!userDoc.exists()) {
-        if (!selectedRole && !isAppAdmin) {
-           toast.error("Account not found. Please sign up first.");
-           setErrorText("Account not found. Please sign up first.");
-           setLoading(false);
-           return;
-        }
-
-        if (selectedRole === 'pharmacy' || selectedRole === 'driver') {
-           toast.error(`Google Signup is not available for ${selectedRole === 'pharmacy' ? 'Pharmacists' : 'Drivers'}. Please sign up using email and password.`);
-           setErrorText(`Google Signup is not available for ${selectedRole === 'pharmacy' ? 'Pharmacists' : 'Drivers'}. Please sign up using email and password.`);
-           setLoading(false);
-           return;
-        }
-
-        const userData: any = {
-          email: result.user?.email || 'unknown',
-          name: result.user?.displayName || result.user?.email?.split('@')[0] || 'Unknown User',
-          role: finalRole,
-          createdAt: serverTimestamp(),
-        };
-
-        if (finalRole === 'driver') {
-          userData.status = 'pending_verification';
-        }
-
-        await setDoc(userDocRef, userData);
-        toast.success("Successfully signed up!");
-      } else {
-        const existingRole = userDoc.data()?.role;
-        finalRole = isAppAdmin ? 'admin' : existingRole;
-        if (selectedRole && existingRole !== selectedRole && existingRole !== 'admin') {
-           toast.error("Invalid role for this account.");
-           setErrorText("Invalid role for this account.");
-           setLoading(false);
-           return;
-        }
-        toast.success("Successfully logged in!");
-      }
-
-      if (finalRole === 'admin') navigate("/admin");
-      else if (finalRole === 'pharmacy') navigate("/pharmacist");
-      else if (finalRole === 'driver') navigate("/delivery");
-      else navigate("/patient");
-
-    } catch (error: any) {
-      console.error(error);
-      let errMsg = error.message || "Authentication failed";
-      if (error.code === 'auth/email-already-in-use' || errMsg.includes('email-already-in-use')) {
-         errMsg = "This email is already registered. Please log in instead.";
-      } else if (error.code === 'auth/network-request-failed' || errMsg.includes('network-request-failed')) {
-         errMsg = "Network error. This can happen if third-party cookies are blocked by your browser (e.g. Incognito or Safari). Please open the app in a new tab using the top-right button.";
-      }
-      toast.error(errMsg);
-      setErrorText(errMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (authMode === 'signup' && selectedRole === 'pharmacy') {
@@ -494,26 +422,6 @@ export function Onboarding() {
 
                   {selectedRole !== 'pharmacy' && selectedRole !== 'driver' && (
                      <>
-                        <button
-                           type="button"
-                           onClick={handleGoogleAuth}
-                           disabled={loading}
-                           className="w-full flex items-center justify-center py-4 bg-white dark:bg-zinc-900 border-2 border-gray-100 dark:border-zinc-800 text-gray-800 dark:text-gray-100 rounded-2xl font-bold hover:bg-gray-50 dark:hover:bg-zinc-800 transition my-6 disabled:opacity-70"
-                        >
-                           <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                           </svg>
-                           Continue with Google
-                        </button>
-
-                        <div className="relative flex items-center mb-6">
-                           <div className="flex-grow border-t border-gray-100 dark:border-zinc-800"></div>
-                           <span className="flex-shrink-0 mx-4 text-gray-400 text-xs tracking-wider">or sign up with your email</span>
-                           <div className="flex-grow border-t border-gray-100 dark:border-zinc-800"></div>
-                        </div>
                      </>
                   )}
 

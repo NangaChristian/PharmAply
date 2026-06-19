@@ -1,4 +1,4 @@
-import { Activity, Clock, Search, Filter } from "lucide-react";
+import { Search, Filter, Settings, ChevronDown, ArrowUpRight, Activity } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { collection, query, where, getDocs, onSnapshot, doc, getDoc } from '../../lib/firebase';
@@ -6,9 +6,10 @@ import { db } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { formatCurrency, parseDate } from '../../lib/utils';
 import { useTranslation } from "react-i18next";
+import dayjs from "dayjs";
 
 export function PharmacistOrders() {
-    const { t } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -66,90 +67,119 @@ export function PharmacistOrders() {
   const filteredOrders = activeTab === 'All' ? orders : orders.filter(o => o.status === activeTab);
 
   return (
-    <div className="flex-1 bg-slate-50 dark:bg-black flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div className="px-6 pt-12 pb-2 flex flex-col gap-6 bg-white dark:bg-black shadow-sm z-10 rounded-b-3xl">
-         <div className="flex items-center justify-between">
-            <h1 className="font-bold text-gray-900 dark:text-white text-2xl tracking-tight"> {t('orders', 'Orders')} </h1>
-         </div>
-         
-         <div className="flex gap-3">
-           <div className="flex-1 relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 group-focus-within:text-indigo-500 transition-colors" size={18} />
-              <input type="text" placeholder={t('search_orders', 'Search orders...')} className="w-full bg-gray-50 dark:bg-black border border-gray-100 dark:border-zinc-800 py-3.5 pl-12 pr-4 rounded-2xl text-sm outline-none focus:bg-white dark:bg-black focus:border-indigo-200 focus:ring-4 focus:ring-indigo-50 transition-all" />
-           </div>
-           <button className="w-14 h-14 flex items-center justify-center bg-gray-50 dark:bg-black border border-gray-100 dark:border-zinc-800 hover:bg-gray-100 dark:bg-zinc-900 rounded-2xl text-gray-600 transition-colors">
-              <Filter size={20} />
-           </button>
-         </div>
-         
-         <div className="flex gap-6 pb-2 text-sm font-bold overflow-x-auto hide-scrollbar snap-x">
-            {(['All', 'pending', 'preparing', 'ready', 'cancelled', 'rejected'] as const).map(tab => (
-              <button 
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`pb-3 capitalize whitespace-nowrap snap-start transition-colors relative ${activeTab === tab ? 'text-indigo-600' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600'}`}
-              >
-                {tab}
-                {activeTab === tab && (
-                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>
-                )}
-              </button>
-            ))}
-         </div>
+    <div className="flex-1 bg-transparent flex flex-col relative h-full overflow-hidden">
+      
+      {/* Top Navigation Area Header */}
+      <div className="px-8 py-6 flex items-center justify-between shrink-0">
+          <div className="flex-1 flex items-center">
+             <div className="relative w-full max-w-sm">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input 
+                   type="text" 
+                   placeholder="Search Orders" 
+                   className="w-full bg-[#FAFBFA] dark:bg-slate-800 border border-transparent focus:border-gray-200 py-3 pl-12 pr-4 rounded-full text-sm outline-none text-gray-900 dark:text-white transition-all shadow-sm"
+                />
+             </div>
+          </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {loading ? <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 animate-pulse text-center py-10 tracking-tight"> {t('loading_orders', 'Loading orders...')} </p> : 
-           filteredOrders.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                 <div className="w-16 h-16 bg-gray-100 dark:bg-zinc-900 rounded-full flex items-center justify-center text-gray-400 dark:text-gray-500 mb-4">
-                    <Activity size={24} />
-                 </div>
-                 <h3 className="font-bold text-gray-900 dark:text-white text-lg mb-1"> {t('no_orders_found', 'No orders found')} </h3>
-                 <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500"> {t('there_are_no_orders_in_this_ca', 'There are no orders in this category yet.')} </p>
-              </div>
-           ) :
-           filteredOrders.map(order => (
-             <div 
-               key={order.id} 
-               onClick={() => navigate(`/pharmacist/order/${order.id}`)}
-               className="bg-white dark:bg-black p-5 rounded-[24px] border border-gray-100 dark:border-zinc-800 shadow-sm flex flex-col gap-3 cursor-pointer hover:shadow-md hover:border-indigo-50 transition-all active:scale-[0.98]"
-             >
-                <div className="flex justify-between items-start">
-                   <p className="font-bold text-indigo-700 dark:text-indigo-400 text-lg"> {t('order', 'Order #')} {order.id.slice(0, 3)}</p>
-                   <span className={`text-[12px] font-bold px-4 py-1.5 rounded-full ${
-                      order.status === 'pending' ? 'bg-[#c5ead5] text-[#2c8d50]' :
-                      order.status === 'preparing' ? 'bg-blue-100 text-blue-700' :
-                      order.status === 'ready' ? 'bg-green-100 text-green-700' :
-                      (order.status === 'cancelled' || order.status === 'rejected') ? 'bg-red-100 text-red-700' :
-                      'bg-gray-200 dark:bg-zinc-800 text-gray-700 dark:text-gray-300'
-                   }`}>
-                      {order.status === 'pending' ? 'New' : order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                   </span>
-                </div>
-                
-                <div>
-                   <p className="font-bold text-gray-800 dark:text-white text-[15px] mb-1 leading-snug">{order.patientName}</p>
-                   <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{order.items?.length || 0} {t('items', 'Items')}</p>
-                </div>
+      <div className="flex-1 overflow-y-auto px-8 pb-12 custom-scrollbar space-y-8">
+         <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+               Recent Orders List
+            </h1>
+         </div>
 
-                <div className="border-t border-gray-200 dark:border-zinc-800 pt-3 flex items-center text-sm font-bold text-gray-800 dark:text-white mt-1">
-                   <span>{formatCurrency(order.total)}</span>
-                   <span className="mx-2 text-gray-400 dark:text-gray-600">•</span>
-                   <span className="text-gray-500 dark:text-gray-400 font-medium text-xs">
-                     {parseDate(order.createdAt) ? parseDate(order.createdAt)!.toLocaleDateString() : 'recently'}
-                   </span>
-                </div>
+         {/* Filtering Tabs & Actions */}
+         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex gap-6 pb-2 text-sm font-bold overflow-x-auto hide-scrollbar">
+                {(['All', 'pending', 'preparing', 'ready', 'cancelled', 'rejected'] as const).map(tab => (
+                 <button 
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`pb-2 capitalize whitespace-nowrap transition-colors relative ${activeTab === tab ? 'text-[#0B3B3C] dark:text-gray-200' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600'}`}
+                 >
+                    {tab}
+                    {activeTab === tab && (
+                       <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0B3B3C] rounded-t-full"></span>
+                    )}
+                 </button>
+                ))}
+            </div>
 
-                {(order.status === 'cancelled' || order.status === 'rejected') && order.cancellationReason && (
-                   <div className="text-xs text-red-600 bg-red-50/50 p-3 rounded-xl border border-red-100/50 mt-1">
-                      <span className="font-bold"> {t('reason', 'Reason:')} </span> {order.cancellationReason}
-                   </div>
-                )}
-             </div>
-          ))}
-          <div className="h-20"></div>
+            <div className="flex items-center gap-3">
+               <button className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 shadow-sm">
+                  <Settings size={14} /> Filter <ChevronDown size={12} />
+               </button>
+               <button className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 shadow-sm">
+                  <ArrowUpRight size={14} /> Sort By <ChevronDown size={12} />
+               </button>
+            </div>
+         </div>
+
+         <div className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-100 dark:border-slate-700 overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+               <table className="w-full text-left border-collapse">
+                  <thead>
+                     <tr className="border-b border-gray-100 dark:border-slate-700">
+                        <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Name</th>
+                        <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Medicine</th>
+                        <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Status</th>
+                        <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Quantity</th>
+                        <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Total Price</th>
+                        <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase flex items-center gap-1">Date <ChevronDown size={12}/></th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
+                     {loading ? (
+                        <tr><td colSpan={6} className="py-8 text-center text-gray-500 text-sm animate-pulse">Loading orders...</td></tr>
+                     ) : filteredOrders.length === 0 ? (
+                        <tr><td colSpan={6} className="py-8 text-center text-gray-500 text-sm">No orders found.</td></tr>
+                     ) : (
+                        filteredOrders.map((order) => (
+                           <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer" onClick={() => navigate(`/pharmacist/order/${order.id}`)}>
+                              <td className="py-4 px-6">
+                                 <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-[#E2EBE9] dark:bg-slate-700 flex items-center justify-center text-[#0B3B3C] dark:text-white font-bold text-xs">
+                                       {order.patientName ? order.patientName.charAt(0) : 'U'}
+                                    </div>
+                                    <span className="font-bold text-gray-800 dark:text-white text-sm">{order.patientName || 'Unknown User'}</span>
+                                 </div>
+                              </td>
+                              <td className="py-4 px-6 text-sm font-medium text-gray-600 dark:text-gray-300">
+                                 {order.items && order.items[0] ? order.items[0].name : 'Unknown Item'}
+                                 {order.items && order.items.length > 1 && ` (+${order.items.length - 1})`}
+                              </td>
+                              <td className="py-4 px-6 text-sm">
+                                 <span className={`capitalize font-bold text-xs ${
+                                     order.status === 'pending' ? 'text-green-600' :
+                                     order.status === 'preparing' ? 'text-blue-600' :
+                                     order.status === 'ready' ? 'text-purple-600' :
+                                     order.status === 'delivered' ? 'text-indigo-600' :
+                                     'text-red-500'
+                                 }`}>
+                                    {order.status}
+                                 </span>
+                              </td>
+                              <td className="py-4 px-6">
+                                 <div className="flex items-center gap-2 bg-[#FAFBFC] dark:bg-slate-900 px-3 py-1.5 rounded-full w-max border border-gray-100 dark:border-slate-700">
+                                    <span className="text-xs font-bold text-[#0B3B3C] dark:text-gray-300">{order.items ? order.items.reduce((acc: any, curr: any) => acc + curr.quantity, 0) : 0}</span>
+                                 </div>
+                              </td>
+                              <td className="py-4 px-6 font-bold text-gray-900 dark:text-white text-sm">
+                                 {formatCurrency(order.total || 0)}
+                              </td>
+                              <td className="py-4 px-6 text-xs font-medium text-gray-500 dark:text-gray-400">
+                                 {order.createdAt ? dayjs(parseDate(order.createdAt)).format('MMM DD, YYYY hh:mm A') : 'N/A'}
+                              </td>
+                           </tr>
+                        ))
+                     )}
+                  </tbody>
+               </table>
+            </div>
+         </div>
+         
       </div>
     </div>
   );

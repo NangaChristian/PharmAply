@@ -1,23 +1,21 @@
-import { ArrowLeft, Plus, Search, Filter, MoreHorizontal, Package, Upload, Loader2, Image as ImageIcon, X, Save } from "lucide-react";
+import { ArrowLeft, Plus, Search, Filter, MoreHorizontal, Package, Upload, Loader2, Image as ImageIcon, X, Save, Settings, ArrowUpRight, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, FormEvent, useRef } from "react";
 import { collection, query, where, getDocs, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, deleteDoc } from '../../lib/firebase';
-import { ref, uploadBytesResumable, getDownloadURL } from '../../lib/firebase';
-import { sendEmail } from '../../lib/email';
-import { db, storage, handleFirestoreError, OperationType } from '../../lib/firebase';
+import { db, handleFirestoreError, OperationType, supabase } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
-import { ProductCard } from '../../components/ProductCard';
 import { useTranslation } from "react-i18next";
+import { formatCurrency } from "../../lib/utils";
+import dayjs from "dayjs";
 
 export function PharmacistInventory() {
-    const { t } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [globalProducts, setGlobalProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [highlightedItems, setHighlightedItems] = useState<Set<string>>(new Set());
   
   const [selectedGlobalProduct, setSelectedGlobalProduct] = useState("");
   const [newProductPrice, setNewProductPrice] = useState("");
@@ -25,7 +23,6 @@ export function PharmacistInventory() {
   const [newProductExpiry, setNewProductExpiry] = useState("");
   const [uploading, setUploading] = useState(false);
   const [pharmacyId, setPharmacyId] = useState<string | null>(null);
-  const [editingProduct, setEditingProduct] = useState<any | null>(null);
 
   useEffect(() => {
     let unsubscribeProducts: () => void;
@@ -38,39 +35,30 @@ export function PharmacistInventory() {
         let currentPharmacyId = pSnap.docs[0]?.id;
         
         if (!currentPharmacyId) {
-          alert('Please setup your pharmacy profile first!');
           navigate('/pharmacist/profile');
           return;
         }
         setPharmacyId(currentPharmacyId);
         
-        // Fetch global products
-        const gQuery = query(collection(db, 'products'), where("isGlobal", "==", true));
-        const gSnap = await getDocs(gQuery);
-        setGlobalProducts(gSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        // Fetch global products from Supabase
+        const { data: globalData, error: globalError } = await supabase.from('produits_patients').select('*');
+        if (globalData && !globalError) {
+           const mappedGlobals = globalData.map((d: any) => ({
+               id: d.id,
+               name: d.nom_commercial || d.commercial_name,
+               commercial_name: d.nom_commercial || d.commercial_name,
+               dci: d.dci,
+               dosage: d.dosage,
+               form: d.forme || d.form,
+               category: d.ux_category || d.categorie_ux || 'Uncategorized',
+               ux_category_id: d.ux_category || d.categorie_ux,
+               is_prescription_required: d.is_prescription_required !== undefined ? d.is_prescription_required : d.ordonnance_requise,
+           }));
+           setGlobalProducts(mappedGlobals);
+        }
 
         const q = query(collection(db, 'products'), where("pharmacyId", "==", currentPharmacyId));
         unsubscribeProducts = onSnapshot(q, (snapshot) => {
-          const modifiedIds = snapshot.docChanges()
-              .filter(change => change.type === 'modified')
-              .map(change => change.doc.id);
-          
-          if (modifiedIds.length > 0) {
-              setHighlightedItems(prev => {
-                  const newSet = new Set(prev);
-                  modifiedIds.forEach(id => newSet.add(id));
-                  return newSet;
-              });
-              
-              setTimeout(() => {
-                  setHighlightedItems(prev => {
-                      const newSet = new Set(prev);
-                      modifiedIds.forEach(id => newSet.delete(id));
-                      return newSet;
-                  });
-              }, 2500);
-          }
-
           setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
           setLoading(false);
         });
@@ -102,14 +90,12 @@ export function PharmacistInventory() {
         ux_category_id: selectedProduct.ux_category_id,
         form: selectedProduct.form,
         dosage: selectedProduct.dosage || '',
-        brand: selectedProduct.brand || 'Generic',
         price: parseFloat(newProductPrice),
         stock: parseInt(newProductStock),
         expiryDate: newProductExpiry,
         is_prescription_required: selectedProduct.is_prescription_required || false,
         needsPrescription: selectedProduct.is_prescription_required || false,
         pharmacyId: pharmacyId,
-        imageUrl: selectedProduct.image_url || selectedProduct.imageUrl,
         createdAt: serverTimestamp(),
       });
       setShowAdd(false);
@@ -121,128 +107,160 @@ export function PharmacistInventory() {
     }
   };
 
-  const handleSaveEdit = async () => {
-    if (!editingProduct) return;
-    setUploading(true);
-    try {
-      const newStock = parseInt(editingProduct.stock);
-      await updateDoc(doc(db, 'products', editingProduct.id), {
-        name: editingProduct.commercial_name || editingProduct.name,
-        dosage: editingProduct.dosage,
-        category: editingProduct.category,
-        brand: editingProduct.brand,
-        price: parseFloat(editingProduct.price),
-        stock: newStock,
-      });
-
-      if (newStock < 10) {
-        await sendEmail({
-          to: user?.email || '',
-          subject: 'Low Stock Alert',
-          html: `<h1>Low Stock Alert</h1><p>Your product <b>${editingProduct.name}</b> is running low on stock. Current stock level: ${newStock}.</p>`
-        });
-      }
-
-      setEditingProduct(null);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `products/${editingProduct.id}`);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleDeleteProduct = async () => {
-    if (!editingProduct) return;
-    if (!window.confirm("Are you sure you want to remove this product?")) return;
-    setUploading(true);
-    try {
-      await deleteDoc(doc(db, 'products', editingProduct.id));
-      setEditingProduct(null);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `products/${editingProduct.id}`);
-    } finally {
-      setUploading(false);
-    }
-  };
-
   return (
-    <div className="flex-1 bg-slate-50 dark:bg-black flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div className="px-6 pt-12 pb-4 flex flex-col gap-4 bg-white dark:bg-black shadow-sm z-10 rounded-b-3xl">
-        <div className="flex items-center justify-between">
-           <div className="flex items-center gap-3">
-             <button onClick={() => navigate('/pharmacist')} className="w-10 h-10 flex items-center justify-center bg-gray-50 dark:bg-black rounded-full hover:bg-gray-100 dark:bg-zinc-900 transition">
-                <ArrowLeft size={20} className="text-gray-900 dark:text-white" />
+    <div className="flex-1 bg-transparent flex flex-col relative h-full overflow-hidden">
+      
+      {/* Top Bar Area Header */}
+      <div className="px-8 py-6 flex items-center justify-between shrink-0">
+          <div className="flex-1 flex items-center">
+             <div className="relative w-full max-w-sm">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input 
+                   type="text" 
+                   placeholder="Search Inventory" 
+                   className="w-full bg-[#FAFBFA] dark:bg-slate-800 border border-transparent focus:border-gray-200 py-3 pl-12 pr-4 rounded-full text-sm outline-none text-gray-900 dark:text-white transition-all shadow-sm"
+                />
+             </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+             <button onClick={() => setShowAdd(!showAdd)} className="bg-[#0B3B3C] hover:bg-[#082a2b] text-white px-5 py-2.5 rounded-full flex items-center gap-2 text-sm font-bold shadow-md transition-colors">
+               <Plus size={16} />
+               <span>Add Stock</span>
              </button>
-             <h1 className="font-bold text-gray-900 dark:text-white text-xl"> {t('inventory', 'Inventory')} </h1>
-           </div>
-           <button onClick={() => setShowAdd(!showAdd)} className={`p-2.5 rounded-full shadow-md transition ${showAdd ? 'bg-red-50 text-red-600' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
-             {showAdd ? <X size={20} /> : <Plus size={20} />}
-           </button>
-        </div>
-        
-        <div className="flex gap-2">
-           <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" size={18} />
-              <input type="text" placeholder={t('search_products', 'Search products...')} className="w-full bg-gray-100 dark:bg-zinc-900 py-3 pl-12 pr-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-100 transition" />
-           </div>
-        </div>
+          </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-4 w-full">
-         {showAdd && (
-            <form onSubmit={handleAddProduct} className="bg-white dark:bg-black p-5 rounded-3xl border border-indigo-100 shadow-sm space-y-4 mb-6">
-               <h3 className="font-bold text-gray-900 dark:text-white text-lg"> {t('add_from_master_list', 'Add from Master List')} </h3>
-               
-               <select 
-                  required 
-                  value={selectedGlobalProduct} 
-                  onChange={e => setSelectedGlobalProduct(e.target.value)} 
-                  className="w-full border p-3 rounded-xl text-sm bg-gray-50 dark:bg-black focus:ring-2 focus:ring-indigo-100 outline-none transition"
-               >
-                  <option value="" disabled> {t('select_a_product', 'Select a product...')} </option>
-                  {globalProducts.map(p => (
-                     <option key={p.id} value={p.id}>
-                        {p.commercial_name || p.name} {p.dci ? `[${p.dci}]` : ''} {p.dosage ? `(${p.dosage})` : ''} - {p.category}
-                     </option>
-                  ))}
-               </select>
+      <div className="flex-1 overflow-y-auto px-8 pb-12 custom-scrollbar space-y-8">
+         <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+               Inventory Management
+            </h1>
+         </div>
 
-               {selectedGlobalProduct && (
-                 <div className="flex gap-3">
-                    <div className="flex-1">
-                      <label className="text-xs font-bold text-gray-600 mb-1 block"> {t('price', 'Price')} </label>
-                      <input required type="number" placeholder="0.00" value={newProductPrice} onChange={e => setNewProductPrice(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-800 p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition" />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-xs font-bold text-gray-600 mb-1 block"> {t('initial_stock', 'Initial Stock')} </label>
-                      <input required type="number" placeholder="0" min="0" value={newProductStock} onChange={e => setNewProductStock(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-800 p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition" />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-xs font-bold text-gray-600 mb-1 block"> expiry date </label>
-                      <input required type="date" value={newProductExpiry} onChange={e => setNewProductExpiry(e.target.value)} className="w-full border border-gray-200 dark:border-zinc-800 p-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition" />
-                    </div>
-                 </div>
-               )}
+         {showAdd && (
+            <form onSubmit={handleAddProduct} className="bg-[#FAFBFC] dark:bg-slate-800 p-6 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm space-y-4">
+               <div className="flex justify-between items-center mb-2">
+                 <h3 className="font-bold text-gray-900 dark:text-white text-lg">Add from Master Catalog</h3>
+                 <button type="button" onClick={() => setShowAdd(false)} className="text-gray-400 hover:text-gray-600">
+                    <X size={20} />
+                 </button>
+               </div>
                
-               <button disabled={uploading || !selectedGlobalProduct} type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl text-sm font-bold disabled:opacity-50 flex justify-center items-center gap-2 transition">
-                 {uploading ? <><Loader2 size={16} className="animate-spin" />  {t('saving', 'Saving...')} </> : 'Add to My Inventory'}
-               </button>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="col-span-1 md:col-span-2">
+                   <label className="text-xs font-bold text-gray-500 mb-1 block"> Select Global Product </label>
+                   <select required value={selectedGlobalProduct} onChange={e => setSelectedGlobalProduct(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-3 rounded-xl text-sm outline-none shadow-sm transition">
+                      <option value="" disabled> Select a product... </option>
+                      {globalProducts.map((p, idx) => (
+                         <option key={`${p.id}-${idx}`} value={p.id}>
+                            {p.commercial_name || p.name} {p.dci ? `[${p.dci}]` : ''} {p.dosage ? `(${p.dosage})` : ''}
+                         </option>
+                      ))}
+                   </select>
+                 </div>
+
+                 <div className="col-span-1">
+                   <label className="text-xs font-bold text-gray-500 mb-1 block"> Sell Price (XAF) </label>
+                   <input required type="number" placeholder="0.00" value={newProductPrice} onChange={e => setNewProductPrice(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-3 rounded-xl text-sm outline-none shadow-sm transition" />
+                 </div>
+                 <div className="col-span-1">
+                   <label className="text-xs font-bold text-gray-500 mb-1 block"> Initial Stock </label>
+                   <input required type="number" placeholder="0" min="0" value={newProductStock} onChange={e => setNewProductStock(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-3 rounded-xl text-sm outline-none shadow-sm transition" />
+                 </div>
+                 <div className="col-span-1">
+                   <label className="text-xs font-bold text-gray-500 mb-1 block"> Expiry Date </label>
+                   <input required type="date" value={newProductExpiry} onChange={e => setNewProductExpiry(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-3 rounded-xl text-sm outline-none shadow-sm transition" />
+                 </div>
+               </div>
+               
+               <div className="flex justify-end pt-2">
+                 <button disabled={uploading || !selectedGlobalProduct} type="submit" className="bg-[#0B3B3C] text-white px-6 py-2.5 rounded-full text-sm font-bold shadow-md hover:bg-[#082a2b] transition disabled:opacity-50 flex items-center gap-2">
+                   {uploading ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : 'Save to Inventory'}
+                 </button>
+               </div>
             </form>
          )}
 
-         {loading ? <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 animate-pulse text-center py-10"> {t('loading_inventory', 'Loading inventory...')} </p> : 
-          products.length === 0 ? <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 text-center py-10"> {t('no_products_in_inventory', 'No products in inventory.')} </p> :
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {products.map(item => (
-                <div key={item.id} className={`transition-all duration-700 ease-out rounded-2xl ${highlightedItems.has(item.id) ? 'ring-[3px] ring-emerald-400 bg-emerald-50/10 dark:bg-emerald-900/10 shadow-[0_0_15px_rgba(52,211,153,0.3)] scale-[1.02]' : 'ring-0 ring-transparent shadow-none scale-100'}`}>
-                   <ProductCard product={item} onClick={() => navigate(`/pharmacist/inventory/${item.id}`)} showSaleBadge={false} />
-                </div>
-            ))}
-          </div>
-         }
-      </div>
+         <div>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6 gap-4">
+               <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Stock Items</h2>
+               <div className="flex items-center gap-3">
+                  <div className="relative">
+                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                     <input type="text" placeholder="Search..." className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 py-2.5 pl-9 pr-4 rounded-xl text-xs font-medium w-48 outline-none shadow-sm" />
+                  </div>
+                  <button className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 shadow-sm">
+                     <Settings size={14} /> Filter <ChevronDown size={12} />
+                  </button>
+                  <button className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 shadow-sm">
+                     <ArrowUpRight size={14} /> Sort By <ChevronDown size={12} />
+                  </button>
+               </div>
+            </div>
 
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-100 dark:border-slate-700 overflow-hidden shadow-sm">
+               <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                     <thead>
+                        <tr className="border-b border-gray-100 dark:border-slate-700">
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Product Name</th>
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Category</th>
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Stock</th>
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Price</th>
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Expiry</th>
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase flex items-center gap-1">Actions</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
+                        {loading ? (
+                           <tr><td colSpan={6} className="py-8 text-center text-gray-500 text-sm animate-pulse">Loading inventory...</td></tr>
+                        ) : products.length === 0 ? (
+                           <tr><td colSpan={6} className="py-8 text-center text-gray-500 text-sm">No items in your inventory. Add some from the master catalog.</td></tr>
+                        ) : (
+                           products.map((item) => (
+                              <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer" onClick={() => navigate(`/pharmacist/inventory/${item.id}`)}>
+                                 <td className="py-4 px-6">
+                                    <div className="flex items-center gap-3">
+                                       <div className="w-10 h-10 rounded-xl bg-[#FAFBFC] dark:bg-slate-900 border border-gray-100 dark:border-slate-700 flex items-center justify-center shrink-0">
+                                          <Package className="text-gray-400" size={16} />
+                                       </div>
+                                       <div>
+                                          <span className="font-bold text-gray-800 dark:text-white text-sm">{item.name || item.commercial_name || 'Unnamed Product'}</span>
+                                          <p className="text-xs text-gray-500">{item.dosage || item.form || 'Various Details'}</p>
+                                       </div>
+                                    </div>
+                                 </td>
+                                 <td className="py-4 px-6 text-sm font-medium text-gray-600 dark:text-gray-300">
+                                    {item.category || item.ux_category_id || 'Uncategorized'}
+                                 </td>
+                                 <td className="py-4 px-6">
+                                    <div className="flex items-center gap-2 bg-[#FAFBFC] dark:bg-slate-900 px-3 py-1.5 rounded-full w-max border border-gray-100 dark:border-slate-700">
+                                       <span className={`text-xs font-bold ${item.stock < 10 ? 'text-red-600' : 'text-[#0B3B3C] dark:text-gray-300'}`}>
+                                          {item.stock} Units
+                                       </span>
+                                    </div>
+                                 </td>
+                                 <td className="py-4 px-6 font-bold text-gray-900 dark:text-white text-sm">
+                                    {formatCurrency(item.price || 0)}
+                                 </td>
+                                 <td className="py-4 px-6 text-xs font-medium text-gray-500 dark:text-gray-400">
+                                    {item.expiryDate ? dayjs(item.expiryDate).format('MMM yyyy') : 'N/A'}
+                                 </td>
+                                 <td className="py-4 px-6 text-xs">
+                                     <button className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-full text-gray-600 dark:text-gray-300 shadow-sm hover:bg-gray-50" onClick={(e) => { e.stopPropagation(); navigate(`/pharmacist/inventory/${item.id}`); }}>
+                                        <ArrowUpRight size={14} />
+                                     </button>
+                                 </td>
+                              </tr>
+                           ))
+                        )}
+                     </tbody>
+                  </table>
+               </div>
+            </div>
+         </div>
+      </div>
     </div>
   );
 }

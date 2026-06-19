@@ -14,8 +14,8 @@ export async function fetchApi(url: string, options: RequestInit = {}): Promise<
   // 2. Abort if no session is returned (Refresh Token failure/missing)
   if (error || !data.session) {
     console.error("Session fetch failed, redirecting to login:", error?.message);
-    if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/signup')) {
-       window.location.href = '/login';
+    if (window.location.pathname !== '/' && window.location.pathname !== '/admin-login') {
+       window.location.href = '/';
     }
     // Return a failed response to prevent the caller from hanging
     return new Response(JSON.stringify({ error: "Session expired" }), {

@@ -16,6 +16,7 @@ export function Messages() {
   const [input, setInput] = useState("");
   const [tableError, setTableError] = useState(false);
   const [contextItem, setContextItem] = useState<any>(null);
+  const [patientName, setPatientName] = useState<string>('');
 
   useEffect(() => {
      if (!id) return;
@@ -29,6 +30,16 @@ export function Messages() {
          }
      });
   }, [id]);
+
+  useEffect(() => {
+     if (contextItem && contextItem.patientId) {
+        getDoc(doc(db, 'users', contextItem.patientId)).then(pd => {
+           if (pd.exists()) {
+               setPatientName(pd.data().name || pd.data().fullName || '');
+           }
+        });
+     }
+  }, [contextItem]);
 
   useEffect(() => {
     if (!user || !id) return;
@@ -119,7 +130,7 @@ export function Messages() {
             </button>
             <div>
                 <h1 className="font-bold text-gray-900 dark:text-white text-sm">
-                  {role === 'pharmacist' || role === 'delivery' ? t('contact_patient', 'Contact Patient') : t('contact_driver', 'Contact Driver')}
+                  {role === 'pharmacist' || role === 'delivery' ? (patientName || t('contact_patient', 'Contact Patient')) : t('contact_driver', 'Contact Driver')}
                </h1>
                <div className="flex items-center gap-2">
                  <p className="text-xs text-green-500 font-medium tracking-wide">{t('online', 'Online')}</p>

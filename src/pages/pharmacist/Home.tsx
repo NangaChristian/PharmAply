@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { Activity, Search, Filter, MoreHorizontal, CheckCircle, Package, ShieldAlert, AlertTriangle, Bell, Clock, TrendingUp, DollarSign, Pill, Moon, Sun } from "lucide-react";
+import { Search, ChevronDown, Lock, Grid, Activity, Users, Settings, MoreHorizontal, CheckCircle, Package, ShieldAlert, AlertTriangle, Clock, TrendingUp, DollarSign, Pill, Moon, Sun, ArrowUpRight } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from 'recharts';
 
 import { useState, useEffect } from "react";
 import { collection, query, where, getDocs, onSnapshot, addDoc, serverTimestamp } from '../../lib/firebase';
@@ -9,21 +10,20 @@ import { useTheme } from '../../components/ThemeProvider';
 import { useDarkMode } from '../../components/DarkModeProvider';
 import { formatCurrency, parseDate } from '../../lib/utils';
 import dayjs from "dayjs";
-import { ProductCard } from '../../components/ProductCard';
 import { useTranslation } from "react-i18next";
 import { NotificationBell } from "../../components/NotificationBell";
 
 export function PharmacistHome() {
-    const { t } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, userData } = useAuth();
-  const theme = useTheme();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
   
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [pharmacy, setPharmacy] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [customers, setCustomers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let unsubscribeOrders: () => void;
@@ -45,7 +45,15 @@ export function PharmacistHome() {
 
         const ordersQuery = query(collection(db, 'orders'), where('pharmacyId', '==', pharmacyId));
         unsubscribeOrders = onSnapshot(ordersQuery, (oSnap) => {
-           setOrders(oSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+           const fetchedOrders = oSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+           setOrders(fetchedOrders);
+           
+           // Calculate unique customers
+           const uniqueCustomers = new Set<string>();
+           fetchedOrders.forEach(o => {
+             if (o.userId) uniqueCustomers.add(o.userId);
+           });
+           setCustomers(uniqueCustomers);
         });
 
         const pProductsQuery = query(collection(db, 'products'), where('pharmacyId', '==', pharmacyId));
@@ -67,25 +75,6 @@ export function PharmacistHome() {
     };
   }, [user]);
 
-  const handleNotifyAdmin = async (product: any) => {
-    if (!user) return;
-    try {
-      await addDoc(collection(db, "logs"), {
-        action: "Low Stock Alert",
-        type: "System",
-        userId: user.uid,
-        details: `Pharmacy ${pharmacy?.name || user.uid} reported low stock for ${product.name} (${product.stock} left).`,
-        level: "warning",
-        createdAt: serverTimestamp()
-      });
-      alert(`Admin notified about ${product.name}`);
-    } catch (error) {
-      console.error(error);
-      alert("Failed to notify admin");
-    }
-  };
-
-  const lowStockProducts = products.filter(p => typeof p.stock === 'number' && p.stock < 10);
   const todayRevenue = orders.reduce((sum, order) => {
     if (order.createdAt && dayjs(parseDate(order.createdAt)).isSame(dayjs(), 'day')) {
       return sum + (order.total || 0);
@@ -93,185 +82,370 @@ export function PharmacistHome() {
     return sum;
   }, 0);
 
-  return (
-    <div className="flex-1 bg-slate-50 dark:bg-black flex flex-col relative pb-20 h-full overflow-hidden">
-      {/* Sleek Header Section */}
-      <div className="bg-indigo-600 px-6 pt-12 pb-8 flex flex-col gap-6 z-10 rounded-b-[2.5rem] shadow-md relative overflow-hidden">
-         {/* Background Decoration */}
-         <div className="absolute top-0 right-0 w-64 h-64 bg-white dark:bg-black/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-         <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-800/20 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
-         
-         <div className="flex items-center justify-between relative z-10">
-            <div className="flex items-center gap-4">
-               {user?.photoURL ? (
-                 <img src={user.photoURL} alt="Logo" className="w-12 h-12 rounded-full object-cover border-2 border-white/20 shadow-sm shrink-0" />
-               ) : theme.logoUrl ? (
-                 <img src={theme.logoUrl} alt="Logo" className="w-12 h-12 rounded-full object-cover border-2 border-white/20 shadow-sm shrink-0" />
-               ) : (
-                 <div className="w-12 h-12 bg-white dark:bg-black/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm border border-white/30 shadow-sm shrink-0">
-                    <Activity size={24} />
-                 </div>
-               )}
-               <div>
-                  <h1 className="font-bold text-xl text-white leading-tight flex items-center gap-2">
-                    {userData?.name || user?.displayName || pharmacy?.name || 'Pharmacien'}
-                    {pharmacy?.status === 'approved' && (
-                      <span className="bg-green-500/20 text-green-100 text-[10px] px-2 py-0.5 rounded-full border border-green-500/30 flex items-center gap-1 font-medium mt-0.5">
-                         <CheckCircle size={10} />  {t('verified', 'Verified')} </span>
-                    )}
-                  </h1>
-                  <p className="text-sm text-indigo-100 mt-1">{theme.dashboardSubtitleText}</p>
-               </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-               <button 
-                  onClick={toggleDarkMode}
-                  className="w-12 h-12 flex items-center justify-center bg-white dark:bg-black/10 hover:bg-white dark:bg-black/20 transition-colors rounded-full text-white backdrop-blur-sm shadow-sm"
-               >
-                  {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-               </button>
-               <NotificationBell />
-            </div>
-         </div>
+  const totalRevenue = orders.reduce((sum, order) => sum + (order.total || 0), 0);
+  
+  const expiredCount = products.filter(p => p.expiryDate && dayjs(p.expiryDate).isBefore(dayjs())).length;
+  const expiredPercentage = products.length > 0 ? (expiredCount / products.length) * 100 : 0;
 
-         {/* Search Bar */}
-         <div className="relative z-10 mt-2">
-             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" size={20} />
-             <input 
-                type="text" 
-                placeholder={t('search_orders_meds', 'Search orders, meds...')} 
-                className="w-full bg-white dark:bg-black py-3.5 pl-12 pr-4 rounded-2xl text-sm outline-none text-gray-900 dark:text-white shadow-sm" 
-             />
-         </div>
+  // Compute Weekly Sales Data
+  const last7Days = Array.from({length: 6}).map((_, i) => dayjs().subtract(5 - i, 'day'));
+  const salesData = last7Days.map(date => {
+     const dayOrders = orders.filter(o => o.createdAt && dayjs(parseDate(o.createdAt)).isSame(date, 'day'));
+     const dayTotal = dayOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+     return {
+        name: date.format('ddd'),
+        total: dayTotal,
+        date: date.format('MMM DD, YYYY')
+     };
+  });
+
+  // Calculate Graph Report data (e.g. Sales by Category)
+  const categorySalesMap = new Map<string, number>();
+  orders.forEach(order => {
+     if (order.items) {
+        order.items.forEach((item: any) => {
+           const product = products.find(p => p.id === item.productId);
+           const cat = product?.category || product?.ux_category_id || 'Unknown';
+           categorySalesMap.set(cat, (categorySalesMap.get(cat) || 0) + (item.price * item.quantity));
+        });
+     }
+  });
+
+  const rawPieData = Array.from(categorySalesMap.entries()).map(([name, value]) => ({ name, value }));
+  const pieData = rawPieData.length > 0 ? rawPieData.sort((a,b) => b.value - a.value).slice(0, 4) : [{name: 'No Sales', value: 1}];
+  
+  const COLORS = ['#A2E2D5', '#FFB8BA', '#C1BDEB', '#D3F5A8'];
+
+  return (
+    <div className="flex-1 bg-transparent flex flex-col relative h-full overflow-hidden">
+      
+      {/* Top Navigation Bar */}
+      <div className="px-8 py-6 flex items-center justify-between shrink-0">
+          <div className="flex-1 flex items-center">
+             <div className="relative w-full max-w-sm">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input 
+                   type="text" 
+                   placeholder="Search" 
+                   className="w-full bg-[#FAFBFA] dark:bg-slate-800 border border-transparent focus:border-gray-200 py-3 pl-12 pr-4 rounded-full text-sm outline-none text-gray-900 dark:text-white transition-all shadow-sm"
+                />
+             </div>
+          </div>
+          
+          <div className="flex items-center gap-6">
+             <div className="flex items-center gap-2 bg-[#FAFBFA] dark:bg-slate-800 px-4 py-2 rounded-full shadow-sm cursor-pointer">
+                <span className="text-sm font-bold text-gray-700 dark:text-gray-200">EN</span>
+                <ChevronDown size={14} className="text-gray-400" />
+             </div>
+             
+             <button 
+                onClick={toggleDarkMode}
+                className="w-10 h-10 flex items-center justify-center bg-[#FAFBFA] dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors rounded-full text-gray-600 dark:text-gray-300 shadow-sm"
+             >
+                {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+             </button>
+
+             <div className="flex items-center gap-3 cursor-pointer">
+                <img 
+                  src={user?.photoURL || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"} 
+                  alt="Profile" 
+                  className="w-10 h-10 rounded-full object-cover shadow-sm"
+                />
+                <div className="hidden sm:block">
+                   <p className="font-bold text-gray-900 dark:text-white text-sm">{userData?.name || user?.displayName || pharmacy?.name || 'Pharmacist'}</p>
+                   <p className="text-xs text-gray-500">{user?.email}</p>
+                </div>
+                <ChevronDown size={14} className="text-gray-400 hidden sm:block" />
+             </div>
+          </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 space-y-8 -mt-4 relative z-20 pb-8">
+      <div className="flex-1 overflow-y-auto px-8 pb-12 custom-scrollbar space-y-8">
+         
+         {/* Welcome Section */}
+         <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+               Welcome {userData?.name?.split(' ')[0] || 'Back'}!
+            </h1>
+            <div className="bg-[#0B3B3C] text-white px-5 py-2.5 rounded-full flex items-center gap-2 text-sm font-bold shadow-md cursor-pointer hover:bg-[#082a2b] transition-colors">
+               <span>Team Member</span>
+               <ChevronDown size={14} />
+            </div>
+         </div>
+
          {/* Stats Row */}
-         <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white dark:bg-black p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-zinc-800 flex flex-col justify-between hover:shadow-md transition cursor-default">
-               <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center mb-3">
-                  <Package size={20} className="text-indigo-600" />
-               </div>
-               <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm font-medium mb-1"> {t('total_orders', 'Total Orders')} </p>
-               <p className="text-2xl font-bold text-gray-900 dark:text-white">{orders.length}</p>
-            </div>
-            
-            <div className="bg-white dark:bg-black p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-zinc-800 flex flex-col justify-between hover:shadow-md transition cursor-default">
-               <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center mb-3">
-                  <DollarSign size={20} className="text-emerald-600" />
-               </div>
-               <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm font-medium mb-1"> {t('today_s_revenue', 'Today\'s Revenue')} </p>
-               <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(todayRevenue)}</p>
-            </div>
-         </div>
-
-         {pharmacy?.status === 'pending_verification' && (
-           <div className="bg-amber-50 border whitespace-pre-wrap border-amber-200 p-5 rounded-3xl flex items-start gap-4">
-              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
-                 <ShieldAlert className="text-amber-600" size={20} />
-              </div>
-              <div>
-                 <h3 className="text-amber-800 font-bold text-base mb-1"> {t('pending_kyc', 'Pending KYC')} </h3>
-                 <p className="text-amber-700/80 text-sm leading-relaxed"> {t('your_pharmacy_profile_is_under', 'Your pharmacy profile is under review by admins. Once approved, your products will be visible to patients.')} </p>
-              </div>
-           </div>
-         )}
-
-         {/* Orders */}
          <div>
-            <div className="flex items-center justify-between mb-5">
-               <h3 className="font-bold text-gray-900 dark:text-white text-xl"> {t('recent_orders', 'Recent Orders')} </h3>
-               <button onClick={() => navigate('/pharmacist/orders')} className="text-indigo-600 font-bold text-sm bg-indigo-50/50 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition"> {t('see_all', 'See all')} </button>
-            </div>
-            
-            <div className="space-y-4">
-               {loading ? <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 py-4 text-center animate-pulse"> {t('loading_orders', 'Loading orders...')} </p> : 
-                orders.length === 0 ? <div className="text-center bg-white dark:bg-black p-8 rounded-3xl border border-dashed border-gray-200 dark:border-zinc-800"><p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500"> {t('no_recent_orders', 'No recent orders.')} </p></div> :
-                orders.slice(0, 2).map(order => (
-                  <div 
-                    key={order.id} 
-                    onClick={() => navigate(`/pharmacist/order/${order.id}`)}
-                    className="bg-white dark:bg-black p-5 rounded-3xl border border-gray-100 dark:border-zinc-800 shadow-sm flex items-center justify-between cursor-pointer hover:shadow-md hover:border-indigo-100 transition group"
-                  >
-                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-black border border-slate-100 dark:border-zinc-800 flex items-center justify-center text-slate-400 group-hover:text-indigo-500 group-hover:bg-indigo-50 transition-colors">
-                           <CheckCircle size={20} />
-                        </div>
-                        <div>
-                           <p className="font-bold text-gray-900 dark:text-white text-base flex items-center gap-2">
-                               {t('order', 'Order #')} {order.id.slice(0, 5)}
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
-                                 order.status === 'delivered' ? 'bg-emerald-50 text-emerald-600' :
-                                 order.status === 'processing' ? 'bg-indigo-50 text-indigo-600' :
-                                 order.status === 'cancelled' ? 'bg-red-50 text-red-600' :
-                                 'bg-amber-50 text-amber-600'
-                              }`}>
-                                 {order.status}
-                              </span>
-                           </p>
-                           <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 flex items-center gap-1.5 mt-1">
-                              <Clock size={14} /> 
-                              {parseDate(order.createdAt) ? dayjs(parseDate(order.createdAt)).format('MMM D, h:mm A') : 'Just now'}
-                           </p>
-                        </div>
-                     </div>
-                     <div className="text-right">
-                        <p className="text-gray-400 dark:text-gray-500 text-xs mb-1 font-medium"> {t('total', 'Total')} </p>
-                        <p className="font-bold text-gray-900 dark:text-white text-lg group-hover:text-indigo-600 transition-colors">
-                           {formatCurrency(order.total)}
-                        </p>
-                     </div>
+            <div className="flex items-center justify-between mb-4">
+               <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Pharmacy Sales Results</h2>
+               <div className="flex items-center gap-3">
+                  <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 px-4 py-2 rounded-full flex items-center gap-2 text-sm font-bold shadow-sm cursor-pointer">
+                     <Clock size={14} />
+                     <span>This Month</span>
+                     <ChevronDown size={14} className="text-gray-400" />
                   </div>
-               ))}
+                  <button className="w-9 h-9 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-600 shadow-sm hover:bg-gray-50">
+                     <Activity size={16} />
+                  </button>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+               <div className="bg-[#D3F5A8] rounded-3xl p-6 relative overflow-hidden shadow-sm">
+                   <div className="flex justify-between items-start mb-6 z-10 relative">
+                      <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center text-[#0B3B3C]">
+                         <Lock size={14} />
+                      </div>
+                      <MoreHorizontal size={16} className="text-[#0B3B3C]/50" />
+                   </div>
+                   <div className="z-10 relative">
+                      <p className="text-[#0B3B3C]/70 text-sm font-bold mb-1">Todays Sales</p>
+                      <h3 className="text-3xl font-black text-[#0B3B3C] mb-2">{formatCurrency(todayRevenue)}</h3>
+                      <p className="text-xs font-bold text-[#0B3B3C]/60 flex items-center gap-1">
+                         <span className="text-[#0B3B3C]">+2.5%</span> This Month
+                      </p>
+                   </div>
+                   <div className="absolute bottom-0 right-4 flex items-end gap-1.5 opacity-20 h-16">
+                      <div className="w-3 bg-[#0B3B3C] rounded-t-sm h-full"></div>
+                      <div className="w-3 bg-[#0B3B3C] rounded-t-sm h-3/4"></div>
+                      <div className="w-3 bg-[#0B3B3C] rounded-t-sm h-1/2"></div>
+                      <div className="w-3 bg-[#0B3B3C] rounded-t-sm h-full"></div>
+                   </div>
+               </div>
+
+               <div className="bg-[#A2E2D5] rounded-3xl p-6 relative overflow-hidden shadow-sm">
+                   <div className="flex justify-between items-start mb-6 z-10 relative">
+                      <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center text-[#0B3B3C]">
+                         <Grid size={14} />
+                      </div>
+                      <MoreHorizontal size={16} className="text-[#0B3B3C]/50" />
+                   </div>
+                   <div className="z-10 relative">
+                      <p className="text-[#0B3B3C]/70 text-sm font-bold mb-1">Available Categories</p>
+                      <h3 className="text-3xl font-black text-[#0B3B3C] mb-2">
+                        {Array.from(new Set(products.map(p => p.category || p.ux_category_id))).filter(Boolean).length}
+                      </h3>
+                      <p className="text-xs font-bold text-[#0B3B3C]/60 flex items-center gap-1">
+                         <span className="text-[#0B3B3C]">+2.5%</span> This Month
+                      </p>
+                   </div>
+                   <div className="absolute bottom-0 right-4 flex items-end gap-1.5 opacity-20 h-16">
+                      <div className="w-3 bg-[#0B3B3C] rounded-t-sm h-1/2"></div>
+                      <div className="w-3 bg-[#0B3B3C] rounded-t-sm h-full"></div>
+                      <div className="w-3 bg-[#0B3B3C] rounded-t-sm h-3/4"></div>
+                      <div className="w-3 bg-[#0B3B3C] rounded-t-sm h-full"></div>
+                   </div>
+               </div>
+
+               <div className="bg-[#FFB8BA] rounded-3xl p-6 relative overflow-hidden shadow-sm">
+                   <div className="flex justify-between items-start mb-6 z-10 relative">
+                      <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center text-[#0B3B3C]">
+                         <Activity size={14} />
+                      </div>
+                      <MoreHorizontal size={16} className="text-[#0B3B3C]/50" />
+                   </div>
+                   <div className="z-10 relative">
+                      <p className="text-[#0B3B3C]/70 text-sm font-bold mb-1">Expired Medicines</p>
+                      <h3 className="text-3xl font-black text-[#0B3B3C] mb-2">{expiredPercentage.toFixed(2)}%</h3>
+                      <p className="text-xs font-bold text-[#0B3B3C]/60 flex items-center gap-1">
+                         <span className="text-[#0B3B3C]">+2.5%</span> This Month
+                      </p>
+                   </div>
+                   <div className="absolute bottom-0 right-4 flex items-end gap-1.5 opacity-20 h-16">
+                      <div className="w-3 bg-[#0B3B3C] rounded-t-sm h-full"></div>
+                      <div className="w-3 bg-[#0B3B3C] rounded-t-sm h-1/2"></div>
+                      <div className="w-3 bg-[#0B3B3C] rounded-t-sm h-3/4"></div>
+                      <div className="w-3 bg-[#0B3B3C] rounded-t-sm h-1/4"></div>
+                   </div>
+               </div>
+
+               <div className="bg-[#C1BDEB] rounded-3xl p-6 relative overflow-hidden shadow-sm">
+                   <div className="flex justify-between items-start mb-6 z-10 relative">
+                      <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center text-[#0B3B3C]">
+                         <Users size={14} />
+                      </div>
+                      <MoreHorizontal size={16} className="text-[#0B3B3C]/50" />
+                   </div>
+                   <div className="z-10 relative">
+                      <p className="text-[#0B3B3C]/70 text-sm font-bold mb-1">System Users</p>
+                      <h3 className="text-3xl font-black text-[#0B3B3C] mb-2">{customers.size}</h3>
+                      <p className="text-xs font-bold text-[#0B3B3C]/60 flex items-center gap-1">
+                         <span className="text-[#0B3B3C]">+{customers.size > 0 ? '1' : '0'}</span> This Month
+                      </p>
+                   </div>
+                   <div className="absolute bottom-0 right-4 flex items-end gap-1.5 opacity-20 h-16">
+                      <div className="w-3 bg-[#0B3B3C] rounded-t-sm h-3/4"></div>
+                      <div className="w-3 bg-[#0B3B3C] rounded-t-sm h-full"></div>
+                      <div className="w-3 bg-[#0B3B3C] rounded-t-sm h-1/2"></div>
+                      <div className="w-3 bg-[#0B3B3C] rounded-t-sm h-full"></div>
+                   </div>
+               </div>
             </div>
          </div>
 
-         {/* Low Stock Alerts */}
-         {lowStockProducts.length > 0 && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-               <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-gray-900 dark:text-white text-lg flex items-center gap-2">
-                    <AlertTriangle size={20} className="text-orange-500"/>  {t('low_stock_alerts', 'Low Stock Alerts')} </h3>
+         {/* Charts Section */}
+         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-[#FAFBFC] dark:bg-slate-800 rounded-3xl p-6 relative overflow-hidden border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col">
+               <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">Graph Report</h3>
+                  <button className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-slate-700 border border-gray-100 text-gray-500 hover:bg-gray-50">
+                     <MoreHorizontal size={14} />
+                  </button>
                </div>
-               <div className="space-y-4">
-               {lowStockProducts.slice(0, 2).map(product => (
-                     <div key={product.id} className="bg-orange-50 border border-orange-100 p-5 rounded-3xl shadow-sm flex items-center justify-between group hover:bg-orange-100/50 transition">
-                        <div className="flex items-center gap-4">
-                           <div className="w-12 h-12 rounded-xl bg-white dark:bg-black flex items-center justify-center shadow-sm">
-                              {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="w-8 h-8 object-cover rounded" /> : <AlertTriangle className="text-orange-400" size={20}/>}
-                           </div>
-                           <div>
-                              <p className="font-bold text-orange-900 text-base">{product.name}</p>
-                              <p className="text-sm text-orange-700/80 font-medium flex items-center gap-1 mt-0.5">
-                                <TrendingUp size={14} />  {t('only', 'Only')} {product.stock}  {t('left_in_stock', 'left in stock')} </p>
-                           </div>
-                        </div>
-                        <button 
-                           onClick={() => handleNotifyAdmin(product)}
-                           className="px-4 py-2 bg-white dark:bg-black hover:bg-orange-100 text-orange-700 text-sm font-bold rounded-xl transition shadow-sm border border-orange-200 opacity-90 group-hover:opacity-100"
+               <div className="flex-1 flex flex-col items-center justify-center min-h-[250px] relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                     <PieChart>
+                        <Pie
+                           data={pieData}
+                           cx="50%"
+                           cy="50%"
+                           innerRadius={70}
+                           outerRadius={100}
+                           fill="#8884d8"
+                           paddingAngle={5}
+                           dataKey="value"
                         >
-                            {t('notify_admin', 'Notify Admin')} </button>
-                     </div>
+                           {pieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                           ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                     </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                     <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1">Total</p>
+                     <p className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(totalRevenue)}</p>
+                  </div>
+               </div>
+               <div className="flex justify-center gap-6 mt-4">
+                  {pieData.map((entry, idx) => (
+                      <div key={entry.name} className="flex items-center gap-2">
+                         <div className="w-3 h-3 rounded-full" style={{backgroundColor: COLORS[idx % COLORS.length]}}></div>
+                         <span className="text-xs font-medium text-gray-500">{entry.name}</span>
+                      </div>
                   ))}
                </div>
             </div>
-         )}
 
-         {/* Inventory Snapshot */}
-         <div>
-            <div className="flex items-center justify-between mb-4 mt-6">
-               <h3 className="font-bold text-gray-900 dark:text-white text-xl"> {t('inventory_snapshot', 'Inventory Snapshot')} </h3>
-               <button onClick={() => navigate('/pharmacist/inventory')} className="text-indigo-600 font-bold text-sm bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition"> {t('see_all', 'See all')} </button>
+            <div className="bg-[#FAFBFC] dark:bg-slate-800 rounded-3xl p-6 relative overflow-hidden border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col">
+               <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">Total Sales Overview</h3>
+                  <button className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-slate-700 border border-gray-100 text-gray-500 hover:bg-gray-50">
+                     <MoreHorizontal size={14} />
+                  </button>
+               </div>
+               <div className="flex-1 min-h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                     <BarChart data={salesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                        <XAxis 
+                           dataKey="name" 
+                           axisLine={false} 
+                           tickLine={false} 
+                           tick={{fill: '#9CA3AF', fontSize: 12, fontWeight: 600}} 
+                           dy={10}
+                        />
+                        <YAxis 
+                           axisLine={false} 
+                           tickLine={false} 
+                           tick={{fill: '#9CA3AF', fontSize: 12}}
+                           tickFormatter={(value) => `$${value >= 1000 ? (value/1000).toFixed(1) + 'k' : value}`}
+                        />
+                        <Tooltip 
+                           cursor={{fill: 'rgba(0,0,0,0.02)'}}
+                           contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'}}
+                           formatter={(value: number) => [formatCurrency(value), 'Sales']}
+                           labelStyle={{fontWeight: 'bold', color: '#374151', marginBottom: '4px'}}
+                        />
+                        <Bar dataKey="total" radius={[8, 8, 8, 8]} barSize={32}>
+                           {
+                              salesData.map((entry, index) => (
+                                 <Cell key={`cell-${index}`} fill={
+                                    index === 3 ? '#D3F5A8' : // Highlight today or a specific column
+                                    index % 2 === 0 ? '#FFB8BA' : '#C1BDEB'
+                                 } />
+                              ))
+                           }
+                        </Bar>
+                     </BarChart>
+                  </ResponsiveContainer>
+               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 pb-6">
-               {loading ? <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500"> {t('loading', 'Loading...')} </p> : 
-                products.length === 0 ? <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 text-center w-full col-span-full"> {t('go_to_inventory_to_add_product', 'Go to Inventory to add products.')} </p> :
-                products.slice(0, 6).map(item => (
-                   <div key={item.id}>
-                      <ProductCard product={item} basePath="/pharmacist/inventory" showSaleBadge={true} />
-                   </div>
-                ))}
+         </div>
+
+         {/* Recent Sales List */}
+         <div>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6 gap-4 mt-8">
+               <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Recent Sales List</h2>
+               <div className="flex items-center gap-3">
+                  <div className="relative">
+                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                     <input type="text" placeholder="Search..." className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 py-2.5 pl-9 pr-4 rounded-xl text-xs font-medium w-48 outline-none shadow-sm" />
+                  </div>
+                  <button className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 shadow-sm">
+                     <Settings size={14} /> Filter <ChevronDown size={12} />
+                  </button>
+                  <button className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 shadow-sm">
+                     <ArrowUpRight size={14} /> Sort By <ChevronDown size={12} />
+                  </button>
+                  <button className="w-9 h-9 flex items-center justify-center bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl text-gray-600 dark:text-gray-300 shadow-sm">
+                     <MoreHorizontal size={14} />
+                  </button>
+               </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-100 dark:border-slate-700 overflow-hidden shadow-sm">
+               <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                     <thead>
+                        <tr className="border-b border-gray-100 dark:border-slate-700">
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Name</th>
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Medicine</th>
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Status</th>
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Quantity</th>
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Total Price</th>
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase flex items-center gap-1">Date <ChevronDown size={12}/></th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
+                        {loading ? (
+                           <tr><td colSpan={6} className="py-8 text-center text-gray-500 text-sm">Loading orders...</td></tr>
+                        ) : orders.length === 0 ? (
+                           <tr><td colSpan={6} className="py-8 text-center text-gray-500 text-sm">No recent sales.</td></tr>
+                        ) : (
+                           orders.slice(0, 5).map((order) => (
+                              <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors group">
+                                 <td className="py-4 px-6">
+                                    <div className="flex items-center gap-3">
+                                       <div className="w-8 h-8 rounded-full bg-[#E2EBE9] dark:bg-slate-700 flex items-center justify-center text-[#0B3B3C] dark:text-white font-bold text-xs">
+                                          {order.patientName ? order.patientName.charAt(0) : 'U'}
+                                       </div>
+                                       <span className="font-bold text-gray-800 dark:text-white text-sm">{order.patientName || 'Unknown User'}</span>
+                                    </div>
+                                 </td>
+                                 <td className="py-4 px-6 text-sm font-medium text-gray-600 dark:text-gray-300">
+                                    {order.items && order.items[0] ? order.items[0].name : 'Unknown Item'}
+                                    {order.items && order.items.length > 1 && ` (+${order.items.length - 1})`}
+                                 </td>
+                                 <td className="py-4 px-6 text-sm text-gray-500 dark:text-gray-400 capitalize">
+                                    {order.status}
+                                 </td>
+                                 <td className="py-4 px-6">
+                                    <div className="flex items-center gap-2 bg-[#FAFBFC] dark:bg-slate-900 px-3 py-1.5 rounded-full w-max border border-gray-100 dark:border-slate-700">
+                                       <span className="text-xs font-bold text-[#0B3B3C] dark:text-gray-300">{order.items ? order.items.reduce((acc: any, curr: any) => acc + curr.quantity, 0) : 0}</span>
+                                    </div>
+                                 </td>
+                                 <td className="py-4 px-6 font-bold text-gray-900 dark:text-white text-sm">
+                                    {formatCurrency(order.total || 0)}
+                                 </td>
+                                 <td className="py-4 px-6 text-xs font-medium text-gray-500 dark:text-gray-400">
+                                    {order.createdAt ? dayjs(parseDate(order.createdAt)).format('MMM DD, YYYY hh:mm A') : 'N/A'}
+                                 </td>
+                              </tr>
+                           ))
+                        )}
+                     </tbody>
+                  </table>
+               </div>
             </div>
          </div>
       </div>

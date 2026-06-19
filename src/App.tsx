@@ -38,6 +38,10 @@ import { PharmacistReports } from './pages/pharmacist/Reports';
 import { PharmacistProfile } from './pages/pharmacist/Profile';
 import { PharmacistPrescriptions } from './pages/pharmacist/Prescriptions';
 import { PharmacistSupport } from './pages/pharmacist/Support';
+import { PharmacistCategories } from './pages/pharmacist/Categories';
+import { PharmacistSales } from './pages/pharmacist/Sales';
+import { PharmacistCustomers } from './pages/pharmacist/Customers';
+import { PharmacistPayments } from './pages/pharmacist/Payments';
 
 import { DeliveryHome } from './pages/delivery/Home';
 import { DeliveryOrderDetails } from './pages/delivery/OrderDetails';
@@ -136,6 +140,10 @@ export default function App() {
             <Route path="orders" element={<PharmacistOrders />} />
             <Route path="inventory" element={<PharmacistInventory />} />
             <Route path="inventory/:id" element={<PharmacistProductDetails />} />
+            <Route path="categories" element={<PharmacistCategories />} />
+            <Route path="sales" element={<PharmacistSales />} />
+            <Route path="customers" element={<PharmacistCustomers />} />
+            <Route path="payments" element={<PharmacistPayments />} />
             <Route path="reports" element={<PharmacistReports />} />
             <Route path="prescriptions" element={<PharmacistPrescriptions />} />
             <Route path="profile" element={<PharmacistProfile />} />

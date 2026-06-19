@@ -128,8 +128,15 @@ export const updateProfile = async (userObj: any, profile: { displayName?: strin
   if (error) throw new Error(error.message);
 };
 
+export const updatePassword = async (authObj: any, password: string) => {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw new Error(error.message);
+};
+
 export const sendPasswordResetEmail = async (authObj: any, email: string) => {
-  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/forget-password'
+  });
   if (error) throw new Error(error.message);
 };
 
@@ -183,7 +190,7 @@ export const doc = (dbObj: any, pathOrCollection: any, ...segments: string[]) =>
 };
 
 const toDatabaseRecord = (table: string, id: string, docData: any) => {
-  if (table === 'products') {
+  if (table === 'produits_patients') {
      return {
         id: id,
         commercial_name: docData.name || docData.commercial_name || docData.nom_commercial || '',
@@ -191,10 +198,7 @@ const toDatabaseRecord = (table: string, id: string, docData: any) => {
         dosage: docData.dosage || '',
         form: docData.form || '',
         is_prescription_required: docData.requiresPrescription !== undefined ? !!docData.requiresPrescription : (!!docData.is_prescription_required || false),
-        price: docData.price ? Number(docData.price) : 0,
-        pharmacy_id: docData.pharmacyId || docData.pharmacy_id || null,
-        ux_category_id: docData.category || docData.ux_category_id || null,
-        symptoms: docData.symptoms || [],
+        ux_category: docData.category || docData.ux_category || null,
         created_at: docData.createdAt || docData.created_at || new Date().toISOString()
      };
   }
@@ -233,6 +237,21 @@ const parseRecordData = (table: string, row: any) => {
         category: row.ux_category_id || '',
         pharmacyId: row.pharmacy_id || null,
         isGlobal: row.is_global !== undefined ? row.is_global : (row.pharmacy_id === null),
+        createdAt: row.created_at || null,
+        ...row 
+     };
+  } else if (table === 'produits_patients') {
+     parsed = {
+        name: row.nom_commercial || row.commercial_name || row.name || '',
+        commercial_name: row.nom_commercial || row.commercial_name || row.name || '',
+        nom_commercial: row.nom_commercial || row.commercial_name || row.name || '',
+        description: row.dci || row.description || '',
+        dci: row.dci || row.description || '',
+        dosage: row.dosage || '',
+        form: row.form || '',
+        requiresPrescription: row.is_prescription_required !== undefined ? !!row.is_prescription_required : (!!row.requires_prescription || false),
+        is_prescription_required: row.is_prescription_required !== undefined ? !!row.is_prescription_required : (!!row.requires_prescription || false),
+        category: row.ux_category || '',
         createdAt: row.created_at || null,
         ...row 
      };
@@ -326,7 +345,7 @@ export const getDocs = async (queryRef: any) => {
   
   // Fallback for ux_categories if the user hasn't run the migration yet
   const isUxCategory = table === 'ux_categories';
-  const isStructured = ['products', 'ux_categories', 'categories', 'produits_patients'].includes(table);
+  const isStructured = ['ux_categories', 'produits_patients'].includes(table);
   
   let builder: any = supabase.from(table).select('*');
   

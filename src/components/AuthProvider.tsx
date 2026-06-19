@@ -66,11 +66,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setImpersonatedRole(null);
           setImpersonatedUserData(null);
           localStorage.removeItem('impersonation_state');
-          supabase.auth.signOut();
           
           // Only redirect if we are not already on the login or onboarding pages
-          if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/signup')) {
-             window.location.href = '/login';
+          if (window.location.pathname !== '/' && window.location.pathname !== '/admin-login') {
+             window.location.href = '/';
           }
         }
       }

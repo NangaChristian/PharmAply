@@ -1,10 +1,11 @@
 import { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthProvider";
+import { cn } from "../../lib/utils";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
-  const isAdmin = pathname.startsWith('/admin') || pathname === '/admin-login';
+  const isDesktopRole = pathname.startsWith('/admin') || pathname === '/admin-login' || pathname.startsWith('/pharmacist');
   const { isImpersonating, stopImpersonating, user } = useAuth();
   const navigate = useNavigate();
 
@@ -23,11 +24,20 @@ export function AppShell({ children }: { children: ReactNode }) {
     );
   };
 
-  if (isAdmin) {
+  if (isDesktopRole) {
+    const isPharmacy = pathname.startsWith('/pharmacist');
+    
     return (
-      <div className="w-full h-screen font-sans overflow-hidden bg-[#F0F5F2] dark:bg-slate-900 relative">
+      <div className={cn(
+        "w-full h-screen font-sans overflow-hidden relative flex justify-center",
+        isPharmacy ? "bg-[#E2EBE9] dark:bg-slate-950 p-4 md:p-6" : "bg-slate-50 dark:bg-slate-900"
+      )}>
         {renderBanner()}
-        <div className={`w-full h-full flex flex-col ${isImpersonating ? 'pt-8' : ''}`}>
+        <div className={cn(
+          "w-full h-full flex flex-col overflow-hidden shadow-sm",
+          isPharmacy ? "bg-white dark:bg-slate-900 rounded-[2rem] max-w-[1600px]" : "max-w-[1600px]",
+          isImpersonating ? 'pt-8' : ''
+        )}>
            {children}
         </div>
       </div>

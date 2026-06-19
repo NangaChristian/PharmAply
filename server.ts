@@ -224,6 +224,57 @@ async function startServer() {
     }
   });
 
+  // Generate AI Info Route
+  app.post("/api/admin/generate-info", async (req: express.Request, res: express.Response): Promise<any> => {
+    try {
+      const { products } = req.body;
+      if (!products || !Array.isArray(products) || products.length === 0) {
+        return res.status(400).json({ success: false, error: "Missing products array" });
+      }
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+         return res.status(500).json({ success: false, error: "Gemini API key not configured" });
+      }
+
+      const { GoogleGenAI } = await import("@google/genai");
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      // Prompt Gemini to generate info
+      const prompt = `You are a medical data assistant. For each of the following products, generate a professional 'description', 'effects', and 'directions' (in French/English). Return a valid JSON array of objects, with each object containing { "id": "original_id", "description": "...", "effects": "...", "directions": "..." }. \n\nProducts: ` + JSON.stringify(products.map((p: any) => ({ id: p.id, name: p.name, category: p.category, dosage: p.dosage })));
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+           responseMimeType: "application/json",
+        }
+      });
+
+      const responseText = response.text || "[]";
+      let generatedInfo = [];
+      try {
+         generatedInfo = JSON.parse(responseText);
+      } catch (e) {
+         // fallback if it wrapped in markdown
+         const match = responseText.match(/\[.*\]/s);
+         if (match) generatedInfo = JSON.parse(match[0]);
+      }
+
+      res.json({ success: true, updates: generatedInfo });
+    } catch (error: any) {
+      console.error("Info generation error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // KYC Approval Route
   app.post("/api/admin/seed-products", async (req: express.Request, res: express.Response): Promise<any> => {
     try {

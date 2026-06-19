@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || 'placeholder';
+const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || (import.meta as any).env.SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || (import.meta as any).env.SUPABASE_ANON_KEY || (import.meta as any).env.SUPABASE_KEY || 'placeholder';
 
 const customFetch = async (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
   if (supabaseUrl === 'https://placeholder.supabase.co') {
@@ -190,6 +190,21 @@ export const doc = (dbObj: any, pathOrCollection: any, ...segments: string[]) =>
 };
 
 const toDatabaseRecord = (table: string, id: string, docData: any) => {
+  if (table === 'products') {
+     return {
+        id: id,
+        commercial_name: docData.name || docData.commercial_name || docData.nom_commercial || '',
+        dci: docData.description || docData.dci || '',
+        dosage: docData.dosage || '',
+        form: docData.form || '',
+        is_prescription_required: docData.requiresPrescription !== undefined ? !!docData.requiresPrescription : (!!docData.is_prescription_required || false),
+        price: docData.price ? Number(docData.price) : 0,
+        pharmacy_id: docData.pharmacyId || docData.pharmacy_id || null,
+        ux_category_id: docData.category || docData.ux_category_id || null,
+        symptoms: docData.symptoms || [],
+        created_at: docData.createdAt || docData.created_at || new Date().toISOString()
+     };
+  }
   if (table === 'produits_patients') {
      return {
         id: id,
@@ -345,7 +360,7 @@ export const getDocs = async (queryRef: any) => {
   
   // Fallback for ux_categories if the user hasn't run the migration yet
   const isUxCategory = table === 'ux_categories';
-  const isStructured = ['ux_categories', 'produits_patients'].includes(table);
+  const isStructured = ['products', 'ux_categories', 'produits_patients'].includes(table);
   
   let builder: any = supabase.from(table).select('*');
   

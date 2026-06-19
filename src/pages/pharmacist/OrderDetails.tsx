@@ -51,7 +51,10 @@ export function PharmacistOrderDetails() {
     if (!order) return;
     setProcessing(true);
     try {
-      const updateData: any = { status: newStatus };
+      const historyItem = { status: newStatus, timestamp: new Date().toISOString() };
+      const newHistory = [...(order.statusHistory || []), historyItem];
+      
+      const updateData: any = { status: newStatus, statusHistory: newHistory };
       if (newStatus === 'rejected' && rejectReason) {
         updateData.cancellationReason = rejectReason;
       }
@@ -68,7 +71,7 @@ export function PharmacistOrderDetails() {
         createdAt: serverTimestamp()
       });
       
-      setOrder({ ...order, status: newStatus, cancellationReason: newStatus === 'rejected' ? rejectReason : order.cancellationReason });
+      setOrder({ ...order, status: newStatus, statusHistory: newHistory, cancellationReason: newStatus === 'rejected' ? rejectReason : order.cancellationReason });
       setIsRejecting(false);
 
       // fetch patient to get email
@@ -88,6 +91,73 @@ export function PharmacistOrderDetails() {
       handleFirestoreError(error, OperationType.UPDATE, 'orders');
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handlePrintInvoice = () => {
+    const invoiceHtml = `
+      <html>
+        <head>
+          <title>Invoice - ${order.id}</title>
+          <style>
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #111827; }
+            h1 { color: #0B3B3C; margin-bottom: 20px; font-size: 24px; font-weight: 800; }
+            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #f3f4f6; padding-bottom: 20px; margin-bottom: 30px; }
+            .details { margin-bottom: 40px; font-size: 14px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+            th, td { border-bottom: 1px solid #f3f4f6; padding: 12px; text-align: left; }
+            th { color: #6b7280; font-weight: 600; text-transform: uppercase; font-size: 12px; }
+            .total { text-align: right; font-size: 18px; font-weight: bold; color: #0B3B3C; }
+            @media print {
+              body { margin: 0; padding: 20px; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <h1>INVOICE</h1>
+              <p>Order ID: ${order.id}</p>
+              <p>Date: ${order.createdAt ? (parseDate(order.createdAt)?.toLocaleDateString() || new Date().toLocaleDateString()) : new Date().toLocaleDateString()}</p>
+            </div>
+            <div style="text-align: right;">
+              <h2 style="margin: 0; color: #0B3B3C;">PharmaCare</h2>
+              <p>Pharmacy System</p>
+            </div>
+          </div>
+          <div class="details">
+            <h3>Bill To:</h3>
+            <p><strong>${order.patientName || 'Patient'}</strong></p>
+            ${order.deliveryAddress ? `<p>${order.deliveryAddress.street || order.deliveryAddress}</p>` : ''}
+          </div>
+          <table>
+            <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+            <tbody>
+              ${(order.items || []).map((item: any) => `
+                <tr>
+                  <td>${item.name}</td>
+                  <td>${item.quantity}</td>
+                  <td>${formatCurrency(item.price)}</td>
+                  <td>${formatCurrency(item.price * item.quantity)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div class="total">
+            Total Amount: ${formatCurrency(order.total || 0)}
+          </div>
+        </body>
+      </html>
+    `;
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(invoiceHtml);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 250);
     }
   };
 
@@ -212,9 +282,50 @@ export function PharmacistOrderDetails() {
            )}
 
            {/* Total */}
-           <div className="bg-[#FAFBFC] dark:bg-slate-900 rounded-2xl p-6 flex justify-between items-center border border-gray-100 dark:border-slate-700">
+           <div className="bg-[#FAFBFC] dark:bg-slate-900 rounded-2xl p-6 flex justify-between items-center border border-gray-100 dark:border-slate-700 mb-6">
              <h3 className="font-bold text-gray-900 dark:text-white text-base">Total :</h3>
              <span className="font-bold text-gray-900 dark:text-white text-lg">{formatCurrency(order.total)}</span>
+           </div>
+
+           {/* Timeline */}
+           <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-100 dark:border-slate-700">
+             <h3 className="font-bold text-gray-900 dark:text-white text-base mb-6">Order Timeline</h3>
+             <div className="relative border-l-2 border-gray-100 dark:border-slate-700 ml-3 space-y-6">
+               {[
+                 { status: 'pending', timestamp: order.createdAt },
+                 ...(order.statusHistory || (order.status !== 'pending' ? [{ status: order.status, timestamp: order.updatedAt || undefined }] : []))
+               ].map((update, index, arr) => {
+                 const isLast = index === arr.length - 1;
+                 const getStatusLabel = (s: string) => {
+                   switch(s) {
+                     case 'pending': return 'Order Placed';
+                     case 'preparing': return 'Preparing Order';
+                     case 'ready': return 'Ready for Delivery';
+                     case 'ready_for_pickup': return 'Ready for Pickup';
+                     case 'accepted': return 'Driver Assigned';
+                     case 'picked_up': return 'Picked up by Driver';
+                     case 'on_the_way': return 'Out for Delivery';
+                     case 'delivered': return 'Delivered';
+                     case 'rejected': return 'Order Rejected';
+                     case 'cancelled': return 'Order Cancelled';
+                     default: return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ');
+                   }
+                 };
+                 return (
+                   <div key={index} className="relative pl-6">
+                     <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800 ${isLast ? 'bg-[#0B3B3C] ring-4 ring-teal-50 dark:ring-slate-700' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                     <div>
+                       <p className={`text-sm font-bold ${isLast ? 'text-[#0B3B3C] dark:text-teal-400' : 'text-gray-900 dark:text-gray-300'}`}>
+                         {getStatusLabel(update.status)}
+                       </p>
+                       <p className="text-xs text-gray-500 mt-1">
+                         {update.timestamp ? (parseDate(update.timestamp) ? parseDate(update.timestamp)!.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Pending') : 'Time unknown'}
+                       </p>
+                     </div>
+                   </div>
+                 );
+               })}
+             </div>
            </div>
 
          </div>
@@ -225,11 +336,20 @@ export function PharmacistOrderDetails() {
          <div className="flex gap-4 w-full justify-end pointer-events-auto">
              {order.status === 'pending' && !isRejecting && (
                <>
+                 <button disabled={processing} onClick={handlePrintInvoice} className="px-5 py-3.5 bg-white border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 rounded-full font-bold shadow-sm transition-all focus:outline-none flex items-center gap-2">
+                   <Download size={18} /> Print
+                 </button>
                  <button disabled={processing} onClick={() => setIsRejecting(true)} className="px-8 py-3.5 bg-white border border-red-100 text-red-600 hover:bg-red-50 rounded-full font-bold shadow-sm transition-all focus:outline-none">
                     Reject </button>
                  <button disabled={processing} onClick={() => handleUpdateStatus('preparing')} className="px-8 py-3.5 bg-[#0B3B3C] text-white rounded-full font-bold shadow-md hover:bg-[#082a2b] transition-all focus:outline-none">
                     Accept Order </button>
                </>
+             )}
+             
+             {order.status !== 'pending' && (
+                 <button disabled={processing} onClick={handlePrintInvoice} className="px-5 py-3.5 bg-white border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 rounded-full font-bold shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-all focus:outline-none flex items-center gap-2">
+                   <Download size={18} /> Print Invoice
+                 </button>           
              )}
              
              {isRejecting && (

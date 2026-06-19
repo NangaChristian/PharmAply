@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { CreditCard, DollarSign, Download, Filter } from 'lucide-react';
+import { formatCurrency } from '../../lib/utils';
 
 export function PharmacistPayments() {
   const { t } = useTranslation();
@@ -34,7 +35,7 @@ export function PharmacistPayments() {
        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700">
            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">{t('available_balance', 'Available Balance')}</p>
-           <h3 className="text-2xl font-bold text-gray-900 dark:text-white">0.00 $</h3>
+           <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(0)}</h3>
            <button className="mt-4 w-full py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-medium text-sm rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition">
              {t('withdraw', 'Withdraw')}
            </button>
@@ -42,17 +43,17 @@ export function PharmacistPayments() {
         
          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700">
            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">{t('pending_clearance', 'Pending Clearance')}</p>
-           <h3 className="text-2xl font-bold text-gray-900 dark:text-white">0.00 $</h3>
+           <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(0)}</h3>
         </div>
 
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700">
            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">{t('total_withdrawn', 'Total Withdrawn')}</p>
-           <h3 className="text-2xl font-bold text-gray-900 dark:text-white">0.00 $</h3>
+           <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(0)}</h3>
         </div>
 
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700">
            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">{t('platform_fees', 'Platform Fees')}</p>
-           <h3 className="text-2xl font-bold text-gray-900 dark:text-white">0.00 $</h3>
+           <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(0)}</h3>
         </div>
       </div>
 

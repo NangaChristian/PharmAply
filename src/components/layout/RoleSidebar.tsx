@@ -1,4 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { 
   HeartPulse, LayoutDashboard, Package, Grid, 
   ShoppingCart, BarChart2, Users, CreditCard, 
@@ -6,7 +7,8 @@ import {
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useTranslation } from "react-i18next";
-import { auth, signOut } from "../../lib/firebase";
+import { auth, signOut, db, collection, query, where, getDocs } from "../../lib/firebase";
+import { useAuth } from "../AuthProvider";
 
 interface RoleSidebarProps {
   role: "patient" | "pharmacist" | "delivery" | "admin";
@@ -15,6 +17,33 @@ interface RoleSidebarProps {
 export function RoleSidebar({ role }: RoleSidebarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [completionPercentage, setCompletionPercentage] = useState(0);
+
+  useEffect(() => {
+    const fetchPharmacyCompletion = async () => {
+      if (role !== "pharmacist" || !user) return;
+      try {
+        const q = query(collection(db, 'pharmacies'), where('ownerId', '==', user.uid));
+        const snapshot = await getDocs(q);
+        
+        let percentage = 20; // Base 20% for having an account
+        if (!snapshot.empty) {
+          const data = snapshot.docs[0].data();
+          if (data.name) percentage += 15;
+          if (data.address) percentage += 15;
+          if (data.phone) percentage += 15;
+          if (data.photoUrl) percentage += 15;
+          if (data.coverUrl) percentage += 10;
+          if (data.workingHours) percentage += 10;
+        }
+        setCompletionPercentage(percentage);
+      } catch (error) {
+        console.error("Failed to fetch pharmacy for completion status", error);
+      }
+    };
+    fetchPharmacyCompletion();
+  }, [user, role]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -100,21 +129,26 @@ export function RoleSidebar({ role }: RoleSidebarProps) {
       </div>
 
       <div className="px-6 mt-10 shrink-0">
+         {completionPercentage < 100 && (
          <div className="bg-[#B9E9E0] dark:bg-teal-900/30 p-5 rounded-3xl mb-4 relative overflow-hidden">
             <div className="flex items-start gap-4 z-10 relative">
                <div className="w-12 h-12 rounded-full border-4 border-[#0B3B3C] flex items-center justify-center font-bold text-[#0B3B3C] text-sm shrink-0">
-                  50%
+                  {Math.min(completionPercentage, 100)}%
                </div>
                <div>
-                  <h4 className="font-bold text-[#0B3B3C] dark:text-teal-100 text-sm mb-1 leading-tight">Complete Profile</h4>
-                  <p className="text-xs text-[#0B3B3C]/70 dark:text-teal-200/70 mb-3">Complete Your Profile to Unlock all Features</p>
+                  <h4 className="font-bold text-[#0B3B3C] dark:text-teal-100 text-sm mb-1 leading-tight">{t('complete_profile', 'Complete Profile')}</h4>
+                  <p className="text-xs text-[#0B3B3C]/70 dark:text-teal-200/70 mb-3">{t('complete_profile_desc', 'Complete Your Profile to Unlock all Features')}</p>
                </div>
             </div>
-            <button className="w-full py-2.5 bg-[#0B3B3C] text-white rounded-xl text-xs font-bold hover:bg-[#082a2b] transition-colors relative z-10">
-               Verify Identity
+            <button 
+               onClick={() => navigate('/pharmacist/profile')}
+               className="w-full py-2.5 bg-[#0B3B3C] text-white rounded-xl text-xs font-bold hover:bg-[#082a2b] transition-colors relative z-10"
+            >
+               {t('update_profile', 'Update Profile')}
             </button>
             <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-white/20 rounded-full blur-2xl"></div>
          </div>
+         )}
 
          <button 
            onClick={handleLogout}

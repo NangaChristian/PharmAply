@@ -128,13 +128,14 @@ export function PharmacistOrders() {
                         <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Quantity</th>
                         <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Total Price</th>
                         <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase flex items-center gap-1">Date <ChevronDown size={12}/></th>
+                        <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase text-right">Action</th>
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
                      {loading ? (
-                        <tr><td colSpan={6} className="py-8 text-center text-gray-500 text-sm animate-pulse">Loading orders...</td></tr>
+                        <tr><td colSpan={7} className="py-8 text-center text-gray-500 text-sm animate-pulse">Loading orders...</td></tr>
                      ) : filteredOrders.length === 0 ? (
-                        <tr><td colSpan={6} className="py-8 text-center text-gray-500 text-sm">No orders found.</td></tr>
+                        <tr><td colSpan={7} className="py-8 text-center text-gray-500 text-sm">No orders found.</td></tr>
                      ) : (
                         filteredOrders.map((order) => (
                            <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer" onClick={() => navigate(`/pharmacist/order/${order.id}`)}>
@@ -171,6 +172,17 @@ export function PharmacistOrders() {
                               </td>
                               <td className="py-4 px-6 text-xs font-medium text-gray-500 dark:text-gray-400">
                                  {order.createdAt ? dayjs(parseDate(order.createdAt)).format('MMM DD, YYYY hh:mm A') : 'N/A'}
+                              </td>
+                              <td className="py-4 px-6 text-right">
+                                 <button
+                                    onClick={(e) => {
+                                       e.stopPropagation();
+                                       navigate(`/pharmacist/messages/${order.id}`, { state: { patientId: order.patientId } });
+                                    }}
+                                    className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors"
+                                 >
+                                    Quick Chat
+                                 </button>
                               </td>
                            </tr>
                         ))

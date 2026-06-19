@@ -292,7 +292,7 @@ export function PharmacistHome() {
                   </button>
                </div>
                <div className="flex-1 flex flex-col items-center justify-center min-h-[250px] relative">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height={250}>
                      <PieChart>
                         <Pie
                            data={pieData}
@@ -334,7 +334,7 @@ export function PharmacistHome() {
                   </button>
                </div>
                <div className="flex-1 min-h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height={250}>
                      <BarChart data={salesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                         <XAxis 
@@ -348,7 +348,7 @@ export function PharmacistHome() {
                            axisLine={false} 
                            tickLine={false} 
                            tick={{fill: '#9CA3AF', fontSize: 12}}
-                           tickFormatter={(value) => `$${value >= 1000 ? (value/1000).toFixed(1) + 'k' : value}`}
+                           tickFormatter={(value) => `${value >= 1000 ? (value/1000).toFixed(1) + 'k' : value} XAF`}
                         />
                         <Tooltip 
                            cursor={{fill: 'rgba(0,0,0,0.02)'}}

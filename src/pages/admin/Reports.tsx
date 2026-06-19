@@ -106,7 +106,7 @@ export function AdminReports() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 shadow-sm border border-slate-100 h-96">
                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6"> {t('weekly_revenue_overview', 'Weekly Revenue Overview')} </h3>
-                 <ResponsiveContainer width="100%" height="80%">
+                 <ResponsiveContainer width="100%" height={280}>
                     <BarChart data={mockChartData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
@@ -126,7 +126,7 @@ export function AdminReports() {
                        <Truck className="text-indigo-600" size={20} /> Driver Fleet Performance
                     </h3>
                  </div>
-                 <ResponsiveContainer width="100%" height="80%">
+                 <ResponsiveContainer width="100%" height={280}>
                     <LineChart data={driverPerformanceData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                       <XAxis dataKey="driver" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />

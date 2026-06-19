@@ -170,27 +170,40 @@ export function AdminProducts() {
 
   const handleGenerateInfo = async () => {
     if (!window.confirm("Are you sure you want to generate description, effects, and directions for all products that are missing them?")) return;
-    toast.loading("Generating product information...", { id: 'gen_info' });
+    toast.loading("Generating product information through AI...", { id: 'gen_info' });
     try {
+        const missingInfoProducts = products.filter(p => !p.description || !p.effects || !p.directions).slice(0, 50); // limit to a batch of 50
+        
+        if (missingInfoProducts.length === 0) {
+            toast.success("All products already have their information!", { id: 'gen_info' });
+            return;
+        }
+
+        const res = await fetch('/api/admin/generate-info', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ products: missingInfoProducts })
+        });
+        const data = await res.json();
+        
+        if (!res.ok || !data.success) throw new Error(data.error || "Failed to generate info");
+
         let updatedCount = 0;
-        const promises = products.map(async (p) => {
-           if (!p.description || !p.effects || !p.directions) {
-               const description = p.description || `${p.name} is a high-quality pharmaceutical product available in ${p.dosage} format. It is commonly recommended within the ${p.category} category. Ensure to follow professional medical advice when using this product.`;
-               const effects = p.effects || `Provides reliable relief and treatment associated with ${p.category?.toLowerCase() || 'general conditions'}. May cause mild drowsiness, stomach upset, or dizziness in some instances.`;
-               const directions = p.directions || `For oral use: Take exactly as prescribed. Do not exceed the recommended dose. Take with a full glass of water. If applied topically or injected, ensure it is administered by a qualified professional or according to the leaflet instructions.`;
-               
-               await updateDoc(doc(db, "products", p.id), {
-                   description,
-                   effects,
-                   directions
+        const promises = data.updates.map(async (update: any) => {
+           if (update.id && update.description) {
+               await updateDoc(doc(db, "products", update.id), {
+                   description: update.description,
+                   effects: update.effects,
+                   directions: update.directions
                });
                updatedCount++;
            }
         });
+        
         await Promise.all(promises);
-        toast.success(`Successfully updated ${updatedCount} products with detailed information!`, { id: 'gen_info' });
-    } catch (e) {
-        toast.error("Error generating information", { id: 'gen_info' });
+        toast.success(`Successfully updated ${updatedCount} products using AI!`, { id: 'gen_info' });
+    } catch (e: any) {
+        toast.error(`Error: ${e.message}`, { id: 'gen_info' });
         console.error("Info gen error:", e);
     }
   };
@@ -228,14 +241,15 @@ export function AdminProducts() {
            try {
               // Strict mapping to match Supabase database expectations
               const formattedProducts = results.data.map((row: any) => ({
-                 nom_commercial: row.Name || row.Brand || '',
+                 commercial_name: row.Name || row.Brand || '',
+                 dci: row.DCI || row.dci || row.description || row.Name || row.Brand || '',
                  dosage: row.Dosage || '',
                  categorie_ux: row.Category || 'Uncategorized',
                  prix: Number(row.Price) || 0,
                  stock: Number(row.Stock) || 0,
                  image_url: row.ImageURL || '',
                  ordonnance_requise: String(row.RequiresPrescription).toLowerCase() === 'true'
-              })).filter((item: any) => item.nom_commercial); // filter out rows without a name
+              })).filter((item: any) => item.commercial_name); // filter out rows without a name
               
               if (formattedProducts.length === 0) {
                  toast.error("Aucun produit valide trouvé dans le CSV. Assurez-vous que 'Name' ou 'Brand' sont fournis.", { id: 'csv' });

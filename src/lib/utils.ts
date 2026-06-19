@@ -19,7 +19,7 @@ export function parseDate(dateObj: any): Date | null {
 }
 
 export function formatCurrency(amount: number | undefined) {
-  if (amount === undefined) return "0 XAF";
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' XAF';
+  if (amount === undefined) return "0 FCFA";
+  return new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';
 }
 

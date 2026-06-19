@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { BarChart2, TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react';
+import { formatCurrency } from '../../lib/utils';
 
 export function PharmacistSales() {
   const { t } = useTranslation();
@@ -35,7 +36,7 @@ export function PharmacistSales() {
             </div>
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">{t('total_revenue', 'Total Revenue')}</p>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">0.00 $</h3>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(0)}</h3>
             </div>
           </div>
           <div className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400 font-medium">

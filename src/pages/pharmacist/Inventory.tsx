@@ -1,12 +1,14 @@
-import { ArrowLeft, Plus, Search, Filter, MoreHorizontal, Package, Upload, Loader2, Image as ImageIcon, X, Save, Settings, ArrowUpRight, ChevronDown } from "lucide-react";
+import { ArrowLeft, Plus, Search, Filter, MoreHorizontal, Package, Upload, Loader2, Image as ImageIcon, X, Save, Settings, ArrowUpRight, ChevronDown, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, FormEvent, useRef } from "react";
+import React, { useState, useEffect, FormEvent, useRef } from "react";
 import { collection, query, where, getDocs, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, deleteDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType, supabase } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { useTranslation } from "react-i18next";
 import { formatCurrency } from "../../lib/utils";
 import dayjs from "dayjs";
+import toast from "react-hot-toast";
+import Papa from "papaparse";
 
 export function PharmacistInventory() {
   const { t } = useTranslation();
@@ -73,6 +75,94 @@ export function PharmacistInventory() {
     };
   }, [user, navigate]);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDownloadTemplate = () => {
+    const csvContent = [
+      ["dci", "nom_commercial", "dosage", "forme", "categorie_ux", "stock", "price"],
+      ["Paracétamol", "Doliprane", "500mg", "Comprimé", "Douleurs & Fièvre", "50", "1500"],
+      ["Ibuprofène", "Advil", "400mg", "Comprimé", "Douleurs & Fièvre", "30", "2000"],
+    ].map(e => e.map(val => `"${val.replace(/"/g, '""')}"`).join(",")).join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "inventory_import_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("CSV download template generated successfully!");
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+     const file = e.target.files?.[0];
+     if (!file || !pharmacyId) return;
+     
+     toast.loading("Parsing CSV...", { id: 'csv' });
+     Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async (results) => {
+           const csvData = results.data as any[];
+           
+           // Exemple de mapping à l'intérieur de la fonction Papa.parse
+           const formattedProducts = csvData.map(row => ({
+               commercial_name: row.Name || row.Brand || row.nom_commercial,
+               dosage: row.Dosage || row.dosage,
+               prix: Number(row.Price || row.price || 0),
+               stock: Number(row.Stock || row.stock || 0),
+               dci: row.dci || row.description || '',
+               categorie_ux: row.Category || row.categorie_ux || 'Uncategorized',
+               forme: row.form || row.forme || '',
+               ordonnance_requise: String(row.ordonnance_requise || row.RequiresPrescription).toLowerCase() === 'true'
+           })).filter(item => item.commercial_name);
+
+           toast.loading(`Processing ${formattedProducts.length} products...`, { id: 'csv' });
+           
+           try {
+              let addedCount = 0;
+              for (const row of formattedProducts) {
+                 const name = row.commercial_name;
+                 
+                 // Check if it already exists in the pharmacist's inventory
+                 const exists = products.find(p => p.name === name || p.commercial_name === name);
+                 if (exists) {
+                    await updateDoc(doc(db, 'products', exists.id), {
+                       stock: exists.stock + row.stock,
+                       price: row.prix
+                    });
+                 } else {
+                    await addDoc(collection(db, 'products'), {
+                       name,
+                       commercial_name: name,
+                       dci: row.dci,
+                       category: row.categorie_ux,
+                       form: row.forme,
+                       dosage: row.dosage,
+                       price: row.prix,
+                       stock: row.stock,
+                       is_prescription_required: row.ordonnance_requise,
+                       needsPrescription: row.ordonnance_requise,
+                       pharmacyId: pharmacyId,
+                       createdAt: serverTimestamp(),
+                    });
+                 }
+                 addedCount++;
+              }
+              toast.success(`Imported/Updated ${addedCount} products successfully!`, { id: 'csv' });
+           } catch(err: any) {
+              toast.error(`Error importing products: ${err.message || 'Unknown error'}`, { id: 'csv' });
+              console.error(err);
+           }
+           if (fileInputRef.current) fileInputRef.current.value = "";
+        },
+        error: (error) => {
+           toast.error(`CSV Parse Error: ${error.message}`, { id: 'csv' });
+        }
+     });
+  };
+
   const handleAddProduct = async (e: FormEvent) => {
     e.preventDefault();
     if (!pharmacyId || !user || !selectedGlobalProduct) return;
@@ -124,6 +214,21 @@ export function PharmacistInventory() {
           </div>
           
           <div className="flex items-center gap-4">
+             <input 
+                 type="file" 
+                 accept=".csv" 
+                 className="hidden" 
+                 ref={fileInputRef} 
+                 onChange={handleFileUpload} 
+             />
+             <button onClick={handleDownloadTemplate} className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-full flex items-center gap-2 text-sm font-bold shadow-sm transition-colors">
+               <Download size={16} />
+               <span className="hidden sm:inline">Template</span>
+             </button>
+             <button onClick={() => fileInputRef.current?.click()} className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-full flex items-center gap-2 text-sm font-bold shadow-sm transition-colors">
+               <Upload size={16} />
+               <span className="hidden sm:inline">Import CSV</span>
+             </button>
              <button onClick={() => setShowAdd(!showAdd)} className="bg-[#0B3B3C] hover:bg-[#082a2b] text-white px-5 py-2.5 rounded-full flex items-center gap-2 text-sm font-bold shadow-md transition-colors">
                <Plus size={16} />
                <span>Add Stock</span>

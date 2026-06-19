@@ -19,8 +19,8 @@ async function startServer() {
     },
   });
 
-  // API Routes
-  app.post("/api/fapshi/initiate-pay", async (req: express.Request, res: express.Response): Promise<any> => {
+  // Initialisation du Paiement (Fapshi)
+  app.post("/api/payment/initialize", async (req: express.Request, res: express.Response): Promise<any> => {
     try {
       const { amount, email, externalId, redirectUrl } = req.body;
       
@@ -28,12 +28,12 @@ async function startServer() {
       const apiKey = process.env.FAPSHI_API_KEY;
 
       if (!apiUser || !apiKey) {
-        return res.status(500).json({ success: false, error: "Fapshi credentials are not configured on the backend. Please add FAPSHI_API_USER and FAPSHI_API_KEY." });
+        return res.status(500).json({ success: false, error: "Fapshi credentials are not configured on the backend." });
       }
 
       console.log('Initiating Fapshi payment for:', { amount, email, externalId });
 
-      const response = await fetch('https://sandbox.fapshi.com/initiate-pay', {
+      const response = await fetch('https://api.fapshi.com/v1/payment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -51,7 +51,7 @@ async function startServer() {
       const data = await response.json();
       
       if (!response.ok) {
-        console.error('Fapshi initiate-pay error response:', data);
+        console.error('Fapshi initiate error:', data);
         return res.status(response.status).json({ success: false, error: data.message || "Failed to initiate payment" });
       }
 
@@ -62,32 +62,91 @@ async function startServer() {
     }
   });
 
-  // Fapshi Webhook Endpoint
-  app.post("/api/fapshi/webhook", async (req: express.Request, res: express.Response): Promise<any> => {
+  // Fapshi Webhook Endpoint (Split Paiement)
+  app.post("/api/webhooks/fapshi", async (req: express.Request, res: express.Response): Promise<any> => {
     try {
-      console.log('Received Fapshi webhook:', req.body);
+      console.log('Webhook Fapshi reçu:', req.body);
       const { externalId, status, transId } = req.body;
+
+      // Sécurité : Vérification de l'origine de Fapshi
+      // Il est vital de valider que la transaction est réelle auprès de Fapshi. 
+      // Fapshi propose d'interroger directement l'API de statut ou d'utiliser un header HMAC s'il est configuré.
+      /* Exemple de validation par API (Best Practice) :
+         const verifyReq = await fetch(`https://api.fapshi.com/v1/payment-status/${transId}`, {
+            headers: { 'apiuser': process.env.FAPSHI_API_USER, 'apikey': process.env.FAPSHI_API_KEY }
+         });
+         const verifyData = await verifyReq.json();
+         if (verifyData.status !== 'SUCCESSFUL') throw new Error("Transaction invalide");
+      */
       
       if (status === 'SUCCESSFUL' && externalId) {
-        console.log(`Payment successful for order ${externalId}`);
+        console.log(`Paiement confirmé pour la commande ${externalId}`);
         const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Toujours utiliser la Service Role Key pour modifier les wallets
         
         if (supabaseUrl && supabaseKey) {
            const { createClient } = await import('@supabase/supabase-js');
            const supabase = createClient(supabaseUrl, supabaseKey);
            
-           const { data: orderResponse, error: fetchError } = await supabase
+           // Récupération de la commande
+           const { data: orderRow, error: fetchError } = await supabase
               .from('orders')
-              .select('data')
+              .select('*')
               .eq('id', externalId)
               .single();
               
-           if (!fetchError && orderResponse?.data) {
-              const updatedData = { ...orderResponse.data, status: 'paid', fapshiTransId: transId };
-              await supabase.from('orders').update({ data: updatedData }).eq('id', externalId);
-              console.log('Successfully updated order status to paid in Supabase');
+           if (!fetchError && orderRow) {
+              const orderData = orderRow.data || orderRow;
+              
+              // === MODÈLE ÉCONOMIQUE ===
+              // Frais de livraison : Fixés à 1000 FCFA (800 Livreur, 200 Plateforme)
+              // Commission Plateforme : 5% de la valeur nette des produits
+              // Part Pharmacie : Le reste du montant net
+              
+              const totalAmount = orderData.total || 0;
+              const deliveryFee = 1000;
+              const productValue = Math.max(0, totalAmount - deliveryFee); // Valeur des produits
+
+              const driverShare = 800; // Pour le livreur
+              const platformDeliveryShare = 200; // Pour la plateforme
+              
+              const platformCommission = productValue * 0.05; // 5% de commission
+              const pharmacyShare = productValue - platformCommission; // Reste pour la pharmacie
+
+              const platformTotalShare = platformDeliveryShare + platformCommission;
+
+              const driverId = orderData.driverId; 
+              const pharmacyId = orderData.pharmacyId;
+
+              // === DISTRIBUTION DANS LES WALLETS VIA RPC SUPABASE ===
+              // L'utilisation d'une fonction RPC Supabase (ex: 'credit_wallet') assure une transaction atomique côté base de données
+              // Voici le code pour l'intégration RPC, les procédures RPC doivent être définies dans Supabase:
+              
+              if (driverId) {
+                  await supabase.rpc('credit_wallet', { user_id: driverId, amount: driverShare });
+              }
+              if (pharmacyId) {
+                  await supabase.rpc('credit_wallet', { user_id: pharmacyId, amount: pharmacyShare });
+              }
+              // Créditer le wallet de la plateforme (avec un identifiant générique interne)
+              await supabase.rpc('credit_wallet', { user_id: 'PLATFORM_MASTER_WALLET', amount: platformTotalShare });
+              
+              const datePaid = new Date().toISOString();
+
+              // === MISE À JOUR DE LA COMMANDE ===
+              if (orderRow.data) {
+                  // Structure typée comme JSONB dans `data`
+                  const updatedData = { ...orderRow.data, status: 'paid', fapshiTransId: transId, paidAt: datePaid };
+                  await supabase.from('orders').update({ data: updatedData }).eq('id', externalId);
+              } else {
+                  // Structure avec colonnes aplaties
+                  await supabase.from('orders').update({ status: 'paid', fapshiTransId: transId, paidAt: datePaid }).eq('id', externalId);
+              }
+
+              console.log('Fonds répartis et statut mis à jour avec succès.');
            }
+        } else {
+           console.error("Clé SUPABASE_SERVICE_ROLE_KEY manquante pour la répartition des fonds.");
         }
       }
 

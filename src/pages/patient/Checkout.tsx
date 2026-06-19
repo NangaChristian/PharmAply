@@ -213,7 +213,7 @@ export function PatientCheckout() {
       // Fapshi Sandbox API handling
       if (paymentMethod === 'Fapshi') {
          try {
-            const fapshiRes = await fetch('/api/fapshi/initiate-pay', {
+            const fapshiRes = await fetch('/api/payment/initialize', {
                method: 'POST',
                headers: {
                   'Content-Type': 'application/json'

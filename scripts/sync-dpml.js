@@ -1,6 +1,6 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
-const { createClient } = require('@supabase/supabase-js');
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import { createClient } from '@supabase/supabase-js';
 
 // 1. Initialisation de Supabase avec STRICTEMENT des variables d'environnement
 const SUPABASE_URL = process.env.SUPABASE_URL;

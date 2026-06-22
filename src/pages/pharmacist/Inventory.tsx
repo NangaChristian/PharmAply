@@ -1,6 +1,6 @@
-import { ArrowLeft, Plus, Search, Filter, MoreHorizontal, Package, Upload, Loader2, Image as ImageIcon, X, Save, Settings, ArrowUpRight, ChevronDown, Download } from "lucide-react";
+import { ArrowLeft, Plus, Search, Filter, MoreHorizontal, Package, Upload, Loader2, Image as ImageIcon, X, Save, Settings, ArrowUpRight, ChevronDown, Download, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import React, { useState, useEffect, FormEvent, useRef } from "react";
+import React, { useState, useEffect, FormEvent, useRef, useMemo } from "react";
 import { collection, query, where, getDocs, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, deleteDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType, supabase } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
@@ -20,11 +20,13 @@ export function PharmacistInventory() {
   const [showAdd, setShowAdd] = useState(false);
   
   const [selectedGlobalProduct, setSelectedGlobalProduct] = useState("");
+  const [globalSearch, setGlobalSearch] = useState("");
   const [newProductPrice, setNewProductPrice] = useState("");
   const [newProductStock, setNewProductStock] = useState("");
   const [newProductExpiry, setNewProductExpiry] = useState("");
   const [uploading, setUploading] = useState(false);
   const [pharmacyId, setPharmacyId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"recent" | "priceAsc" | "nameAsc">("recent");
 
   useEffect(() => {
     let unsubscribeProducts: () => void;
@@ -129,19 +131,19 @@ export function PharmacistInventory() {
                  const exists = products.find(p => p.name === name || p.commercial_name === name);
                  if (exists) {
                     await updateDoc(doc(db, 'products', exists.id), {
-                       stock: exists.stock + row.stock,
-                       price: row.prix
+                       stock: (exists.stock || 0) + (row.stock || 0),
+                       price: row.prix || exists.price || 0
                     });
                  } else {
                     await addDoc(collection(db, 'products'), {
                        name,
-                       commercial_name: name,
-                       dci: row.dci,
-                       category: row.categorie_ux,
-                       form: row.forme,
-                       dosage: row.dosage,
-                       price: row.prix,
-                       stock: row.stock,
+                       commercial_name: name || "Unnamed Product",
+                       dci: row.dci || "",
+                       category: row.categorie_ux || "Uncategorized",
+                       form: row.forme || "",
+                       dosage: row.dosage || "",
+                       price: row.prix || 0,
+                       stock: row.stock || 0,
                        is_prescription_required: row.ordonnance_requise,
                        needsPrescription: row.ordonnance_requise,
                        pharmacyId: pharmacyId,
@@ -173,29 +175,58 @@ export function PharmacistInventory() {
       if (!selectedProduct) throw new Error("Invalid product selected");
 
       await addDoc(collection(db, 'products'), {
-        name: selectedProduct.commercial_name || selectedProduct.name,
-        commercial_name: selectedProduct.commercial_name,
-        dci: selectedProduct.dci,
-        category: selectedProduct.category,
-        ux_category_id: selectedProduct.ux_category_id,
-        form: selectedProduct.form,
+        name: selectedProduct.commercial_name || selectedProduct.name || "Unnamed Product",
+        commercial_name: selectedProduct.commercial_name || selectedProduct.name || "Unnamed Product",
+        dci: selectedProduct.dci || "",
+        category: selectedProduct.category || "Uncategorized",
+        ux_category_id: selectedProduct.ux_category_id || "",
+        form: selectedProduct.form || "",
         dosage: selectedProduct.dosage || '',
         price: parseFloat(newProductPrice),
         stock: parseInt(newProductStock),
-        expiryDate: newProductExpiry,
+        expiryDate: newProductExpiry || "",
         is_prescription_required: selectedProduct.is_prescription_required || false,
         needsPrescription: selectedProduct.is_prescription_required || false,
         pharmacyId: pharmacyId,
         createdAt: serverTimestamp(),
       });
       setShowAdd(false);
-      setSelectedGlobalProduct(""); setNewProductPrice(""); setNewProductStock(""); setNewProductExpiry("");
+      setSelectedGlobalProduct(""); setGlobalSearch(""); setNewProductPrice(""); setNewProductStock(""); setNewProductExpiry("");
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'products');
     } finally {
       setUploading(false);
     }
   };
+
+  const filteredGlobalProducts = useMemo(() => {
+    if (!globalSearch.trim()) return globalProducts.slice(0, 50); // Show max 50 initially to rendering performance
+    const q = globalSearch.toLowerCase();
+    return globalProducts.filter(p => 
+      (p.commercial_name || p.name || '').toLowerCase().includes(q) ||
+      (p.dci || '').toLowerCase().includes(q)
+    ).slice(0, 50);
+  }, [globalProducts, globalSearch]);
+
+  const sortedStockItems = useMemo(() => {
+    let sorted = [...products];
+    if (sortBy === 'priceAsc') {
+      sorted.sort((a, b) => (a.price || 0) - (b.price || 0));
+    } else if (sortBy === 'nameAsc') {
+      sorted.sort((a, b) => {
+        const nameA = (a.name || a.commercial_name || '').toLowerCase();
+        const nameB = (b.name || b.commercial_name || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+    } else if (sortBy === 'recent') {
+      sorted.sort((a, b) => {
+        const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.created_at ? new Date(a.created_at).getTime() : 0);
+        const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.created_at ? new Date(b.created_at).getTime() : 0);
+        return timeB - timeA;
+      });
+    }
+    return sorted;
+  }, [products, sortBy]);
 
   return (
     <div className="flex-1 bg-transparent flex flex-col relative h-full overflow-hidden">
@@ -252,17 +283,84 @@ export function PharmacistInventory() {
                  </button>
                </div>
                
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div className="col-span-1 md:col-span-2">
-                   <label className="text-xs font-bold text-gray-500 mb-1 block"> Select Global Product </label>
-                   <select required value={selectedGlobalProduct} onChange={e => setSelectedGlobalProduct(e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-3 rounded-xl text-sm outline-none shadow-sm transition">
-                      <option value="" disabled> Select a product... </option>
-                      {globalProducts.map((p, idx) => (
-                         <option key={`${p.id}-${idx}`} value={p.id}>
-                            {p.commercial_name || p.name} {p.dci ? `[${p.dci}]` : ''} {p.dosage ? `(${p.dosage})` : ''}
-                         </option>
-                      ))}
-                   </select>
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                 <div className="col-span-1 md:col-span-2 lg:col-span-3">
+                   <label className="text-xs font-bold text-gray-500 mb-2 block"> Search & Select Global Product </label>
+                   <div className="space-y-3">
+                     <div className="relative">
+                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                       <input
+                         type="text"
+                         placeholder="Search master catalog..."
+                         value={globalSearch}
+                         onChange={(e) => setGlobalSearch(e.target.value)}
+                         className="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 py-2.5 pl-9 pr-4 rounded-xl text-sm outline-none focus:border-emerald-500 transition shadow-sm"
+                       />
+                     </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto p-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl custom-scrollbar">
+                       {filteredGlobalProducts.map((p, idx) => {
+                         const pName = p.commercial_name || p.name;
+                         const isAdded = products.some(
+                           (prod) => (prod.commercial_name === pName || prod.name === pName)
+                         );
+                         const isSelected = selectedGlobalProduct === p.id;
+                         return (
+                           <div
+                             key={`${p.id}-${idx}`}
+                             onClick={() => {
+                               if (!isAdded) setSelectedGlobalProduct(p.id);
+                             }}
+                             className={`relative p-3 rounded-xl border flex flex-col justify-between transition-all ${
+                               isAdded
+                                 ? "opacity-60 cursor-not-allowed bg-gray-100 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
+                                 : isSelected
+                                 ? "cursor-pointer bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 ring-1 ring-emerald-500"
+                                 : "cursor-pointer bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700"
+                             }`}
+                           >
+                             <div className="flex items-start justify-between gap-2 mb-2">
+                               <div className="flex-1">
+                                 <h4 className="font-bold text-sm text-gray-900 dark:text-white line-clamp-2">
+                                   {pName}
+                                 </h4>
+                                 {p.dci && (
+                                   <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
+                                     {p.dci}
+                                   </p>
+                                 )}
+                               </div>
+                               {(isAdded || isSelected) && (
+                                 <div
+                                   className={`shrink-0 rounded-full ${
+                                     isAdded ? "text-gray-400" : "text-emerald-500"
+                                   }`}
+                                 >
+                                   <CheckCircle size={18} />
+                                 </div>
+                               )}
+                             </div>
+                             <div className="flex items-center gap-2 mt-auto">
+                               {p.dosage && (
+                                 <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                   {p.dosage}
+                                 </span>
+                               )}
+                               {p.form && (
+                                 <span className="text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full whitespace-nowrap overflow-hidden text-ellipsis">
+                                   {p.form}
+                                 </span>
+                               )}
+                             </div>
+                           </div>
+                         );
+                       })}
+                       {filteredGlobalProducts.length === 0 && (
+                         <div className="col-span-full py-8 text-center text-sm font-medium text-gray-500">
+                           No products found in master catalog.
+                         </div>
+                       )}
+                     </div>
+                   </div>
                  </div>
 
                  <div className="col-span-1">
@@ -298,72 +396,55 @@ export function PharmacistInventory() {
                   <button className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 shadow-sm">
                      <Settings size={14} /> Filter <ChevronDown size={12} />
                   </button>
-                  <button className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 shadow-sm">
-                     <ArrowUpRight size={14} /> Sort By <ChevronDown size={12} />
-                  </button>
+                  <select 
+                     value={sortBy} 
+                     onChange={(e) => setSortBy(e.target.value as "recent" | "priceAsc" | "nameAsc")}
+                     className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 shadow-sm outline-none"
+                  >
+                     <option value="recent">Recent Additions</option>
+                     <option value="priceAsc">Price (Low to High)</option>
+                     <option value="nameAsc">Name (A-Z)</option>
+                  </select>
                </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-100 dark:border-slate-700 overflow-hidden shadow-sm">
-               <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                     <thead>
-                        <tr className="border-b border-gray-100 dark:border-slate-700">
-                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Product Name</th>
-                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Category</th>
-                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Stock</th>
-                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Price</th>
-                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Expiry</th>
-                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase flex items-center gap-1">Actions</th>
-                        </tr>
-                     </thead>
-                     <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
-                        {loading ? (
-                           <tr><td colSpan={6} className="py-8 text-center text-gray-500 text-sm animate-pulse">Loading inventory...</td></tr>
-                        ) : products.length === 0 ? (
-                           <tr><td colSpan={6} className="py-8 text-center text-gray-500 text-sm">No items in your inventory. Add some from the master catalog.</td></tr>
-                        ) : (
-                           products.map((item) => (
-                              <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer" onClick={() => navigate(`/pharmacist/inventory/${item.id}`)}>
-                                 <td className="py-4 px-6">
-                                    <div className="flex items-center gap-3">
-                                       <div className="w-10 h-10 rounded-xl bg-[#FAFBFC] dark:bg-slate-900 border border-gray-100 dark:border-slate-700 flex items-center justify-center shrink-0">
-                                          <Package className="text-gray-400" size={16} />
-                                       </div>
-                                       <div>
-                                          <span className="font-bold text-gray-800 dark:text-white text-sm">{item.name || item.commercial_name || 'Unnamed Product'}</span>
-                                          <p className="text-xs text-gray-500">{item.dosage || item.form || 'Various Details'}</p>
-                                       </div>
-                                    </div>
-                                 </td>
-                                 <td className="py-4 px-6 text-sm font-medium text-gray-600 dark:text-gray-300">
-                                    {item.category || item.ux_category_id || 'Uncategorized'}
-                                 </td>
-                                 <td className="py-4 px-6">
-                                    <div className="flex items-center gap-2 bg-[#FAFBFC] dark:bg-slate-900 px-3 py-1.5 rounded-full w-max border border-gray-100 dark:border-slate-700">
-                                       <span className={`text-xs font-bold ${item.stock < 10 ? 'text-red-600' : 'text-[#0B3B3C] dark:text-gray-300'}`}>
-                                          {item.stock} Units
-                                       </span>
-                                    </div>
-                                 </td>
-                                 <td className="py-4 px-6 font-bold text-gray-900 dark:text-white text-sm">
-                                    {formatCurrency(item.price || 0)}
-                                 </td>
-                                 <td className="py-4 px-6 text-xs font-medium text-gray-500 dark:text-gray-400">
-                                    {item.expiryDate ? dayjs(item.expiryDate).format('MMM yyyy') : 'N/A'}
-                                 </td>
-                                 <td className="py-4 px-6 text-xs">
-                                     <button className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-full text-gray-600 dark:text-gray-300 shadow-sm hover:bg-gray-50" onClick={(e) => { e.stopPropagation(); navigate(`/pharmacist/inventory/${item.id}`); }}>
-                                        <ArrowUpRight size={14} />
-                                     </button>
-                                 </td>
-                              </tr>
-                           ))
-                        )}
-                     </tbody>
-                  </table>
+            {loading ? (
+               <div className="py-12 text-center text-gray-500 text-sm animate-pulse">Loading inventory...</div>
+            ) : sortedStockItems.length === 0 ? (
+               <div className="py-12 text-center text-gray-500 text-sm">No items in your inventory. Add some from the master catalog.</div>
+            ) : (
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {sortedStockItems.map((item) => (
+                     <div key={item.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 p-5 flex flex-col justify-between hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-800 transition-all cursor-pointer" onClick={() => navigate(`/pharmacist/inventory/${item.id}`)}>
+                        <div>
+                           <div className="flex justify-between items-start mb-3">
+                              <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+                                 <Package className="text-gray-400" size={18} />
+                              </div>
+                              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${item.stock < 10 ? 'bg-red-50 text-red-600 dark:bg-red-900/30' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30'}`}>
+                                 {item.stock} in stock
+                              </span>
+                           </div>
+                           <h3 className="font-bold text-sm text-gray-900 dark:text-white line-clamp-1 mb-1">
+                              {item.name || item.commercial_name || 'Unnamed Product'}
+                           </h3>
+                           <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mb-4">
+                              {item.dosage || item.form || 'Various Details'}
+                           </p>
+                        </div>
+                        <div className="flex items-center justify-between mt-auto">
+                           <div className="flex flex-col">
+                              <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-0.5">Price</span>
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">{formatCurrency(item.price || 0)}</span>
+                           </div>
+                           <button className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-50 dark:bg-slate-900 text-gray-500 dark:text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
+                              <ArrowUpRight size={14} />
+                           </button>
+                        </div>
+                     </div>
+                  ))}
                </div>
-            </div>
+            )}
          </div>
       </div>
     </div>

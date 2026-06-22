@@ -199,8 +199,9 @@ const toDatabaseRecord = (table: string, id: string, docData: any) => {
         form: docData.form || '',
         is_prescription_required: docData.requiresPrescription !== undefined ? !!docData.requiresPrescription : (!!docData.is_prescription_required || false),
         price: docData.price ? Number(docData.price) : 0,
+        stock: docData.stock ? Number(docData.stock) : 0,
         pharmacy_id: docData.pharmacyId || docData.pharmacy_id || null,
-        ux_category_id: docData.category || docData.ux_category_id || null,
+        ux_category_id: docData.ux_category_id || docData.category_id || null,
         symptoms: docData.symptoms || [],
         created_at: docData.createdAt || docData.created_at || new Date().toISOString()
      };
@@ -208,12 +209,12 @@ const toDatabaseRecord = (table: string, id: string, docData: any) => {
   if (table === 'produits_patients') {
      return {
         id: id,
-        commercial_name: docData.name || docData.commercial_name || docData.nom_commercial || '',
+        nom_commercial: docData.name || docData.commercial_name || docData.nom_commercial || '',
         dci: docData.description || docData.dci || '',
         dosage: docData.dosage || '',
         form: docData.form || '',
         is_prescription_required: docData.requiresPrescription !== undefined ? !!docData.requiresPrescription : (!!docData.is_prescription_required || false),
-        ux_category: docData.category || docData.ux_category || null,
+        categorie_ux: docData.category || docData.categorie_ux || docData.ux_category || null,
         created_at: docData.createdAt || docData.created_at || new Date().toISOString()
      };
   }
@@ -237,8 +238,8 @@ const parseRecordData = (table: string, row: any) => {
      parsed = { ...row.data };
   } else if (table === 'products') {
      parsed = {
-        name: row.nom_commercial || row.commercial_name || row.name || '',
-        commercial_name: row.nom_commercial || row.commercial_name || row.name || '',
+        name: row.commercial_name || row.nom_commercial || row.name || '',
+        commercial_name: row.commercial_name || row.nom_commercial || row.name || '',
         nom_commercial: row.nom_commercial || row.commercial_name || row.name || '',
         description: row.dci || row.description || '',
         dci: row.dci || row.description || '',
@@ -266,7 +267,7 @@ const parseRecordData = (table: string, row: any) => {
         form: row.form || '',
         requiresPrescription: row.is_prescription_required !== undefined ? !!row.is_prescription_required : (!!row.requires_prescription || false),
         is_prescription_required: row.is_prescription_required !== undefined ? !!row.is_prescription_required : (!!row.requires_prescription || false),
-        category: row.ux_category || '',
+        category: row.categorie_ux || row.ux_category || '',
         createdAt: row.created_at || null,
         ...row 
      };

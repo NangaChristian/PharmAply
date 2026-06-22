@@ -112,18 +112,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshUser = async () => {
     setRefreshToggle(prev => !prev);
-    const { data } = await supabase.auth.getSession();
-    if (data.session?.user) {
-      const currentUser = {
-        uid: data.session.user.id,
-        email: data.session.user.email,
-        emailVerified: data.session.user.email_confirmed_at != null,
-        displayName: data.session.user.user_metadata?.displayName,
-        photoURL: data.session.user.user_metadata?.photoURL,
-      };
-      // Note: we might not want to mutate auth.currentUser directly if impersonating
-      // but it's okay for now.
-      setActualUser(currentUser);
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+         if (error.message.includes('Refresh Token')) {
+           console.warn('Session expired, ignoring refresh');
+         }
+      } else if (data?.session?.user) {
+        const currentUser = {
+          uid: data.session.user.id,
+          email: data.session.user.email,
+          emailVerified: data.session.user.email_confirmed_at != null,
+          displayName: data.session.user.user_metadata?.displayName,
+          photoURL: data.session.user.user_metadata?.photoURL,
+        };
+        // Note: we might not want to mutate auth.currentUser directly if impersonating
+        // but it's okay for now.
+        setActualUser(currentUser);
+      }
+    } catch (e) {
+      console.warn("Failed to refresh user session:", e);
     }
   };
 

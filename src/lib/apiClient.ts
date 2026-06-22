@@ -9,10 +9,17 @@ import { supabase } from './supabase';
 export async function fetchApi(url: string, options: RequestInit = {}): Promise<Response> {
   // 1. Always call getSession() to guarantee token freshness.
   // This automatically triggers background refresh if the token is expired but valid.
-  const { data, error } = await supabase.auth.getSession();
+  let data, error;
+  try {
+     const res = await supabase.auth.getSession();
+     data = res.data;
+     error = res.error;
+  } catch (err: any) {
+     error = err;
+  }
 
   // 2. Abort if no session is returned (Refresh Token failure/missing)
-  if (error || !data.session) {
+  if (error || !data?.session) {
     console.error("Session fetch failed, redirecting to login:", error?.message);
     if (window.location.pathname !== '/' && window.location.pathname !== '/admin-login') {
        window.location.href = '/';

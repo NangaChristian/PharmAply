@@ -6,6 +6,7 @@ import { db } from '../../lib/firebase';
 import { useTranslation } from "react-i18next";
 import { ProductCard } from '../../components/ProductCard';
 import { PharmacyCard } from '../../components/PharmacyCard';
+import { PharmacyHeatmap } from '../../components/PharmacyHeatmap';
 import { getCategoryIcon } from '../../lib/icons';
 import { useTheme } from '../../components/ThemeProvider';
 
@@ -188,6 +189,16 @@ export function PatientSearch() {
            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">{t('loading_data', 'Loading data...')}</p>
         ) : (
           <>
+            {!searchQuery && filteredPharmacies.length > 0 && (
+               <div>
+                  <div className="flex items-center gap-2 mb-4">
+                     <Store size={18} className="text-indigo-500" />
+                     <h3 className="font-bold text-gray-900 dark:text-white">{t('delivery_demand', 'Delivery Demand Map')}</h3>
+                  </div>
+                  <PharmacyHeatmap pharmacies={filteredPharmacies} />
+               </div>
+            )}
+
             {searchQuery && filteredPharmacies.length > 0 && (
                <div>
                  <div className="flex items-center gap-2 mb-4">

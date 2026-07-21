@@ -28,6 +28,44 @@ export function PharmacistInventory() {
   const [pharmacyId, setPharmacyId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"recent" | "priceAsc" | "nameAsc">("recent");
 
+  const fetchInventory = async (pharmId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('pharmacy_id', pharmId);
+        
+      if (error) {
+        console.error("Error fetching inventory:", error);
+        return;
+      }
+      
+      if (data) {
+        // Map to expected format for the UI
+        const mappedProducts = data.map(row => ({
+          id: row.id,
+          name: row.commercial_name || row.nom_commercial || row.name || '',
+          commercial_name: row.commercial_name || row.nom_commercial || row.name || '',
+          dci: row.dci || row.description || '',
+          dosage: row.dosage || '',
+          form: row.form || '',
+          price: row.price ? Number(row.price) : 0,
+          stock: row.stock ? Number(row.stock) : 0,
+          expiryDate: row.expiry_date || '',
+          product_id: row.product_id || '',
+          category: row.ux_category_id || '',
+          pharmacyId: row.pharmacy_id || null,
+          createdAt: row.created_at || null,
+        }));
+        setProducts(mappedProducts);
+      }
+    } catch (err) {
+      console.error("Unexpected error fetching inventory:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     let unsubscribeProducts: () => void;
     
@@ -61,11 +99,19 @@ export function PharmacistInventory() {
            setGlobalProducts(mappedGlobals);
         }
 
-        const q = query(collection(db, 'products'), where("pharmacyId", "==", currentPharmacyId));
-        unsubscribeProducts = onSnapshot(q, (snapshot) => {
-          setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-          setLoading(false);
-        });
+        // Fetch inventory directly via Supabase
+        await fetchInventory(currentPharmacyId);
+        
+        // Optional: Realtime listener (kept for background updates)
+        const channel = supabase.channel(`public:products-${currentPharmacyId}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `pharmacy_id=eq.${currentPharmacyId}` }, () => {
+            fetchInventory(currentPharmacyId);
+          })
+          .subscribe();
+          
+        unsubscribeProducts = () => {
+          supabase.removeChannel(channel);
+        };
       } catch (error) {
         console.error(error);
         setLoading(false);
@@ -174,26 +220,60 @@ export function PharmacistInventory() {
       const selectedProduct = globalProducts.find(p => p.id === selectedGlobalProduct);
       if (!selectedProduct) throw new Error("Invalid product selected");
 
-      await addDoc(collection(db, 'products'), {
-        name: selectedProduct.commercial_name || selectedProduct.name || "Unnamed Product",
-        commercial_name: selectedProduct.commercial_name || selectedProduct.name || "Unnamed Product",
-        dci: selectedProduct.dci || "",
-        category: selectedProduct.category || "Uncategorized",
-        ux_category_id: selectedProduct.ux_category_id || "",
-        form: selectedProduct.form || "",
-        dosage: selectedProduct.dosage || '',
-        price: parseFloat(newProductPrice),
-        stock: parseInt(newProductStock),
-        expiryDate: newProductExpiry || "",
-        is_prescription_required: selectedProduct.is_prescription_required || false,
-        needsPrescription: selectedProduct.is_prescription_required || false,
-        pharmacyId: pharmacyId,
-        createdAt: serverTimestamp(),
-      });
+      const priceNum = parseFloat(newProductPrice);
+      const stockNum = parseInt(newProductStock, 10);
+
+      // Insert directly into Supabase table 'products'
+      const { data, error } = await supabase.from('products').insert([
+        {
+          commercial_name: selectedProduct.commercial_name || selectedProduct.name || "Unnamed Product",
+          dci: selectedProduct.dci || "",
+          dosage: selectedProduct.dosage || '',
+          form: selectedProduct.form || "",
+          is_prescription_required: selectedProduct.is_prescription_required || false,
+          price: isNaN(priceNum) ? 0 : priceNum,
+          stock: isNaN(stockNum) ? 0 : stockNum,
+          expiry_date: newProductExpiry || null,
+          product_id: selectedGlobalProduct,
+          pharmacy_id: pharmacyId,
+          ux_category_id: selectedProduct.ux_category_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selectedProduct.ux_category_id) ? selectedProduct.ux_category_id : null,
+          created_at: new Date().toISOString()
+        }
+      ]).select();
+
+      if (error) {
+        // Detailed error log for RLS and type debugging
+        const isRLSError = error.code === '42501';
+        const isConstraintError = error.code && error.code.startsWith('23');
+        const isTypeError = error.code && error.code.startsWith('22');
+        
+        console.error("Supabase insert error in handleAddProduct:", {
+          errorType: isRLSError ? 'RLS Policy Violation' : isConstraintError ? 'Constraint Violation' : isTypeError ? 'Data Type Error' : 'Unknown Database Error',
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        
+        toast.error(`Error: ${isRLSError ? 'Permission denied (RLS)' : error.message}`);
+        return; // Don't reset UI if insertion failed
+      }
+
+      // Success: Reset UI and refetch
+      toast.success("Product successfully added to inventory!");
       setShowAdd(false);
-      setSelectedGlobalProduct(""); setGlobalSearch(""); setNewProductPrice(""); setNewProductStock(""); setNewProductExpiry("");
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'products');
+      setSelectedGlobalProduct(""); 
+      setGlobalSearch(""); 
+      setNewProductPrice(""); 
+      setNewProductStock(""); 
+      setNewProductExpiry("");
+      
+      // Force UI refresh
+      await fetchInventory(pharmacyId);
+      
+    } catch (err: any) {
+      console.error("Unexpected error in handleAddProduct:", err);
+      toast.error(`Unexpected error: ${err.message}`);
     } finally {
       setUploading(false);
     }

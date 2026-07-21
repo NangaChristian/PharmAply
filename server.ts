@@ -4,7 +4,7 @@ import nodemailer from "nodemailer";
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  const PORT = 3000;
 
   app.use(express.json());
 
@@ -410,12 +410,12 @@ async function startServer() {
       }
 
       const payload: any = {
-         dci,
-         commercial_name: commercial_name,
-         dosage,
-         form: form,
-         is_prescription_required: is_prescription_required === true || is_prescription_required === 'true',
-         ux_category: ux_category
+         dci: req.body.dci,
+         nom_commercial: req.body.nom_commercial,
+         dosage: req.body.dosage,
+         forme: req.body.forme,
+         ordonnance_requise: req.body.ordonnance_requise === true || req.body.ordonnance_requise === 'true',
+         categorie_ux: req.body.categorie_ux
       };
 
       let query;
@@ -608,7 +608,8 @@ async function startServer() {
   });
 
   // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  const isProd = process.env.NODE_ENV === "production" || process.argv[1]?.endsWith("server.cjs");
+  if (!isProd) {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -629,4 +630,7 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer().catch(err => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
+});

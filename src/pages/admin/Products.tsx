@@ -241,15 +241,13 @@ export function AdminProducts() {
            try {
               // Strict mapping to match Supabase database expectations
               const formattedProducts = results.data.map((row: any) => ({
-                 commercial_name: row.Name || row.Brand || '',
+                 nom_commercial: row.Name || row.Brand || '',
                  dci: row.DCI || row.dci || row.description || row.Name || row.Brand || '',
                  dosage: row.Dosage || '',
                  categorie_ux: row.Category || 'Uncategorized',
-                 prix: Number(row.Price) || 0,
-                 stock: Number(row.Stock) || 0,
-                 image_url: row.ImageURL || '',
+                 forme: row.Form || '',
                  ordonnance_requise: String(row.RequiresPrescription).toLowerCase() === 'true'
-              })).filter((item: any) => item.commercial_name); // filter out rows without a name
+              })).filter((item: any) => item.nom_commercial); // filter out rows without a name
               
               if (formattedProducts.length === 0) {
                  toast.error("Aucun produit valide trouvé dans le CSV. Assurez-vous que 'Name' ou 'Brand' sont fournis.", { id: 'csv' });
@@ -325,14 +323,12 @@ export function AdminProducts() {
     // Convert formData to Supabase payload matching database schema types
     const payload = {
         id: editingId || undefined,
-        commercial_name: commercialName,
+        nom_commercial: commercialName,
         dci: dci,
         dosage: data.dosage?.trim() || null,
-        form: data.dosage?.trim() || null, // mapping "format/dosage" to form as a fallback
-        is_prescription_required: Boolean(data.requiresPrescription),
-        ux_category: data.category?.trim() || 'Uncategorized',
-        price: Number(data.price),
-        stock: Number(data.stock)
+        forme: data.dosage?.trim() || null, // mapping "format/dosage" to form as a fallback
+        ordonnance_requise: Boolean(data.requiresPrescription),
+        categorie_ux: data.category?.trim() || 'Uncategorized'
     };
 
     try {

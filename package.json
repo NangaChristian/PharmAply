@@ -13,6 +13,8 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@deck.gl/aggregation-layers": "^9.3.6",
+    "@deck.gl/google-maps": "^9.3.6",
     "@google/genai": "^1.29.0",
     "@googlemaps/markerclusterer": "^2.6.2",
     "@supabase/supabase-js": "^2.105.4",
@@ -26,6 +28,7 @@
     "cors": "^2.8.6",
     "date-fns": "^4.2.1",
     "dayjs": "^1.11.20",
+    "deck.gl": "^9.3.6",
     "dotenv": "^17.2.3",
     "esbuild": "^0.28.0",
     "express": "^5.2.1",

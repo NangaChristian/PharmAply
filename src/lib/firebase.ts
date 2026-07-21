@@ -1,6 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || (import.meta as any).env.SUPABASE_URL || 'https://placeholder.supabase.co';
+let supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || (import.meta as any).env.SUPABASE_URL || 'https://placeholder.supabase.co';
+if (supabaseUrl && !supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
+  supabaseUrl = 'https://' + supabaseUrl;
+}
 const supabaseKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || (import.meta as any).env.SUPABASE_ANON_KEY || (import.meta as any).env.SUPABASE_KEY || 'placeholder';
 
 const customFetch = async (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
@@ -16,16 +19,8 @@ const customFetch = async (url: RequestInfo | URL, options?: RequestInit): Promi
     return new Response(JSON.stringify({ error: "Supabase not configured locally." }), { status: 400, headers: {'Content-Type': 'application/json'} });
   }
   
-  try {
-    return await fetch(url, options);
-  } catch (error) {
-    // Return a mocked dummy response so it doesn't leave an uncaught promise
-    // Mute network fetch failures in console if they are blocked by adblockers or offline
-    if (typeof url === 'string' && url.includes('select=')) {
-       return new Response(JSON.stringify([]), { status: 200, headers: {'Content-Type': 'application/json'} });
-    }
-    return new Response(JSON.stringify({ error: 'Network fetch failed' }), { status: 400, headers: {'Content-Type': 'application/json'} });
-  }
+  // Do not catch the fetch error so it bubbles up to Supabase correctly.
+  return await fetch(url, options);
 };
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {

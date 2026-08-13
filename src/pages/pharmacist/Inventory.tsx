@@ -224,9 +224,11 @@ export function PharmacistInventory() {
       const stockNum = parseInt(newProductStock, 10);
 
       // Insert directly into Supabase table 'products'
+      const productName = selectedProduct.commercial_name || selectedProduct.name || selectedProduct.nom_commercial || "Unnamed Product";
       const { data, error } = await supabase.from('products').insert([
         {
-          commercial_name: selectedProduct.commercial_name || selectedProduct.name || "Unnamed Product",
+          nom_commercial: productName,
+          commercial_name: productName,
           dci: selectedProduct.dci || "",
           dosage: selectedProduct.dosage || '',
           form: selectedProduct.form || "",

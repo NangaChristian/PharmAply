@@ -186,9 +186,11 @@ export const doc = (dbObj: any, pathOrCollection: any, ...segments: string[]) =>
 
 const toDatabaseRecord = (table: string, id: string, docData: any) => {
   if (table === 'products') {
+     const commName = docData.nom_commercial || docData.commercial_name || docData.name || '';
      return {
         id: id,
-        commercial_name: docData.name || docData.commercial_name || docData.nom_commercial || '',
+        nom_commercial: commName,
+        commercial_name: commName,
         dci: docData.description || docData.dci || '',
         dosage: docData.dosage || '',
         form: docData.form || '',

@@ -8,6 +8,14 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Health check endpoints for deployment probes
+  app.get("/health", (req: express.Request, res: express.Response) => {
+    res.status(200).send("OK");
+  });
+  app.get("/api/health", (req: express.Request, res: express.Response) => {
+    res.json({ status: "ok" });
+  });
+
   // Nodemailer transporter (for production, configure this via process.env)
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || "smtp.ethereal.email",
@@ -367,9 +375,17 @@ async function startServer() {
         return res.status(500).json({ success: false, error: "No Supabase keys configured on backend." });
       }
 
+      const normalizedData = data.map((item: any) => ({
+        ...item,
+        nom_commercial: item.nom_commercial || item.commercial_name || item.name || '',
+        forme: item.forme || item.form || '',
+        ordonnance_requise: item.ordonnance_requise !== undefined ? (item.ordonnance_requise === true || item.ordonnance_requise === 'true') : (item.is_prescription_required === true || item.is_prescription_required === 'true'),
+        categorie_ux: item.categorie_ux || item.ux_category || 'Uncategorized'
+      }));
+
       const { data: insertedData, error } = await supabase
         .from('produits_patients')
-        .insert(data);
+        .insert(normalizedData);
         
       if (error) {
          if (error.message.includes('row-level security policy')) {
@@ -411,11 +427,11 @@ async function startServer() {
 
       const payload: any = {
          dci: req.body.dci,
-         nom_commercial: req.body.nom_commercial,
+         nom_commercial: req.body.nom_commercial || req.body.commercial_name || req.body.name || '',
          dosage: req.body.dosage,
-         forme: req.body.forme,
-         ordonnance_requise: req.body.ordonnance_requise === true || req.body.ordonnance_requise === 'true',
-         categorie_ux: req.body.categorie_ux
+         forme: req.body.forme || req.body.form || '',
+         ordonnance_requise: req.body.ordonnance_requise !== undefined ? (req.body.ordonnance_requise === true || req.body.ordonnance_requise === 'true') : (req.body.is_prescription_required === true || req.body.is_prescription_required === 'true'),
+         categorie_ux: req.body.categorie_ux || req.body.ux_category || 'Uncategorized'
       };
 
       let query;
@@ -621,6 +637,9 @@ async function startServer() {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.use((req, res) => {
+      if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ success: false, error: 'API route not found' });
+      }
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

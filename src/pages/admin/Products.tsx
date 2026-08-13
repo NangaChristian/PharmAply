@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { collection, query, getDocs, doc, updateDoc, deleteDoc, onSnapshot, addDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType, supabase } from "../../lib/firebase";
-import { Search, Plus, Edit2, Trash2, Tag, AlertCircle, Database, Upload, ArrowUpDown, Image as ImageIcon, Package, Loader2, X, Download } from "lucide-react";
+import { Search, Plus, Edit2, Trash2, Tag, AlertCircle, Database, Upload, ArrowUpDown, Image as ImageIcon, Package, Loader2, X, Download, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import Papa from "papaparse";
 import { formatCurrency } from "../../lib/utils";
@@ -105,14 +105,17 @@ export function AdminProducts() {
         if (data && !error) {
            const mappedOut = data.map((d: any) => ({
                id: d.id,
-               name: d.nom_commercial || d.commercial_name,
-               description: d.dci,
-               dosage: d.dosage,
-               category: d.ux_category || d.categorie_ux,
+               name: d.nom_commercial || d.commercial_name || '',
+               description: d.dci || d.description || '',
+               dosage: d.dosage || d.forme || '',
+               category: d.ux_category || d.categorie_ux || '',
+               brand: d.brand || d.marque || '',
+               effects: d.effects || d.effets || '',
+               directions: d.directions || d.mode_emploi || '',
                requiresPrescription: d.is_prescription_required || d.ordonnance_requise,
-               price: 0,
-               stock: 0,
-               imageUrl: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
+               price: d.price || 0,
+               stock: d.stock || 0,
+               imageUrl: d.image_url || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
                isGlobal: true,
                pharmacyId: null
            }));
@@ -127,27 +130,6 @@ export function AdminProducts() {
          console.error('Error fetching global catalog', err);
      }
   };
-
-  useEffect(() => {
-    const q = query(collection(db, "products"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setProducts(data);
-      setLoading(false);
-      // after loading local firebase products, load the real supabase global table
-      fetchGlobalProducts();
-    }, (error) => {
-      console.error(error);
-      setLoading(false);
-    });
-
-    const catQ = query(collection(db, "categories"));
-    const catUnsub = onSnapshot(catQ, (snapshot) => {
-       setCategories(snapshot.docs.map(d => ({ id: d.id, ...d.data()})));
-    });
-
-    return () => { unsubscribe(); catUnsub(); };
-  }, []);
 
   const handleSeed = async () => {
      if (!window.confirm("Êtes-vous sûr de vouloir insérer les produits de base ? Les entrées en double pourraient survenir.")) return;
@@ -168,42 +150,94 @@ export function AdminProducts() {
      }
   };
 
-  const handleGenerateInfo = async () => {
-    if (!window.confirm("Are you sure you want to generate description, effects, and directions for all products that are missing them?")) return;
-    toast.loading("Generating product information through AI...", { id: 'gen_info' });
+  const [isGeneratingSingle, setIsGeneratingSingle] = useState(false);
+
+  const handleSingleGenerateInfo = async () => {
+    const productName = watch("name");
+    if (!productName || !productName.trim()) {
+       toast.error("Veuillez entrer le nom du produit (ex: Doliprane) avant la génération IA");
+       return;
+    }
+    setIsGeneratingSingle(true);
+    toast.loading("Génération automatique des informations par l'IA...", { id: 'single_gen' });
     try {
-        const missingInfoProducts = products.filter(p => !p.description || !p.effects || !p.directions).slice(0, 50); // limit to a batch of 50
+       const res = await fetch('/api/admin/generate-info', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                products: [{
+                    id: editingId || 'temp',
+                    name: productName,
+                    brand: watch("brand") || "",
+                    dosage: watch("dosage") || "",
+                    category: watch("category") || ""
+                }]
+            })
+       });
+       const data = await res.json();
+       if (!res.ok || !data.success || !data.updates || data.updates.length === 0) {
+           throw new Error(data.error || "Échec de la génération d'informations");
+       }
+
+       const info = data.updates[0];
+       if (info.brand) setValue("brand", info.brand);
+       if (info.dosage) setValue("dosage", info.dosage);
+       if (info.description) setValue("description", info.description);
+       if (info.effects) setValue("effects", info.effects);
+       if (info.directions) setValue("directions", info.directions);
+
+       toast.success("Marque, Dosage, Description, Effets & Mode d'emploi générés avec succès !", { id: 'single_gen' });
+    } catch (err: any) {
+       toast.error(`Erreur: ${err.message}`, { id: 'single_gen' });
+       console.error("Single info gen error:", err);
+    } finally {
+       setIsGeneratingSingle(false);
+    }
+  };
+
+  const handleGenerateInfo = async () => {
+    if (!window.confirm("Voulez-vous auto-générer les informations manquantes (Marque, Dosage, Description, Effets, Mode d'emploi) pour tous les produits ?")) return;
+    toast.loading("Génération des informations produit par l'IA...", { id: 'gen_info' });
+    try {
+        const missingInfoProducts = products.filter(p => !p.description || !p.effects || !p.directions || !p.brand || !p.dosage).slice(0, 50);
         
         if (missingInfoProducts.length === 0) {
-            toast.success("All products already have their information!", { id: 'gen_info' });
+            toast.success("Tous les produits possèdent déjà leurs informations !", { id: 'gen_info' });
             return;
         }
 
         const res = await fetch('/api/admin/generate-info', {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ products: missingInfoProducts })
+             body: JSON.stringify({ products: missingInfoProducts, saveToDb: true })
         });
         const data = await res.json();
         
         if (!res.ok || !data.success) throw new Error(data.error || "Failed to generate info");
 
         let updatedCount = 0;
-        const promises = data.updates.map(async (update: any) => {
-           if (update.id && update.description) {
-               await updateDoc(doc(db, "products", update.id), {
-                   description: update.description,
-                   effects: update.effects,
-                   directions: update.directions
-               });
+        const promises = (data.updates || []).map(async (update: any) => {
+           if (update.id && update.id !== 'temp') {
+               try {
+                   await updateDoc(doc(db, "products", update.id), {
+                       brand: update.brand,
+                       dosage: update.dosage,
+                       description: update.description,
+                       effects: update.effects,
+                       directions: update.directions
+                   });
+               } catch (e) {
+                   // Ignore if doc is only in Supabase
+               }
                updatedCount++;
            }
         });
         
         await Promise.all(promises);
-        toast.success(`Successfully updated ${updatedCount} products using AI!`, { id: 'gen_info' });
+        toast.success(`${data.updates?.length || updatedCount} produits mis à jour par l'IA avec succès !`, { id: 'gen_info' });
+        await fetchGlobalProducts();
     } catch (e: any) {
-        toast.error(`Error: ${e.message}`, { id: 'gen_info' });
+        toast.error(`Erreur: ${e.message}`, { id: 'gen_info' });
         console.error("Info gen error:", e);
     }
   };
@@ -536,9 +570,9 @@ export function AdminProducts() {
                   {isSeeding ? <Loader2 size={18} className="animate-spin" /> : <Database size={18} />}
                   {isSeeding ? t('seeding', "Seeding...") : t('seed_db', "Seed Global Database")}
                </button>
-               <button onClick={handleGenerateInfo} className="bg-orange-100 text-orange-700 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-orange-200 transition flex items-center gap-2">
-                  <Package size={18} />
-                  Generate Info
+               <button onClick={handleGenerateInfo} className="bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-teal-100 transition flex items-center gap-2">
+                  <Sparkles size={18} className="text-teal-600 dark:text-teal-400" />
+                  Générer Infos par IA
                </button>
                <button 
                   onClick={openAddModal}
@@ -717,7 +751,18 @@ export function AdminProducts() {
 
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="col-span-1 md:col-span-2">
-                             <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5"> {t('product_name', 'Product Name *')} </label>
+                             <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider"> {t('product_name', 'Product Name *')} </label>
+                                <button 
+                                   type="button" 
+                                   onClick={handleSingleGenerateInfo} 
+                                   disabled={isGeneratingSingle}
+                                   className="text-xs text-teal-600 dark:text-teal-400 font-bold hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                >
+                                   {isGeneratingSingle ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                                   {isGeneratingSingle ? "Génération par IA..." : "Auto-Générer avec l'IA"}
+                                </button>
+                             </div>
                              <input 
                                 type="text" 
                                 {...register("name", { required: true })} 
@@ -803,9 +848,20 @@ export function AdminProducts() {
 
                  {/* Section 3: Therapeutic Guide */}
                  <div className="space-y-4">
-                    <h3 className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-widest bg-teal-50 dark:bg-teal-950/20 px-2.5 py-1 rounded w-fit">
-                       3. {t('therapeutic_guide', 'Medical & Therapeutic Guide')}
-                    </h3>
+                    <div className="flex items-center justify-between">
+                       <h3 className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-widest bg-teal-50 dark:bg-teal-950/20 px-2.5 py-1 rounded w-fit">
+                          3. {t('therapeutic_guide', 'Medical & Therapeutic Guide')}
+                       </h3>
+                       <button 
+                          type="button" 
+                          onClick={handleSingleGenerateInfo} 
+                          disabled={isGeneratingSingle}
+                          className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-xl text-xs font-bold shadow-sm transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                       >
+                          {isGeneratingSingle ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                          {isGeneratingSingle ? "Génération..." : "Générer les infos par IA"}
+                       </button>
+                    </div>
                     <div className="bg-slate-50/40 dark:bg-zinc-900/20 p-5 rounded-2xl border border-gray-100 dark:border-zinc-850/50 space-y-4">
                        <div>
                           <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1.5"> {t('dosage_format_label', 'Dosage / Format (DCI)')} </label>

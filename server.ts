@@ -294,7 +294,7 @@ async function startServer() {
   // Generate AI Info Route
   app.post("/api/admin/generate-info", async (req: express.Request, res: express.Response): Promise<any> => {
     try {
-      const { products } = req.body;
+      const { products, saveToDb } = req.body;
       if (!products || !Array.isArray(products) || products.length === 0) {
         return res.status(400).json({ success: false, error: "Missing products array" });
       }
@@ -304,7 +304,7 @@ async function startServer() {
          return res.status(500).json({ success: false, error: "Gemini API key not configured" });
       }
 
-      const { GoogleGenAI } = await import("@google/genai");
+      const { GoogleGenAI, Type } = await import("@google/genai");
       const ai = new GoogleGenAI({
         apiKey,
         httpOptions: {
@@ -314,25 +314,77 @@ async function startServer() {
         }
       });
 
-      // Prompt Gemini to generate info
-      const prompt = `You are a medical data assistant. For each of the following products, generate a professional 'description', 'effects', and 'directions' (in French/English). Return a valid JSON array of objects, with each object containing { "id": "original_id", "description": "...", "effects": "...", "directions": "..." }. \n\nProducts: ` + JSON.stringify(products.map((p: any) => ({ id: p.id, name: p.name, category: p.category, dosage: p.dosage })));
+      const prompt = `You are a medical data assistant. For each of the following products, generate professional information in French:
+1. 'brand': Manufacturer or pharmaceutical brand name (e.g., Sanofi, GSK, Pfizer, Novartis, Bayer)
+2. 'dosage': Standard dosage and format (e.g., 500mg Comprimé, 100mg/5ml Sirop)
+3. 'description': Detailed product description & DCI active molecules
+4. 'effects': Known side effects, precautions, and contraindications
+5. 'directions': Directions & method of use (posology, frequency, mode of administration)
+
+Products: ` + JSON.stringify(products.map((p: any) => ({
+        id: p.id || "temp",
+        name: p.name || p.nom_commercial || p.commercial_name || "",
+        brand: p.brand || "",
+        dosage: p.dosage || "",
+        category: p.category || p.ux_category || p.categorie_ux || ""
+      })));
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt,
         config: {
-           responseMimeType: "application/json",
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING },
+                brand: { type: Type.STRING, description: "Brand or manufacturer name" },
+                dosage: { type: Type.STRING, description: "Dosage and format" },
+                description: { type: Type.STRING, description: "Product therapeutic description" },
+                effects: { type: Type.STRING, description: "Known side effects and precautions" },
+                directions: { type: Type.STRING, description: "Directions and method of use" }
+              },
+              required: ["id", "brand", "dosage", "description", "effects", "directions"]
+            }
+          }
         }
       });
 
       const responseText = response.text || "[]";
-      let generatedInfo = [];
+      let generatedInfo: any[] = [];
       try {
          generatedInfo = JSON.parse(responseText);
       } catch (e) {
-         // fallback if it wrapped in markdown
          const match = responseText.match(/\[.*\]/s);
          if (match) generatedInfo = JSON.parse(match[0]);
+      }
+
+      // If saveToDb is true, update Supabase tables
+      if (saveToDb && generatedInfo.length > 0) {
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+        if (supabaseUrl && (serviceKey || anonKey)) {
+          const { createClient } = await import('@supabase/supabase-js');
+          const supabase = createClient(supabaseUrl, serviceKey || anonKey!);
+
+          for (const item of generatedInfo) {
+            if (item.id && item.id !== "temp") {
+              await supabase.from('produits_patients').update({
+                dci: item.description,
+                dosage: item.dosage,
+                forme: item.dosage
+              }).eq('id', item.id);
+
+              await supabase.from('products').update({
+                description: item.description,
+                dosage: item.dosage
+              }).eq('id', item.id);
+            }
+          }
+        }
       }
 
       res.json({ success: true, updates: generatedInfo });
@@ -426,13 +478,17 @@ async function startServer() {
       }
 
       const payload: any = {
-         dci: req.body.dci,
+         dci: req.body.dci || req.body.description || '',
          nom_commercial: req.body.nom_commercial || req.body.commercial_name || req.body.name || '',
-         dosage: req.body.dosage,
-         forme: req.body.forme || req.body.form || '',
+         dosage: req.body.dosage || '',
+         forme: req.body.forme || req.body.form || req.body.dosage || '',
          ordonnance_requise: req.body.ordonnance_requise !== undefined ? (req.body.ordonnance_requise === true || req.body.ordonnance_requise === 'true') : (req.body.is_prescription_required === true || req.body.is_prescription_required === 'true'),
          categorie_ux: req.body.categorie_ux || req.body.ux_category || 'Uncategorized'
       };
+      if (req.body.brand) payload.brand = req.body.brand;
+      if (req.body.description) payload.description = req.body.description;
+      if (req.body.effects) payload.effects = req.body.effects;
+      if (req.body.directions) payload.directions = req.body.directions;
 
       let query;
       if (id) {

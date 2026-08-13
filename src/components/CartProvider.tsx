@@ -43,29 +43,36 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [items]);
 
   const addToCart = (product: any, quantity = 1) => {
+    const pName = product.name || product.nom_commercial || product.commercial_name || "Produit";
+    const isExisting = items.some((item) => item.id === product.id);
+    
     setItems((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
-        toast.success(`Updated ${product.name} quantity in cart`);
         return prev.map((item) =>
           item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
         );
       }
-      toast.success(`Added ${product.name} to cart`);
       return [
         ...prev,
         {
           id: product.id,
-          name: product.name,
+          name: pName,
           price: parseFloat(product.price) || 0,
-          imageUrl: product.imageUrl,
-          pharmacyId: product.pharmacyId,
-          pharmacyName: product.pharmacyName,
+          imageUrl: product.imageUrl || product.image_url,
+          pharmacyId: product.pharmacyId || product.pharmacy_id,
+          pharmacyName: product.pharmacyName || product.pharmacy_name,
           quantity: quantity,
           stock: product.stock,
         },
       ];
     });
+
+    if (isExisting) {
+      toast.success(`Quantité mise à jour pour ${pName}`);
+    } else {
+      toast.success(`${pName} ajouté au panier`);
+    }
   };
 
   const removeFromCart = (id: string) => {

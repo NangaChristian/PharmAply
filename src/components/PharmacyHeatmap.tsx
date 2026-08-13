@@ -3,13 +3,15 @@ import { useMap, APIProvider, Map } from '@vis.gl/react-google-maps';
 import { GoogleMapsOverlay } from '@deck.gl/google-maps';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import { useTranslation } from "react-i18next";
+import { useGoogleMapsStatus } from "../hooks/useGoogleMapsStatus";
 
 const API_KEY =
   process.env.GOOGLE_MAPS_PLATFORM_KEY ||
   (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
+  (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY ||
   (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
   '';
-const hasValidKey = Boolean(API_KEY) && API_KEY !== 'YOUR_API_KEY';
+const hasValidKey = Boolean(API_KEY) && API_KEY !== 'YOUR_API_KEY' && API_KEY !== 'YOUR_GOOGLE_MAPS_API_KEY';
 
 function DeckGlOverlay({ layers }: { layers: any[] }) {
   const map = useMap();
@@ -24,15 +26,15 @@ function DeckGlOverlay({ layers }: { layers: any[] }) {
 
 export function PharmacyHeatmap({ pharmacies }: { pharmacies: any[] }) {
   const { t } = useTranslation();
+  const { mapsFailed } = useGoogleMapsStatus();
   
-  if (!hasValidKey) {
+  if (!hasValidKey || mapsFailed) {
     return (
-      <div className="w-full h-[300px] bg-slate-100 dark:bg-zinc-800 rounded-xl flex items-center justify-center p-6 text-center">
+      <div className="w-full h-[300px] bg-slate-100 dark:bg-zinc-800/80 rounded-xl flex items-center justify-center p-6 text-center border border-slate-200 dark:border-zinc-700">
         <div>
-          <h2 className="font-semibold text-gray-900 dark:text-white mb-2">Google Maps API Key Required</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">To view the demand heat map, you need to configure the Google Maps API Key.</p>
-          <p className="text-xs text-gray-500 dark:text-gray-500">
-            Open Settings (⚙️) &rarr; Secrets &rarr; Add <code>GOOGLE_MAPS_PLATFORM_KEY</code>
+          <h2 className="font-bold text-slate-800 dark:text-white mb-1.5 text-sm uppercase tracking-wide">Carte de chaleur de la demande</h2>
+          <p className="text-xs text-slate-600 dark:text-zinc-400 max-w-sm">
+            {pharmacies.length} officines enregistrées dans la zone de couverture. Analyse de densité en temps réel.
           </p>
         </div>
       </div>

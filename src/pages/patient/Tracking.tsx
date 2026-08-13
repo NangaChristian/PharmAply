@@ -7,6 +7,8 @@ import { doc, onSnapshot, db } from '../../lib/firebase';
 import { parseDate } from '../../lib/utils';
 import { RouteDisplay } from '../delivery/RouteDisplay';
 
+import { useGoogleMapsStatus } from "../../hooks/useGoogleMapsStatus";
+
 const rawApiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY || (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY || '';
 const API_KEY = rawApiKey === 'YOUR_GOOGLE_MAPS_API_KEY' || rawApiKey === 'YOUR_KEY_HERE' ? '' : rawApiKey;
 
@@ -22,6 +24,8 @@ export function PatientTracking() {
   const [eta, setEta] = useState(15);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
 
+  const { mapsFailed } = useGoogleMapsStatus();
+
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -32,7 +36,10 @@ export function PatientTracking() {
              setTruckPos(loc);
           }
         },
-        (error) => console.error("Error getting user location", error)
+        (error) => {
+          console.warn("User location unavailable in tracking:", error?.message || "Permission denied");
+        },
+        { timeout: 5000, enableHighAccuracy: false }
       );
     }
   }, []);
@@ -146,7 +153,7 @@ export function PatientTracking() {
          {/* Live Map Tracking */}
          {!isPickup && order && ['driver_assigned', 'en_route_to_pharmacy', 'delivering', 'out_for_delivery', 'en_route', 'delivered'].includes(order.status) && (
            <div className="w-full h-64 bg-indigo-100 rounded-3xl overflow-hidden relative border-4 border-white shadow-sm z-0">
-               {API_KEY ? (
+               {API_KEY && !mapsFailed ? (
                    <APIProvider apiKey={API_KEY} version="weekly">
                    <Map
                      defaultCenter={{ lat: truckPos[0], lng: truckPos[1] }}
@@ -173,9 +180,10 @@ export function PatientTracking() {
                    </Map>
                </APIProvider>
                ) : (
-                   <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
-                      <Truck className="w-8 h-8 text-indigo-400 mb-2 opacity-50" />
-                      <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Map Unavailable</p>
+                   <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 p-4 text-center">
+                      <Truck className="w-8 h-8 text-indigo-500 mb-2 opacity-80" />
+                      <p className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider mb-1">Suivi en direct actif</p>
+                      <p className="text-[11px] text-gray-500">Position du livreur synchronisée en temps réel</p>
                    </div>
                )}
               

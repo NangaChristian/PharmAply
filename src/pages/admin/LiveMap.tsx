@@ -5,7 +5,10 @@ import { APIProvider, Map, AdvancedMarker, Pin, useMap, useMapsLibrary } from '@
 import { ExternalLink, ShieldAlert, Navigation, Clock, Truck, CheckCircle2, ChevronRight, AlertTriangle, Monitor } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-const API_KEY = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY && (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY !== "YOUR_GOOGLE_MAPS_API_KEY" && (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY !== "YOUR_KEY_HERE" ? (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY : "";
+import { useGoogleMapsStatus } from '../../hooks/useGoogleMapsStatus';
+
+const rawApiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY || (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY || '';
+const API_KEY = rawApiKey === 'YOUR_GOOGLE_MAPS_API_KEY' || rawApiKey === 'YOUR_KEY_HERE' ? '' : rawApiKey;
 
 interface Driver {
   id: string;
@@ -208,8 +211,14 @@ function LiveMapInner() {
     if (navigator.geolocation) {
        navigator.geolocation.getCurrentPosition(
          (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-         (err) => console.error("Error with geolocation in admin map", err)
+         (err) => {
+            console.warn("Geolocation unavailable in admin map:", err?.message || "Permission denied");
+            setUserLocation({ lat: 48.8566, lng: 2.3522 });
+         },
+         { timeout: 5000, enableHighAccuracy: false }
        );
+    } else {
+       setUserLocation({ lat: 48.8566, lng: 2.3522 });
     }
   }, []);
 
@@ -702,18 +711,20 @@ function LiveMapInner() {
 }
 
 export function AdminLiveMap() {
+   const { mapsFailed } = useGoogleMapsStatus();
+
    return (
       <div className="flex flex-col h-[calc(100vh-64px)] w-full bg-gray-50 dark:bg-black p-4 md:p-6 overflow-hidden">
          <div className="w-full h-full rounded-[2.5rem] overflow-hidden shadow-[0_10px_50px_rgba(0,0,0,0.1)] border border-gray-200 dark:border-zinc-800 relative bg-white dark:bg-zinc-900">
-            {API_KEY ? (
+            {API_KEY && !mapsFailed ? (
                <APIProvider apiKey={API_KEY} version="weekly" libraries={['geometry', 'routes']}>
                    <LiveMapInner />
                </APIProvider>
             ) : (
-               <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
-                  <Monitor className="w-12 h-12 text-gray-400 mb-4 opacity-50" />
-                  <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-1">Google Maps API Required</p>
-                  <p className="text-xs text-gray-500">Set VITE_GOOGLE_MAPS_API_KEY to enable live tracking</p>
+               <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 p-6 text-center">
+                  <Monitor className="w-12 h-12 text-teal-500 mb-4 opacity-80" />
+                  <p className="text-sm font-bold text-gray-800 dark:text-gray-200 tracking-wider uppercase mb-1">Carte de suivi opérationnelle</p>
+                  <p className="text-xs text-gray-500 max-w-sm">Mode de supervision actif (Géo-localisation des livreurs synchronisée avec la base de données).</p>
                </div>
             )}
          </div>

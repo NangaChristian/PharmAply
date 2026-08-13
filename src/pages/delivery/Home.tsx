@@ -11,8 +11,9 @@ import { useTranslation } from "react-i18next";
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import { RouteDisplay } from './RouteDisplay';
 import { NotificationBell } from "../../components/NotificationBell";
+import { useGoogleMapsStatus } from "../../hooks/useGoogleMapsStatus";
 
-const rawApiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY || '';
+const rawApiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY || (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY || '';
 const API_KEY = rawApiKey === 'YOUR_GOOGLE_MAPS_API_KEY' || rawApiKey === 'YOUR_KEY_HERE' ? '' : rawApiKey;
 
 export function DeliveryHome() {
@@ -29,13 +30,16 @@ export function DeliveryHome() {
   const [driverProfile, setDriverProfile] = useState<any>(null);
   const [driverPos, setDriverPos] = useState({ lat: 48.8566, lng: 2.3522 }); // Fallback location
   
+  const { mapsFailed } = useGoogleMapsStatus();
+  
   useEffect(() => {
     if (navigator.geolocation) {
        navigator.geolocation.getCurrentPosition(
          (position) => {
            setDriverPos({ lat: position.coords.latitude, lng: position.coords.longitude });
          },
-         (error) => console.error('Error getting initial location', error)
+         (error) => console.warn('Initial delivery location unavailable:', error?.message || 'Permission denied'),
+         { timeout: 5000, enableHighAccuracy: false }
        );
     }
   }, []);
@@ -231,7 +235,7 @@ export function DeliveryHome() {
       
       {/* Map Background */}
       <div className="absolute inset-0 z-0 bg-[#e5e3df] overflow-hidden">
-         {API_KEY ? (
+         {API_KEY && !mapsFailed ? (
             <APIProvider apiKey={API_KEY} version="weekly">
                <Map
                  defaultCenter={driverPos}
@@ -262,9 +266,10 @@ export function DeliveryHome() {
                </Map>
             </APIProvider>
          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
-               <MapPin className="w-8 h-8 text-gray-400 mb-2 opacity-50" />
-               <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Map Unavailable</p>
+            <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 p-6 text-center">
+               <Navigation className="w-10 h-10 text-teal-600 dark:text-teal-400 mb-2 opacity-80 animate-pulse" />
+               <p className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider mb-1">Géo-localisation livreur active</p>
+               <p className="text-[11px] text-gray-500 max-w-xs">{isOnline ? "En ligne — Prêt à recevoir des courses" : "Hors ligne — Basculez en ligne pour débuter"}</p>
             </div>
          )}
       </div>

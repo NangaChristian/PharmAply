@@ -15,6 +15,8 @@ import { getCategoryIcon } from "../../lib/icons";
 import { APIProvider, Map, AdvancedMarker, Pin, useMap } from '@vis.gl/react-google-maps';
 import { MarkerClusterer } from '@googlemaps/markerclusterer';
 
+import { useGoogleMapsStatus } from "../../hooks/useGoogleMapsStatus";
+
 const rawApiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY || (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY || '';
 const API_KEY = rawApiKey === 'YOUR_GOOGLE_MAPS_API_KEY' || rawApiKey === 'YOUR_KEY_HERE' ? '' : rawApiKey;
 
@@ -85,6 +87,8 @@ export function PatientHome() {
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const fallbackLocation = { lat: 48.8566, lng: 2.3522 }; // Fallback to Paris
 
+  const { mapsFailed } = useGoogleMapsStatus();
+
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -95,9 +99,13 @@ export function PatientHome() {
           });
         },
         (error) => {
-          console.error("Error getting user location", error);
-        }
+          console.warn("User location unavailable, using default Paris location:", error?.message || "Permission denied");
+          setUserLocation(fallbackLocation);
+        },
+        { timeout: 5000, enableHighAccuracy: false }
       );
+    } else {
+      setUserLocation(fallbackLocation);
     }
   }, []);
   
@@ -249,7 +257,7 @@ export function PatientHome() {
             <h3 className="font-bold text-gray-900 dark:text-white text-[19px] tracking-tight">{t('pharmacies_map', 'Pharmacies Map')}</h3>
           </div>
           <div className="w-full h-64 bg-slate-100 dark:bg-zinc-900 rounded-[1.75rem] overflow-hidden relative border border-gray-100 dark:border-zinc-800 shadow-sm">
-            {API_KEY ? (
+            {API_KEY && !mapsFailed ? (
                <APIProvider apiKey={API_KEY} version="weekly">
                    <Map
                      defaultCenter={userLocation || fallbackLocation}
@@ -264,9 +272,10 @@ export function PatientHome() {
                    </Map>
                </APIProvider>
             ) : (
-               <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
-                  <MapPin className="w-8 h-8 text-gray-400 mb-2 opacity-50" />
-                  <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Map Unavailable</p>
+               <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 p-4 text-center">
+                  <MapPin className="w-8 h-8 text-teal-600 dark:text-teal-400 mb-2 opacity-80" />
+                  <p className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider mb-1">Pharmacies à proximité actives</p>
+                  <p className="text-[11px] text-gray-500 max-w-xs">{pharmacies.length} pharmacies disponibles dans votre secteur</p>
                </div>
             )}
           </div>

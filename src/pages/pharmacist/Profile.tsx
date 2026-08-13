@@ -140,9 +140,10 @@ export function PharmacistProfile() {
           });
         },
         (error) => {
-          console.error("Error getting location", error);
-          alert("Could not get your location.");
-        }
+          console.warn("Geolocation warning in Profile:", error?.message || "Permission denied");
+          alert("Could not get your location. Please check browser permissions.");
+        },
+        { timeout: 5000, enableHighAccuracy: false }
       );
     } else {
       alert("Geolocation is not supported by your browser.");

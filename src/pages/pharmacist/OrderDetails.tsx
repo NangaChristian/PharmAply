@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, CheckCircle, Package, Download, X, AlertTriangle, RefreshCcw, MessageCircle, FileText } from "lucide-react";
+import { ArrowLeft, CheckCircle, Package, Download, X, AlertTriangle, RefreshCcw, MessageCircle, FileText, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router-dom";
 import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { sendEmail } from '../../lib/email';
 import { useAuth } from '../../components/AuthProvider';
 import { formatCurrency, parseDate } from '../../lib/utils';
+import { printInvoice } from '../../lib/invoice';
+import { InvoiceModal } from '../../components/InvoiceModal';
 import { useTranslation } from "react-i18next";
 
 export function PharmacistOrderDetails() {
@@ -16,8 +19,10 @@ export function PharmacistOrderDetails() {
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   
   useEffect(() => {
     const fetchOrder = async () => {
@@ -50,6 +55,7 @@ export function PharmacistOrderDetails() {
   const handleUpdateStatus = async (newStatus: string) => {
     if (!order) return;
     setProcessing(true);
+    setActionLoading(newStatus);
     try {
       const historyItem = { status: newStatus, timestamp: new Date().toISOString() };
       const newHistory = [...(order.statusHistory || []), historyItem];
@@ -74,6 +80,14 @@ export function PharmacistOrderDetails() {
       setOrder({ ...order, status: newStatus, statusHistory: newHistory, cancellationReason: newStatus === 'rejected' ? rejectReason : order.cancellationReason });
       setIsRejecting(false);
 
+      if (newStatus === 'preparing') {
+        toast.success("Commande acceptée avec succès !");
+      } else if (newStatus === 'rejected') {
+        toast.success("Commande rejetée.");
+      } else {
+        toast.success("Statut de la commande mis à jour !");
+      }
+
       // fetch patient to get email
       if (order.patientId) {
          try {
@@ -88,76 +102,17 @@ export function PharmacistOrderDetails() {
          } catch(e) { console.error('Failed to notify patient', e); }
       }
     } catch (error) {
+      toast.error("Erreur lors de la mise à jour de la commande.");
       handleFirestoreError(error, OperationType.UPDATE, 'orders');
     } finally {
       setProcessing(false);
+      setActionLoading(null);
     }
   };
 
   const handlePrintInvoice = () => {
-    const invoiceHtml = `
-      <html>
-        <head>
-          <title>Invoice - ${order.id}</title>
-          <style>
-            body { font-family: 'Inter', sans-serif; padding: 40px; color: #111827; }
-            h1 { color: #0B3B3C; margin-bottom: 20px; font-size: 24px; font-weight: 800; }
-            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #f3f4f6; padding-bottom: 20px; margin-bottom: 30px; }
-            .details { margin-bottom: 40px; font-size: 14px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
-            th, td { border-bottom: 1px solid #f3f4f6; padding: 12px; text-align: left; }
-            th { color: #6b7280; font-weight: 600; text-transform: uppercase; font-size: 12px; }
-            .total { text-align: right; font-size: 18px; font-weight: bold; color: #0B3B3C; }
-            @media print {
-              body { margin: 0; padding: 20px; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div>
-              <h1>INVOICE</h1>
-              <p>Order ID: ${order.id}</p>
-              <p>Date: ${order.createdAt ? (parseDate(order.createdAt)?.toLocaleDateString() || new Date().toLocaleDateString()) : new Date().toLocaleDateString()}</p>
-            </div>
-            <div style="text-align: right;">
-              <h2 style="margin: 0; color: #0B3B3C;">PharmaCare</h2>
-              <p>Pharmacy System</p>
-            </div>
-          </div>
-          <div class="details">
-            <h3>Bill To:</h3>
-            <p><strong>${order.patientName || 'Patient'}</strong></p>
-            ${order.deliveryAddress ? `<p>${order.deliveryAddress.street || order.deliveryAddress}</p>` : ''}
-          </div>
-          <table>
-            <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
-            <tbody>
-              ${(order.items || []).map((item: any) => `
-                <tr>
-                  <td>${item.name}</td>
-                  <td>${item.quantity}</td>
-                  <td>${formatCurrency(item.price)}</td>
-                  <td>${formatCurrency(item.price * item.quantity)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          <div class="total">
-            Total Amount: ${formatCurrency(order.total || 0)}
-          </div>
-        </body>
-      </html>
-    `;
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(invoiceHtml);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => {
-        printWindow.print();
-        printWindow.close();
-      }, 250);
+    if (order) {
+      printInvoice(order);
     }
   };
 
@@ -341,8 +296,20 @@ export function PharmacistOrderDetails() {
                  </button>
                  <button disabled={processing} onClick={() => setIsRejecting(true)} className="px-8 py-3.5 bg-white border border-red-100 text-red-600 hover:bg-red-50 rounded-full font-bold shadow-sm transition-all focus:outline-none">
                     Reject </button>
-                 <button disabled={processing} onClick={() => handleUpdateStatus('preparing')} className="px-8 py-3.5 bg-[#0B3B3C] text-white rounded-full font-bold shadow-md hover:bg-[#082a2b] transition-all focus:outline-none">
-                    Accept Order </button>
+                 <button 
+                    disabled={processing} 
+                    onClick={() => handleUpdateStatus('preparing')} 
+                    className="px-8 py-3.5 bg-[#0B3B3C] hover:bg-[#082a2b] text-white rounded-full font-bold shadow-md transition-all focus:outline-none flex items-center justify-center gap-2 disabled:opacity-75"
+                 >
+                    {processing && actionLoading === 'preparing' ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        <span>Acceptation...</span>
+                      </>
+                    ) : (
+                      <span>Accept Order</span>
+                    )}
+                 </button>
                </>
              )}
              
@@ -378,20 +345,56 @@ export function PharmacistOrderDetails() {
                  )}
                  <div className="flex gap-3 mt-2">
                     <button disabled={processing} onClick={() => setIsRejecting(false)} className="flex-1 py-3 bg-white border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 rounded-full font-bold transition-colors"> Cancel </button>
-                    <button disabled={processing || !rejectReason} onClick={() => handleUpdateStatus('rejected')} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full font-bold disabled:opacity-50 transition-all shadow-sm">
-                        Confirm Reject </button>
+                    <button 
+                       disabled={processing || !rejectReason} 
+                       onClick={() => handleUpdateStatus('rejected')} 
+                       className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full font-bold disabled:opacity-50 transition-all shadow-sm flex items-center justify-center gap-2"
+                    >
+                       {processing && actionLoading === 'rejected' ? (
+                         <>
+                           <Loader2 size={16} className="animate-spin" />
+                           <span>Rejet...</span>
+                         </>
+                       ) : (
+                         <span>Confirm Reject</span>
+                       )}
+                    </button>
                  </div>
                </div>
              )}
              
              {order.status === 'preparing' && (
-               <button disabled={processing} onClick={() => handleUpdateStatus(order.deliveryMethod === 'pickup' ? 'ready_for_pickup' : 'ready')} className="px-8 py-3.5 bg-[#0B3B3C] text-white rounded-full font-bold shadow-md hover:bg-[#082a2b] transition-all ml-auto focus:outline-none pointer-events-auto">
-                  {order.deliveryMethod === 'pickup' ? 'Mark as Ready for Pickup' : 'Mark as Ready for Delivery'} </button>
+               <button 
+                  disabled={processing} 
+                  onClick={() => handleUpdateStatus(order.deliveryMethod === 'pickup' ? 'ready_for_pickup' : 'ready')} 
+                  className="px-8 py-3.5 bg-[#0B3B3C] hover:bg-[#082a2b] text-white rounded-full font-bold shadow-md transition-all ml-auto focus:outline-none pointer-events-auto flex items-center justify-center gap-2 disabled:opacity-75"
+               >
+                  {processing ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      <span>Mise à jour...</span>
+                    </>
+                  ) : (
+                    order.deliveryMethod === 'pickup' ? 'Mark as Ready for Pickup' : 'Mark as Ready for Delivery'
+                  )}
+               </button>
              )}
              
              {order.status === 'ready_for_pickup' && order.deliveryMethod === 'pickup' && (
-               <button disabled={processing} onClick={() => handleUpdateStatus('delivered')} className="px-8 py-3.5 bg-[#0B3B3C] text-white rounded-full font-bold shadow-md hover:bg-[#082a2b] transition-all ml-auto focus:outline-none pointer-events-auto">
-                  Confirm Picked Up </button>
+               <button 
+                  disabled={processing} 
+                  onClick={() => handleUpdateStatus('delivered')} 
+                  className="px-8 py-3.5 bg-[#0B3B3C] hover:bg-[#082a2b] text-white rounded-full font-bold shadow-md transition-all ml-auto focus:outline-none pointer-events-auto flex items-center justify-center gap-2 disabled:opacity-75"
+               >
+                  {processing ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      <span>Confirmation...</span>
+                    </>
+                  ) : (
+                    'Confirm Picked Up'
+                  )}
+               </button>
              )}
          </div>
       </div>

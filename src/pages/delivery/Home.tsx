@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Bell, MapPin, Clock, DollarSign, CheckCircle, Navigation, Menu, Power, X, Moon, Sun, Layers, Star, AlertTriangle } from "lucide-react";
+import { User, Bell, MapPin, Clock, DollarSign, CheckCircle, Navigation, Menu, Power, X, Moon, Sun, Layers, Star, AlertTriangle, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 import { collection, query, where, getDocs, onSnapshot, updateDoc, doc, setDoc, addDoc, serverTimestamp, getDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
@@ -212,9 +213,11 @@ export function DeliveryHome() {
          console.warn("Could not notify patient", e);
       }
       
+      toast.success("Livraison acceptée avec succès !");
       setProcessing(false);
       navigate(`/delivery/order/${currentRequest.id}`);
     } catch (error) {
+      toast.error("Erreur lors de l'acceptation de la livraison.");
       handleFirestoreError(error, OperationType.UPDATE, `orders/${currentRequest.id}`);
       setProcessing(false);
     }
@@ -410,9 +413,16 @@ export function DeliveryHome() {
                      <button 
                         disabled={processing}
                         onClick={handleAcceptOrder}
-                        className="flex-1 bg-indigo-600 shadow-indigo-300 shadow-xl text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 transition flex justify-center items-center gap-2 text-xl"
+                        className="flex-1 bg-indigo-600 disabled:bg-indigo-400 shadow-indigo-300 shadow-xl text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 transition flex justify-center items-center gap-2 text-xl"
                      >
-                        {processing ? 'Accepting...' : 'Accept'}
+                        {processing ? (
+                          <>
+                            <Loader2 size={24} className="animate-spin" />
+                            <span>Acceptation...</span>
+                          </>
+                        ) : (
+                          'Accept'
+                        )}
                      </button>
                   </div>
                </div>

@@ -5,6 +5,7 @@ import { collection, query, where, onSnapshot, orderBy, updateDoc, doc } from '.
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { formatCurrency, parseDate } from '../../lib/utils';
+import { printInvoice } from '../../lib/invoice';
 import { useTranslation } from "react-i18next";
 
 export function PatientOrders() {
@@ -193,7 +194,16 @@ export function PatientOrders() {
                       </div>
                       <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 font-medium">
                          <span>{parseDate(order.createdAt) ? parseDate(order.createdAt)!.toLocaleDateString() : t('unknown_date', 'unknown date')}</span>
-                         <span>{formatCurrency(order.total)}</span>
+                         <div className="flex items-center gap-2">
+                           <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(order.total)}</span>
+                           <button 
+                             onClick={(e) => { e.stopPropagation(); printInvoice(order); }}
+                             className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 rounded-lg text-[11px] font-bold flex items-center gap-1 transition"
+                             title="Imprimer / Télécharger la Facture"
+                           >
+                             <FileText size={12} /> Facture
+                           </button>
+                         </div>
                       </div>
                       {(order.status === 'cancelled' || order.status === 'rejected') && order.cancellationReason && (
                          <div className="mt-3 pt-3 border-t border-gray-50 text-xs text-red-600 bg-red-50/50 p-2 rounded-lg">

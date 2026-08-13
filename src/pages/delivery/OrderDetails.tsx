@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Navigation, MapPin, Phone, MessageCircle, Clock, CheckCircle } from "lucide-react";
+import { ArrowLeft, Navigation, MapPin, Phone, MessageCircle, Clock, CheckCircle, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router-dom";
 import { doc, getDoc, updateDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
@@ -39,9 +40,11 @@ export function DeliveryOrderDetails() {
     setProcessing(true);
     try {
       await updateDoc(doc(db, 'orders', order.id), { status: 'driver_assigned', driverId: user.uid });
+      toast.success("Livraison acceptée avec succès !");
       // navigate to the active delivery view
       navigate('/delivery/deliveries');
     } catch (error) {
+      toast.error("Erreur lors de l'acceptation de la livraison.");
       handleFirestoreError(error, OperationType.UPDATE, 'orders');
       setProcessing(false);
     }
@@ -127,8 +130,18 @@ export function DeliveryOrderDetails() {
 
       {/* Accept Button */}
       <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-black border-t border-gray-100 dark:border-zinc-800 p-4 px-6 pb-8 z-50">
-         <button disabled={processing} onClick={handleAcceptOrder} className="w-full bg-indigo-600 disabled:bg-gray-300 text-white rounded-2xl font-bold py-4 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition flex items-center justify-center gap-2">
-            <CheckCircle size={20} /> {processing ? 'Accepting...' : 'Accept Delivery'}
+         <button disabled={processing} onClick={handleAcceptOrder} className="w-full bg-indigo-600 disabled:bg-indigo-400 text-white rounded-2xl font-bold py-4 shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition flex items-center justify-center gap-2">
+            {processing ? (
+              <>
+                <Loader2 size={20} className="animate-spin" />
+                <span>Acceptation...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle size={20} />
+                <span>Accept Delivery</span>
+              </>
+            )}
          </button>
       </div>
     </div>

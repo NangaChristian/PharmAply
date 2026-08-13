@@ -1,16 +1,65 @@
-import { ArrowLeft, CheckCircle, Package, Truck, Home, Phone, Star, User } from "lucide-react";
+import { ArrowLeft, CheckCircle, Package, Truck, Home, Phone, Star, User, FileText, Printer } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import { useState, useEffect } from 'react';
 import { useTranslation } from "react-i18next";
+import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
+import L from 'leaflet';
 import { doc, onSnapshot, db } from '../../lib/firebase';
-import { parseDate } from '../../lib/utils';
-import { RouteDisplay } from '../delivery/RouteDisplay';
+import { formatCurrency, parseDate } from '../../lib/utils';
+import { InvoiceModal } from '../../components/InvoiceModal';
+import { printInvoice } from '../../lib/invoice';
 
-import { useGoogleMapsStatus } from "../../hooks/useGoogleMapsStatus";
+const driverLeafletIcon = L.divIcon({
+  className: 'custom-driver-marker',
+  html: `
+    <div style="
+      width: 40px;
+      height: 40px;
+      background: #4f46e5;
+      border: 3px solid #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 6px 16px rgba(79,70,229,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    ">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <rect x="1" y="3" width="15" height="13" rx="2"/>
+        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+        <circle cx="5.5" cy="18.5" r="2.5"/>
+        <circle cx="18.5" cy="18.5" r="2.5"/>
+      </svg>
+    </div>
+  `,
+  iconSize: [40, 40],
+  iconAnchor: [20, 20]
+});
 
-const rawApiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY || (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY || '';
-const API_KEY = rawApiKey === 'YOUR_GOOGLE_MAPS_API_KEY' || rawApiKey === 'YOUR_KEY_HERE' ? '' : rawApiKey;
+const destLeafletIcon = L.divIcon({
+  className: 'custom-patient-marker',
+  html: `
+    <div style="
+      width: 40px;
+      height: 40px;
+      background: #ea580c;
+      border: 3px solid #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 6px 16px rgba(234,88,12,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    ">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+        <circle cx="12" cy="10" r="3"/>
+      </svg>
+    </div>
+  `,
+  iconSize: [40, 40],
+  iconAnchor: [20, 20]
+});
 
 export function PatientTracking() {
   const navigate = useNavigate();
@@ -23,8 +72,7 @@ export function PatientTracking() {
   const [truckPos, setTruckPos] = useState<[number, number]>([48.8566, 2.3522]); // Fallback to Paris
   const [eta, setEta] = useState(15);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-
-  const { mapsFailed } = useGoogleMapsStatus();
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -44,11 +92,11 @@ export function PatientTracking() {
     }
   }, []);
 
-  const destPos: [number, number] = (order?.destLat && order?.destLng) 
+  const destPos: [number, number] = (order?.destLat && order?.destLng && !isNaN(Number(order.destLat)) && Number(order.destLat) !== 48.8566) 
     ? [Number(order.destLat), Number(order.destLng)]
     : order?.deliveryLocation 
       ? [order.deliveryLocation.lat, order.deliveryLocation.lng]
-      : userLocation || [48.8566, 2.3522]; // Paris as final fallback
+      : userLocation || [4.0511, 9.7679]; // Douala default fallback if geolocation fails
 
   useEffect(() => {
     if (!id) return;
@@ -58,10 +106,10 @@ export function PatientTracking() {
        if (snapshot.exists()) {
           const data = snapshot.data();
           setOrder(data);
-          if (data.driverLat && data.driverLng) {
-             setTruckPos([data.driverLat, data.driverLng]);
-          } else if (data.driverLocation) {
-             setTruckPos([data.driverLocation.lat, data.driverLocation.lng]);
+          let lat = data.driverLat || data.driverLocation?.lat;
+          let lng = data.driverLng || data.driverLocation?.lng;
+          if (lat && lng && !isNaN(Number(lat)) && Number(lat) !== 48.8566) {
+             setTruckPos([Number(lat), Number(lng)]);
           }
        }
        setLoading(false);
@@ -75,8 +123,8 @@ export function PatientTracking() {
        if (docObj.exists()) {
           const driverData = docObj.data();
           setDriver({ id: docObj.id, ...driverData });
-          if (driverData.lat && driverData.lng) {
-             setTruckPos([driverData.lat, driverData.lng]);
+          if (driverData.lat && driverData.lng && !isNaN(Number(driverData.lat)) && Number(driverData.lat) !== 48.8566) {
+             setTruckPos([Number(driverData.lat), Number(driverData.lng)]);
           }
        }
     });
@@ -152,50 +200,31 @@ export function PatientTracking() {
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
          {/* Live Map Tracking */}
          {!isPickup && order && ['driver_assigned', 'en_route_to_pharmacy', 'delivering', 'out_for_delivery', 'en_route', 'delivered'].includes(order.status) && (
-           <div className="w-full h-64 bg-indigo-100 rounded-3xl overflow-hidden relative border-4 border-white shadow-sm z-0">
-               {API_KEY && !mapsFailed ? (
-                   <APIProvider apiKey={API_KEY} version="weekly">
-                   <Map
-                     defaultCenter={{ lat: truckPos[0], lng: truckPos[1] }}
-                     center={{ lat: truckPos[0], lng: truckPos[1] }}
-                     defaultZoom={14}
-                     mapId="DEMO_MAP_ID"
-                     disableDefaultUI={true}
-                     internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
-                     style={{ width: '100%', height: '100%' }}
-                   >
-                     <AdvancedMarker position={{ lat: truckPos[0], lng: truckPos[1] }}>
-                       <Pin background="#4f46e5" glyphColor="#fff" borderColor="#fff" />
-                     </AdvancedMarker>
-  
-                     <AdvancedMarker position={{ lat: destPos[0], lng: destPos[1] }}>
-                       <Pin background="#f97316" glyphColor="#fff" borderColor="#fff" />
-                     </AdvancedMarker>
-  
-                     <RouteDisplay 
-                       origin={{ lat: truckPos[0], lng: truckPos[1] }} 
-                       destination={{ lat: destPos[0], lng: destPos[1] }}
-                       onDuration={(millis) => setEta(Math.round(millis / 60000))}
-                     />
-                   </Map>
-               </APIProvider>
-               ) : (
-                   <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 p-4 text-center">
-                      <Truck className="w-8 h-8 text-indigo-500 mb-2 opacity-80" />
-                      <p className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider mb-1">Suivi en direct actif</p>
-                      <p className="text-[11px] text-gray-500">Position du livreur synchronisée en temps réel</p>
-                   </div>
-               )}
-              
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-48 bg-white dark:bg-black/95 backdrop-blur-md p-3 rounded-2xl shadow-lg flex items-center gap-3">
-                 <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                    <Truck size={18} />
-                 </div>
-                 <div>
-                    <p className="font-bold text-gray-900 dark:text-white text-sm">{t('arriving_in', 'Arriving in')}</p>
-                    <p className="font-bold text-indigo-600 dark:text-indigo-400">{eta > 0 ? `${eta} ${t('mins', 'mins')}` : t('arrived', 'Arrived')}</p>
-                 </div>
-              </div>
+           <div className="w-full h-72 bg-slate-900 rounded-3xl overflow-hidden relative border-4 border-white dark:border-zinc-800 shadow-md z-0">
+             <MapContainer
+               center={truckPos}
+               zoom={14}
+               zoomControl={false}
+               style={{ width: '100%', height: '100%' }}
+             >
+               <TileLayer
+                 url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                 maxZoom={19}
+               />
+               <Marker position={truckPos} icon={driverLeafletIcon} />
+               <Marker position={destPos} icon={destLeafletIcon} />
+               <Polyline positions={[truckPos, destPos]} color="#4f46e5" weight={5} opacity={0.8} dashArray="6, 10" />
+             </MapContainer>
+
+             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] w-48 bg-white/95 dark:bg-black/95 backdrop-blur-md p-3 rounded-2xl shadow-lg flex items-center gap-3 border border-gray-100 dark:border-zinc-800">
+                <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                   <Truck size={18} />
+                </div>
+                <div>
+                   <p className="font-bold text-gray-900 dark:text-white text-xs">{t('arriving_in', 'Arriving in')}</p>
+                   <p className="font-extrabold text-indigo-600 dark:text-indigo-400 text-sm">{eta > 0 ? `${eta} ${t('mins', 'mins')}` : t('arrived', 'Arrived')}</p>
+                </div>
+             </div>
            </div>
          )}
          
@@ -292,7 +321,24 @@ export function PatientTracking() {
          {/* Order Details */}
          {order && order.items && order.items.length > 0 && (
            <div className="bg-white dark:bg-black p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm">
-              <h3 className="font-bold text-gray-900 dark:text-white mb-4">{t('order_details', 'Order Details')}</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-gray-900 dark:text-white">{t('order_details', 'Order Details')}</h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowInvoiceModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#194B4B]/10 hover:bg-[#194B4B]/20 text-[#194B4B] dark:text-teal-400 rounded-xl text-xs font-bold transition"
+                  >
+                    <FileText size={14} /> Facture
+                  </button>
+                  <button
+                    onClick={() => printInvoice(order)}
+                    className="p-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-300 rounded-xl transition"
+                    title="Imprimer la facture"
+                  >
+                    <Printer size={14} />
+                  </button>
+                </div>
+              </div>
               <div className="space-y-3 mb-4">
                  {order.items.map((item: any, index: number) => (
                     <div key={index} className="flex justify-between items-center text-sm">
@@ -300,7 +346,7 @@ export function PatientTracking() {
                           {item.quantity}x {item.name || item.productId}
                        </span>
                        <span className="font-bold text-gray-900 dark:text-white">
-                          ${(item.price * item.quantity).toFixed(2)}
+                          {formatCurrency(item.price * item.quantity)}
                        </span>
                     </div>
                  ))}
@@ -315,7 +361,7 @@ export function PatientTracking() {
                                 {item.quantity}x {item.name}
                              </span>
                              <span className="font-bold text-indigo-900 dark:text-indigo-300">
-                                ${(item.price * item.quantity).toFixed(2)}
+                                {formatCurrency(item.price * item.quantity)}
                              </span>
                           </div>
                        ))}
@@ -324,9 +370,17 @@ export function PatientTracking() {
               </div>
               <div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-zinc-800">
                  <span className="font-bold text-gray-500 dark:text-gray-400">{t('total', 'Total')}</span>
-                 <span className="font-black text-gray-900 dark:text-white text-lg">${Number(order.total || 0).toFixed(2)}</span>
+                 <span className="font-black text-gray-900 dark:text-white text-lg">{formatCurrency(Number(order.total || 0))}</span>
               </div>
            </div>
+         )}
+
+         {order && (
+           <InvoiceModal
+             isOpen={showInvoiceModal}
+             onClose={() => setShowInvoiceModal(false)}
+             order={order}
+           />
          )}
          <div className="h-8"></div>
       </div>

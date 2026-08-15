@@ -57,6 +57,7 @@ export function AdminLayout() {
        label: t('admin_main_menu', "MAIN MENU"),
        items: [
          { to: "/admin", icon: LayoutDashboard, label: t('admin_dashboard', "Dashboard / Overview"), end: true },
+         { to: "/admin/deliveries-tracking", icon: Truck, label: "Tableau Livraison", end: true },
          { to: "/admin/live-map", icon: MapPin, label: "Live Map", end: true }
        ]
     },

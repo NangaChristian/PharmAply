@@ -81,8 +81,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
           const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
           if (userDoc.exists()) {
-            setActualRole(userDoc.data().role);
-            setActualUserData(userDoc.data());
+            const data = userDoc.data();
+            setActualRole(data.role);
+            setActualUserData(data);
+            if (data.photoURL || data.photoUrl || data.avatar_url) {
+              setActualUser(prev => prev ? ({
+                ...prev,
+                photoURL: prev.photoURL || data.photoURL || data.photoUrl || data.avatar_url,
+                displayName: prev.displayName || data.name || data.displayName || data.fullName
+              }) : prev);
+            }
           } else {
             setActualRole(null);
             setActualUserData(null);
@@ -119,15 +127,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
            console.warn('Session expired, ignoring refresh');
          }
       } else if (data?.session?.user) {
+        let uData: any = null;
+        try {
+          const userDoc = await getDoc(doc(db, 'users', data.session.user.id));
+          if (userDoc.exists()) {
+            uData = userDoc.data();
+            setActualRole(uData.role);
+            setActualUserData(uData);
+          }
+        } catch (e) {
+          console.warn("Could not fetch user document during refresh", e);
+        }
+
         const currentUser = {
           uid: data.session.user.id,
           email: data.session.user.email,
           emailVerified: data.session.user.email_confirmed_at != null,
-          displayName: data.session.user.user_metadata?.displayName,
-          photoURL: data.session.user.user_metadata?.photoURL,
+          displayName: data.session.user.user_metadata?.displayName || uData?.name || uData?.displayName || '',
+          photoURL: data.session.user.user_metadata?.photoURL || uData?.photoURL || uData?.photoUrl || uData?.avatar_url || '',
         };
-        // Note: we might not want to mutate auth.currentUser directly if impersonating
-        // but it's okay for now.
         setActualUser(currentUser);
       }
     } catch (e) {
@@ -150,11 +168,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     impersonateUser(null, null, null);
   };
 
-  const activeUser = impersonatedUser || actualUser;
+  const rawActiveUser = impersonatedUser || actualUser;
   const activeRole = impersonatedUser ? impersonatedRole : actualRole;
   const activeUserData = impersonatedUser ? impersonatedUserData : actualUserData;
+
+  const activeUser = rawActiveUser ? {
+    ...rawActiveUser,
+    displayName: rawActiveUser.displayName || activeUserData?.displayName || activeUserData?.name || activeUserData?.fullName || '',
+    photoURL: rawActiveUser.photoURL || activeUserData?.photoURL || activeUserData?.photoUrl || activeUserData?.avatar_url || activeUserData?.avatar || '',
+  } : null;
   
-  if (auth) {
+  if (auth && activeUser) {
      auth.currentUser = activeUser;
   }
 

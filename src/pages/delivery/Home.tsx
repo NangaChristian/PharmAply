@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase';
 import { useDarkMode } from "../../components/DarkModeProvider";
 import { formatCurrency } from '../../lib/utils';
 import { useTranslation } from "react-i18next";
+import { useTheme } from "../../components/ThemeProvider";
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import { RouteDisplay } from './RouteDisplay';
 import { NotificationBell } from "../../components/NotificationBell";
@@ -19,7 +20,9 @@ const API_KEY = getGoogleMapsApiKey();
 
 export function DeliveryHome() {
   const [mapType, setMapType] = useState('roadmap');
-    const { t } = useTranslation();
+  const { t } = useTranslation();
+  const { primaryColor } = useTheme();
+  const brandPrimary = primaryColor || '#194B4B';
   const navigate = useNavigate();
   const { user, userData } = useAuth();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
@@ -28,6 +31,7 @@ export function DeliveryHome() {
   const [currentRequest, setCurrentRequest] = useState<any>(null);
   const [processing, setProcessing] = useState(false);
   const [todaysEarnings, setTodaysEarnings] = useState(0);
+  const [driverRating, setDriverRating] = useState<number | null>(null);
   const [driverProfile, setDriverProfile] = useState<any>(null);
   const [driverPos, setDriverPos] = useState({ lat: 48.8566, lng: 2.3522 }); // Fallback location
   
@@ -172,12 +176,19 @@ export function DeliveryHome() {
              if (dateStr) {
                 const date = new Date(dateStr);
                 if (date >= startOfDay) {
-                   return acc + ((data.total || 0) * 0.1); 
+                   return acc + ((data.deliveryFee || data.delivery_fee || (data.total ? data.total * 0.1 : 0)) || 0); 
                 }
              }
              return acc;
           }, 0);
           setTodaysEarnings(earned);
+
+          // Calculate real satisfaction rating
+          const ratingDocs = snapshot.docs.map(d => d.data()).filter((d: any) => typeof d.driverRating === 'number' || typeof d.rating === 'number');
+          if (ratingDocs.length > 0) {
+             const sum = ratingDocs.reduce((acc: number, d: any) => acc + (d.driverRating ?? d.rating ?? 0), 0);
+             setDriverRating(parseFloat((sum / ratingDocs.length).toFixed(1)));
+          }
        } catch(e) { console.error(e); }
     };
     fetchEarnings();
@@ -293,24 +304,38 @@ export function DeliveryHome() {
       {/* Top HUD */}
       <div className="absolute top-0 left-0 right-0 p-6 pt-12 z-10 flex items-start justify-between">
          <div className="bg-white dark:bg-black/90 backdrop-blur shadow-sm rounded-2xl p-2 flex items-center gap-3 pr-4 pointer-events-auto cursor-pointer" onClick={() => navigate('/delivery/profile')}>
-            <div className="w-10 h-10 bg-indigo-100 rounded-full overflow-hidden flex items-center justify-center text-indigo-600 shrink-0 relative">
-               {user?.photoURL ? (
-                 <img src={user.photoURL} alt={user.displayName || 'Driver'} className="w-full h-full object-cover" />
+            <div 
+              className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center shrink-0 relative"
+              style={{ backgroundColor: `${brandPrimary}15`, color: brandPrimary }}
+            >
+               {(driverProfile?.photoURL || driverProfile?.photoUrl || user?.photoURL) ? (
+                 <img src={driverProfile?.photoURL || driverProfile?.photoUrl || user?.photoURL} alt={driverProfile?.name || user?.displayName || 'Driver'} className="w-full h-full object-cover" />
                ) : (
-                 user?.displayName ? <span className="font-bold text-sm">{user.displayName[0].toUpperCase()}</span> : <User size={18} />
+                 (driverProfile?.name || user?.displayName) ? <span className="font-bold text-sm">{(driverProfile?.name || user?.displayName)[0].toUpperCase()}</span> : <User size={18} />
                )}
             </div>
             <div>
                <div className="flex items-center gap-1.5 mb-0.5">
-                  <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight">{userData?.name || user?.displayName || t('driver', 'Driver')}</p>
-                  <span className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 text-[10px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5"><Star size={10} className="fill-current"/> 5.0</span>
+                  <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight">{driverProfile?.name || userData?.name || user?.displayName || t('driver', 'Livreur')}</p>
+                  {driverRating !== null ? (
+                    <span className="bg-amber-50 text-amber-900 border border-amber-200 text-[10px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5">
+                      <Star size={10} className="fill-current text-[#FACC15]"/> {driverRating}
+                    </span>
+                  ) : (
+                    <span className="bg-slate-100 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                      {t('new_driver', 'Nouveau')}
+                    </span>
+                  )}
                </div>
                <div className="flex items-center gap-2">
-                 <span className="bg-indigo-50 dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">
-                   {driverProfile?.vehicleType === 'car' ? t('car', 'CAR') : (driverProfile?.vehicleType === 'motorcycle' ? t('moto', 'MOTO') : t('vehicle', 'VEHICLE'))}
+                 <span 
+                   className="text-[10px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider text-white"
+                   style={{ backgroundColor: brandPrimary }}
+                 >
+                   {driverProfile?.vehicleType === 'car' ? t('car', 'Voiture') : (driverProfile?.vehicleType === 'motorcycle' ? t('moto', 'Moto') : (driverProfile?.vehicleType === 'bicycle' ? t('bicycle', 'Vélo') : t('vehicle', 'Véhicule')))}
                  </span>
-                 <p className="text-[11px] text-gray-500 font-bold tracking-widest uppercase"> 
-                   {driverProfile?.vehiclePlate || 'NO PLATE'} 
+                 <p className="text-[11px] text-gray-500 font-bold tracking-wider uppercase font-mono"> 
+                   {driverProfile?.vehiclePlate || t('no_plate', 'NON RENSEIGNÉ')} 
                  </p>
                </div>
             </div>
@@ -318,7 +343,7 @@ export function DeliveryHome() {
          
          <div className="flex flex-row gap-2 pointer-events-auto">
             <div className="bg-white dark:bg-black/90 backdrop-blur rounded-2xl shadow-sm px-3 flex flex-col items-center justify-center text-gray-900 dark:text-white relative font-bold text-sm">
-               <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase uppercase">Today</span>
+               <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase uppercase">Aujourd'hui</span>
                {formatCurrency(todaysEarnings)}
             </div>
             <NotificationBell />

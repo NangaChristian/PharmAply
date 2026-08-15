@@ -9,12 +9,14 @@ import { db } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { useTranslation } from "react-i18next";
 import { parseDate } from "../../lib/utils";
+import { useTheme } from "../../components/ThemeProvider";
 import toast from "react-hot-toast";
 
 export function Messages() {
   const navigate = useNavigate();
   const { id } = useParams(); // orderId or prescriptionId
-  const { user, role } = useAuth();
+  const { user, role, userData } = useAuth();
+  const { theme } = useTheme();
   const { t } = useTranslation();
 
   const [messages, setMessages] = useState<any[]>([]);
@@ -25,6 +27,7 @@ export function Messages() {
   const [partnerName, setPartnerName] = useState<string>("");
   const [partnerRole, setPartnerRole] = useState<string>("");
   const [partnerPhone, setPartnerPhone] = useState<string>("");
+  const [partnerPhoto, setPartnerPhoto] = useState<string>("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +39,7 @@ export function Messages() {
     scrollToBottom();
   }, [messages]);
 
-  // 1. Fetch Order/Prescription context & partner details
+  // 1. Fetch Order/Prescription context & partner details (name, role, phone, and photo)
   useEffect(() => {
     if (!id || !user) return;
     setLoadingContext(true);
@@ -54,18 +57,24 @@ export function Messages() {
             if (oData.driverId) {
               let name = oData.driverName;
               let phone = oData.driverPhone;
-              if (!name || !phone) {
+              let photo = oData.driverPhoto || oData.driverPhotoUrl || "";
+              
+              if (!name || !phone || !photo) {
                 try {
                   const dSnap = await getDoc(doc(db, 'drivers', oData.driverId));
                   if (dSnap.exists()) {
-                    name = name || dSnap.data().name || dSnap.data().fullName;
-                    phone = phone || dSnap.data().phone || dSnap.data().phoneNumber;
+                    const dData = dSnap.data();
+                    name = name || dData.name || dData.fullName;
+                    phone = phone || dData.phone || dData.phoneNumber;
+                    photo = photo || dData.photoURL || dData.photoUrl || dData.avatarUrl || dData.photo;
                   }
-                  if (!name) {
+                  if (!photo || !name) {
                     const uSnap = await getDoc(doc(db, 'users', oData.driverId));
                     if (uSnap.exists()) {
-                      name = uSnap.data().name || uSnap.data().fullName;
-                      phone = phone || uSnap.data().phone;
+                      const uData = uSnap.data();
+                      name = name || uData.name || uData.fullName || uData.displayName;
+                      phone = phone || uData.phone;
+                      photo = photo || uData.photoURL || uData.photoUrl || uData.avatar_url;
                     }
                   }
                 } catch (e) {
@@ -75,15 +84,20 @@ export function Messages() {
               setPartnerName(name || "Livreur");
               setPartnerRole("Livreur");
               setPartnerPhone(phone || "");
+              setPartnerPhoto(photo || "");
             } else if (oData.pharmacyId) {
               let name = oData.pharmacyName;
               let phone = oData.pharmacyPhone;
-              if (!name) {
+              let photo = oData.pharmacyPhoto || oData.pharmacyLogo || "";
+
+              if (!name || !photo) {
                 try {
                   const pSnap = await getDoc(doc(db, 'pharmacies', oData.pharmacyId));
                   if (pSnap.exists()) {
-                    name = pSnap.data().name || pSnap.data().pharmacyName;
-                    phone = phone || pSnap.data().phone;
+                    const pData = pSnap.data();
+                    name = pData.name || pData.pharmacyName;
+                    phone = phone || pData.phone;
+                    photo = photo || pData.photoURL || pData.photoUrl || pData.logoUrl || pData.logo;
                   }
                 } catch (e) {
                   console.warn("Could not fetch pharmacy:", e);
@@ -92,20 +106,26 @@ export function Messages() {
               setPartnerName(name || "Pharmacie");
               setPartnerRole("Pharmacie");
               setPartnerPhone(phone || "");
+              setPartnerPhoto(photo || "");
             } else {
               setPartnerName("Pharmacie / Livreur");
               setPartnerRole("Support");
+              setPartnerPhoto("");
             }
           } else if (role === 'pharmacist' || role === 'pharmacy') {
             // Pharmacist talking to Patient
             let name = oData.patientName;
             let phone = oData.patientPhone;
-            if (!name && oData.patientId) {
+            let photo = oData.patientPhoto || oData.patientPhotoUrl || "";
+
+            if ((!name || !photo) && oData.patientId) {
               try {
                 const uSnap = await getDoc(doc(db, 'users', oData.patientId));
                 if (uSnap.exists()) {
-                  name = uSnap.data().name || uSnap.data().fullName;
-                  phone = phone || uSnap.data().phone;
+                  const uData = uSnap.data();
+                  name = name || uData.name || uData.fullName || uData.displayName;
+                  phone = phone || uData.phone;
+                  photo = photo || uData.photoURL || uData.photoUrl || uData.avatar_url;
                 }
               } catch (e) {
                 console.warn("Could not fetch patient user:", e);
@@ -114,16 +134,21 @@ export function Messages() {
             setPartnerName(name || "Client");
             setPartnerRole("Client");
             setPartnerPhone(phone || "");
+            setPartnerPhoto(photo || "");
           } else if (role === 'delivery' || role === 'driver') {
             // Driver talking to Patient
             let name = oData.patientName;
             let phone = oData.patientPhone;
-            if (!name && oData.patientId) {
+            let photo = oData.patientPhoto || oData.patientPhotoUrl || "";
+
+            if ((!name || !photo) && oData.patientId) {
               try {
                 const uSnap = await getDoc(doc(db, 'users', oData.patientId));
                 if (uSnap.exists()) {
-                  name = uSnap.data().name || uSnap.data().fullName;
-                  phone = phone || uSnap.data().phone;
+                  const uData = uSnap.data();
+                  name = name || uData.name || uData.fullName || uData.displayName;
+                  phone = phone || uData.phone;
+                  photo = photo || uData.photoURL || uData.photoUrl || uData.avatar_url;
                 }
               } catch (e) {
                 console.warn("Could not fetch patient user:", e);
@@ -132,9 +157,11 @@ export function Messages() {
             setPartnerName(name || "Client");
             setPartnerRole("Client");
             setPartnerPhone(phone || "");
+            setPartnerPhoto(photo || "");
           } else {
             setPartnerName(oData.patientName || oData.pharmacyName || "Discussion");
             setPartnerRole("Contact");
+            setPartnerPhoto(oData.patientPhoto || oData.pharmacyPhoto || "");
           }
         } else {
           // Try fetching prescription
@@ -146,20 +173,28 @@ export function Messages() {
             if (role === 'patient') {
               setPartnerName(pData.pharmacyName || "Pharmacie");
               setPartnerRole("Pharmacie");
+              setPartnerPhoto(pData.pharmacyPhoto || pData.pharmacyLogo || "");
             } else {
               let name = pData.patientName;
-              if (!name && pData.patientId) {
+              let photo = pData.patientPhoto || "";
+              if ((!name || !photo) && pData.patientId) {
                 try {
                   const uSnap = await getDoc(doc(db, 'users', pData.patientId));
-                  if (uSnap.exists()) name = uSnap.data().name || uSnap.data().fullName;
+                  if (uSnap.exists()) {
+                    const uData = uSnap.data();
+                    name = uData.name || uData.fullName || uData.displayName;
+                    photo = photo || uData.photoURL || uData.photoUrl || uData.avatar_url;
+                  }
                 } catch (e) {}
               }
               setPartnerName(name || "Client");
               setPartnerRole("Client");
+              setPartnerPhoto(photo || "");
             }
           } else {
             setPartnerName("Discussion");
             setPartnerRole("Message");
+            setPartnerPhoto("");
           }
         }
       } catch (err) {
@@ -210,27 +245,46 @@ export function Messages() {
     return contextItem.patientId || 'unknown';
   };
 
+  const myPhoto = user?.photoURL || userData?.photoURL || userData?.photoUrl || userData?.avatar_url || '';
+
   const handleSend = async () => {
     if (!input.trim() || !user || !id) return;
 
     const msgText = input.trim();
     setInput("");
 
+    const tempId = `temp_${Date.now()}`;
+    const newMsg = {
+      id: tempId,
+      relatedId: id,
+      patientId: contextItem?.patientId || (role === 'patient' ? user.uid : ''),
+      senderId: user.uid,
+      senderName: user.displayName || userData?.name || user.email || 'Utilisateur',
+      senderPhoto: myPhoto,
+      receiverId: getReceiverId(),
+      senderType: role || 'user',
+      text: msgText,
+      createdAt: new Date().toISOString()
+    };
+
+    // Optimistic UI update
+    setMessages(prev => [...prev, newMsg]);
+
     try {
-      const receiverId = getReceiverId();
       await addDoc(collection(db, 'messages'), {
         relatedId: id,
-        patientId: contextItem?.patientId || (role === 'patient' ? user.uid : ''),
-        senderId: user.uid,
-        senderName: user.displayName || user.email || 'Utilisateur',
-        receiverId,
-        senderType: role || 'user',
+        patientId: newMsg.patientId,
+        senderId: newMsg.senderId,
+        senderName: newMsg.senderName,
+        senderPhoto: newMsg.senderPhoto,
+        receiverId: newMsg.receiverId,
+        senderType: newMsg.senderType,
         text: msgText,
         createdAt: serverTimestamp()
       });
     } catch (error) {
-      console.error("Error sending message to Firestore:", error);
-      toast.error("Échec d'envoi du message");
+      console.error("Error sending message:", error);
+      toast.error(t('send_message_error', 'Échec de transmission du message'));
     }
   };
 
@@ -247,8 +301,25 @@ export function Messages() {
           </button>
           
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm">
-              {partnerRole === 'Livreur' ? <Bike size={20} /> : partnerRole === 'Pharmacie' ? <Store size={20} /> : <User size={20} />}
+            <div className="w-11 h-11 rounded-full bg-slate-100 dark:bg-zinc-800 border-2 border-white dark:border-zinc-700 shadow-sm overflow-hidden flex items-center justify-center font-bold text-sm shrink-0" style={{ color: theme.primaryColor || '#194B4B' }}>
+              {partnerPhoto ? (
+                <img 
+                  src={partnerPhoto} 
+                  alt={partnerName} 
+                  className="w-full h-full object-cover" 
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+              ) : partnerRole === 'Livreur' ? (
+                <Bike size={22} />
+              ) : partnerRole === 'Pharmacie' ? (
+                <Store size={22} />
+              ) : partnerName ? (
+                <span className="uppercase text-sm">{partnerName[0]}</span>
+              ) : (
+                <User size={22} />
+              )}
             </div>
 
             <div>
@@ -260,8 +331,8 @@ export function Messages() {
                 )}
               </h1>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-green-500 font-medium flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse" />
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
                   {partnerRole ? `${partnerRole} • En ligne` : 'En ligne'}
                 </span>
                 {contextItem && (
@@ -277,7 +348,8 @@ export function Messages() {
         {partnerPhone && (
           <a 
             href={`tel:${partnerPhone}`}
-            className="w-10 h-10 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center hover:bg-teal-100 transition"
+            className="w-10 h-10 rounded-full flex items-center justify-center transition shadow-sm"
+            style={{ backgroundColor: `${theme.primaryColor || '#194B4B'}15`, color: theme.primaryColor || '#194B4B' }}
             title="Appeler"
           >
             <Phone size={18} />
@@ -297,20 +369,45 @@ export function Messages() {
         ) : (
           messages.map(msg => {
             const isMe = msg.senderId === user?.uid;
+            const bubblePhoto = isMe ? myPhoto : (msg.senderPhoto || partnerPhoto);
+
             return (
-              <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[78%] rounded-2xl p-3.5 shadow-sm ${
-                  isMe 
-                    ? 'bg-indigo-600 text-white rounded-br-none' 
-                    : 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-slate-100 rounded-bl-none border border-gray-100 dark:border-zinc-800'
-                }`}>
+              <div key={msg.id} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                {!isMe && (
+                  <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-zinc-800 overflow-hidden shrink-0 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300">
+                    {bubblePhoto ? (
+                      <img src={bubblePhoto} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      partnerRole === 'Livreur' ? <Bike size={14} /> : partnerRole === 'Pharmacie' ? <Store size={14} /> : <User size={14} />
+                    )}
+                  </div>
+                )}
+
+                <div 
+                  className={`max-w-[78%] rounded-2xl p-3.5 shadow-sm ${
+                    isMe 
+                      ? 'text-white rounded-br-none' 
+                      : 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-slate-100 rounded-bl-none border border-gray-100 dark:border-zinc-800'
+                  }`}
+                  style={isMe ? { backgroundColor: theme.primaryColor || '#194B4B' } : undefined}
+                >
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                  <p className={`text-[10px] mt-1.5 font-medium text-right ${isMe ? 'text-indigo-200' : 'text-gray-400'}`}>
+                  <p className={`text-[10px] mt-1.5 font-medium text-right ${isMe ? 'text-white/80' : 'text-gray-400'}`}>
                     {parseDate(msg.createdAt) 
                       ? parseDate(msg.createdAt)!.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
                       : t('now', 'À l\'instant')}
                   </p>
                 </div>
+
+                {isMe && (
+                  <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-zinc-800 overflow-hidden shrink-0 flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: theme.primaryColor || '#194B4B' }}>
+                    {myPhoto ? (
+                      <img src={myPhoto} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      (user?.displayName || 'U')[0].toUpperCase()
+                    )}
+                  </div>
+                )}
               </div>
             );
           })
@@ -326,12 +423,13 @@ export function Messages() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           placeholder={t('type_your_message', 'Saisissez votre message...')}
-          className="flex-1 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-full py-3 px-6 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition"
+          className="flex-1 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-full py-3 px-6 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-zinc-700 transition"
         />
         <button 
           onClick={handleSend} 
           disabled={!input.trim()}
-          className="w-12 h-12 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-full flex items-center justify-center shadow-md transition"
+          className="w-12 h-12 disabled:opacity-50 text-white rounded-full flex items-center justify-center shadow-md transition hover:opacity-90"
+          style={{ backgroundColor: theme.primaryColor || '#194B4B' }}
         >
           <Send size={18} className="translate-x-0.5" />
         </button>

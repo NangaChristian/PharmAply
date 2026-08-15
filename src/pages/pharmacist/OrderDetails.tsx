@@ -32,12 +32,14 @@ export function PharmacistOrderDetails() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const orderData = { id: docSnap.id, ...docSnap.data() } as any;
-          orderData.patientName = 'Unknown Patient';
           if (orderData.patientId) {
              try {
                 const pd = await getDoc(doc(db, 'users', orderData.patientId));
                 if (pd.exists()) {
-                   orderData.patientName = pd.data().name || pd.data().fullName || 'Unknown Patient';
+                   const uData = pd.data();
+                   orderData.patientName = uData.name || uData.fullName || uData.displayName || orderData.patientName || 'Client';
+                   orderData.patientPhoto = uData.photoURL || uData.photoUrl || uData.avatar_url || orderData.patientPhoto;
+                   orderData.patientPhone = uData.phone || orderData.patientPhone;
                 }
              } catch(e) {}
           }
@@ -159,10 +161,39 @@ export function PharmacistOrderDetails() {
            {/* Order Summary */}
            <div className="bg-[#FAFBFC] dark:bg-slate-900 border border-transparent dark:border-slate-700 rounded-2xl p-6 mb-6">
              <h3 className="font-bold text-gray-900 dark:text-white text-base mb-4">Order Summary</h3>
-             <div className="text-sm font-medium text-gray-500 flex flex-wrap gap-x-6 gap-y-3">
-               <span className="flex flex-col gap-1">Driver: <span className="text-gray-900 font-bold dark:text-gray-300">{order.driverName || (order.driverId ? 'Assigned' : 'Unassigned')}</span></span>
-               <span className="flex flex-col gap-1">Customer: <span className="text-gray-900 font-bold dark:text-gray-300">{order.patientName || 'Customer'}</span></span>
-               <span className="flex flex-col gap-1">Count: <span className="text-gray-900 font-bold dark:text-gray-300">{order.items?.length || 0} items</span></span>
+             <div className="text-sm font-medium text-gray-500 flex flex-wrap gap-x-8 gap-y-4">
+               <div className="flex items-center gap-3">
+                 <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 text-xs shrink-0 border border-slate-200 dark:border-slate-700">
+                   {order.patientPhoto ? (
+                     <img src={order.patientPhoto} alt="" className="w-full h-full object-cover" />
+                   ) : (
+                     (order.patientName || 'C')[0].toUpperCase()
+                   )}
+                 </div>
+                 <div className="flex flex-col">
+                   <span className="text-xs text-gray-500">Customer</span>
+                   <span className="text-gray-900 font-bold dark:text-gray-300">{order.patientName || 'Customer'}</span>
+                 </div>
+               </div>
+
+               <div className="flex items-center gap-3">
+                 <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 text-xs shrink-0 border border-slate-200 dark:border-slate-700">
+                   {order.driverPhoto ? (
+                     <img src={order.driverPhoto} alt="" className="w-full h-full object-cover" />
+                   ) : (
+                     (order.driverName || 'L')[0].toUpperCase()
+                   )}
+                 </div>
+                 <div className="flex flex-col">
+                   <span className="text-xs text-gray-500">Driver</span>
+                   <span className="text-gray-900 font-bold dark:text-gray-300">{order.driverName || (order.driverId ? 'Assigned' : 'Unassigned')}</span>
+                 </div>
+               </div>
+
+               <div className="flex flex-col justify-center">
+                 <span className="text-xs text-gray-500">Items</span>
+                 <span className="text-gray-900 font-bold dark:text-gray-300">{order.items?.length || 0} items</span>
+               </div>
              </div>
            </div>
 

@@ -14,6 +14,7 @@ import {
 import { db, storage, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { useTranslation } from "react-i18next";
+import { getRoadRoute } from '../../lib/routing';
 import toast from "react-hot-toast";
 
 type DeliveryStage = 'to_pharmacy' | 'at_pharmacy' | 'to_customer' | 'at_customer' | 'completed';
@@ -43,7 +44,7 @@ function MapAutoRecenter({ center, lockOnDriver }: { center: [number, number]; l
   return null;
 }
 
-// Custom DivIcon Markers for Yango Style Map
+// Custom DivIcon Markers for GPS Navigation Map
 const driverIcon = L.divIcon({
   className: 'custom-driver-marker',
   html: `
@@ -58,14 +59,14 @@ const driverIcon = L.divIcon({
       <div style="
         position: absolute;
         inset: -6px;
-        background: rgba(79, 70, 229, 0.25);
+        background: rgba(25, 75, 75, 0.25);
         border-radius: 50%;
         animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
       "></div>
       <div style="
         width: 42px;
         height: 42px;
-        background: #4f46e5;
+        background: #194B4B;
         border: 3.5px solid #ffffff;
         border-radius: 50%;
         box-shadow: 0 8px 20px rgba(0,0,0,0.3);
@@ -144,15 +145,21 @@ export function DeliveryActive() {
 
   const [order, setOrder] = useState<any>(null);
   const [pharmacy, setPharmacy] = useState<any>(null);
+  const [patientUser, setPatientUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const [stage, setStage] = useState<DeliveryStage>('to_pharmacy');
-  const [driverPos, setDriverPos] = useState<[number, number]>([4.0511, 9.7679]); // Douala default
+  const [driverPos, setDriverPos] = useState<[number, number]>([3.8480, 11.5021]); // Yaoundé / Douala default
   const [lockOnDriver, setLockOnDriver] = useState(true);
   const [sheetExpanded, setSheetExpanded] = useState(true);
   const [voiceGuidance, setVoiceGuidance] = useState(true);
+
+  // Live road route coordinates and stats
+  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
+  const [routeDistanceText, setRouteDistanceText] = useState<string>("Calcul...");
+  const [routeEtaMins, setRouteEtaMins] = useState<number>(5);
 
   // Proof of delivery state
   const [proofPreview, setProofPreview] = useState<string | null>(null);
@@ -260,6 +267,18 @@ export function DeliveryActive() {
               console.warn("Pharmacy fetch error:", e);
             }
           }
+
+          // Fetch patient user details for photo and coordinates if needed
+          if (orderData.patientId) {
+            try {
+              const uSnap = await getDoc(doc(db, 'users', orderData.patientId));
+              if (uSnap.exists()) {
+                setPatientUser({ id: uSnap.id, ...uSnap.data() });
+              }
+            } catch (e) {
+              console.warn("Patient fetch error:", e);
+            }
+          }
         } else {
           setOrder(null);
         }
@@ -275,23 +294,51 @@ export function DeliveryActive() {
   }, [user]);
 
   // Coordinates resolution
-  const pharmacyLat = Number(order?.pharmacyLat || pharmacy?.lat || pharmacy?.latitude || 4.0511);
-  const pharmacyLng = Number(order?.pharmacyLng || pharmacy?.lng || pharmacy?.longitude || 9.7679);
-  
-  const patientLat = Number(order?.destLat || order?.deliveryLocation?.lat || 4.0511);
-  const patientLng = Number(order?.destLng || order?.deliveryLocation?.lng || 9.7679);
-
   const isPharmacyStep = stage === 'to_pharmacy' || stage === 'at_pharmacy';
-  const isPatientStep = stage === 'to_customer' || stage === 'at_customer';
 
-  const activeTargetPos: [number, number] = isPharmacyStep
-    ? [pharmacyLat, pharmacyLng]
-    : [patientLat, patientLng];
+  const rawPharmacyLat = Number(order?.pharmacyLat || pharmacy?.lat || pharmacy?.latitude);
+  const rawPharmacyLng = Number(order?.pharmacyLng || pharmacy?.lng || pharmacy?.longitude);
 
-  // Calculate live distance & ETA
-  const distKm = calculateDistanceKm(driverPos[0], driverPos[1], activeTargetPos[0], activeTargetPos[1]);
-  const distText = distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(1)} km`;
-  const etaMins = Math.max(1, Math.round((distKm / 25) * 60)); // Avg 25 km/h in city
+  const pharmacyPos: [number, number] = (!isNaN(rawPharmacyLat) && !isNaN(rawPharmacyLng) && rawPharmacyLat !== 0)
+    ? [rawPharmacyLat, rawPharmacyLng]
+    : [driverPos[0] + 0.005, driverPos[1] + 0.004];
+
+  const rawPatientLat = Number(order?.destLat || order?.deliveryLocation?.lat || patientUser?.lat || patientUser?.latitude);
+  const rawPatientLng = Number(order?.destLng || order?.deliveryLocation?.lng || patientUser?.lng || patientUser?.longitude);
+
+  const patientPos: [number, number] = (!isNaN(rawPatientLat) && !isNaN(rawPatientLng) && rawPatientLat !== 0)
+    ? [rawPatientLat, rawPatientLng]
+    : [driverPos[0] + 0.012, driverPos[1] + 0.008];
+
+  const activeTargetPos: [number, number] = isPharmacyStep ? pharmacyPos : patientPos;
+
+  // Real-time Road Network Routing (OSRM Road Polyline)
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchRoute = async () => {
+      if (!driverPos[0] || !driverPos[1] || !activeTargetPos[0] || !activeTargetPos[1]) return;
+
+      const result = await getRoadRoute(driverPos, activeTargetPos);
+      if (isMounted) {
+        setRouteCoordinates(result.coordinates);
+        
+        const distKm = result.distanceMeters / 1000;
+        const formattedDist = result.distanceMeters < 1000 
+          ? `${result.distanceMeters} m` 
+          : `${distKm.toFixed(1)} km`;
+        setRouteDistanceText(formattedDist);
+
+        const eta = Math.max(1, Math.ceil(result.durationSeconds / 60));
+        setRouteEtaMins(eta);
+      }
+    };
+
+    fetchRoute();
+    return () => {
+      isMounted = false;
+    };
+  }, [driverPos[0], driverPos[1], activeTargetPos[0], activeTargetPos[1], isPharmacyStep]);
 
   // Stage advance handler
   const handleAdvanceStage = async () => {
@@ -395,8 +442,8 @@ export function DeliveryActive() {
   if (loading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-slate-900 text-white p-8 text-center">
-        <Loader2 size={36} className="animate-spin text-indigo-400 mb-3" />
-        <span className="font-medium text-sm text-slate-300">Initialisation de la carte GPS Yango...</span>
+        <Loader2 size={36} className="animate-spin text-teal-400 mb-3" />
+        <span className="font-medium text-sm text-slate-300">Initialisation de la navigation GPS...</span>
       </div>
     );
   }
@@ -413,7 +460,7 @@ export function DeliveryActive() {
         </p>
         <button
           onClick={() => navigate('/delivery')}
-          className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition"
+          className="px-6 py-3 bg-[#194B4B] text-white rounded-xl font-bold hover:opacity-90 transition"
         >
           Retour aux courses
         </button>
@@ -421,14 +468,32 @@ export function DeliveryActive() {
     );
   }
 
-  const targetName = isPharmacyStep ? (order.pharmacyName || pharmacy?.name || 'Pharmacie') : (order.patientName || 'Client');
-  const targetAddress = isPharmacyStep ? (order.pharmacyAddress || pharmacy?.address || 'Adresse de la pharmacie') : (order.deliveryAddress || 'Adresse du client');
-  const targetPhone = isPharmacyStep ? (order.pharmacyPhone || pharmacy?.phone) : order.patientPhone;
+  const targetName = isPharmacyStep 
+    ? (order.pharmacyName || pharmacy?.name || 'Pharmacie Partenaire') 
+    : (order.patientName || patientUser?.name || 'Client');
+
+  let rawTargetAddress = isPharmacyStep 
+    ? (order.pharmacyAddress || pharmacy?.address || 'Pharmacie Partenaire') 
+    : (order.deliveryAddress || patientUser?.address || order.address || 'Adresse de livraison');
+
+  if (rawTargetAddress.toLowerCase().includes('update your profile') || rawTargetAddress.toLowerCase().includes('please update') || !rawTargetAddress.trim()) {
+    rawTargetAddress = patientUser?.address || 'Yaoundé, Cameroun';
+  }
+
+  const targetAddress = rawTargetAddress;
+
+  const targetPhone = isPharmacyStep 
+    ? (order.pharmacyPhone || pharmacy?.phone) 
+    : (order.patientPhone || patientUser?.phone);
+
+  const targetPhoto = isPharmacyStep 
+    ? (order.pharmacyPhoto || pharmacy?.photoURL || pharmacy?.photoUrl || pharmacy?.logoUrl) 
+    : (order.patientPhoto || patientUser?.photoURL || patientUser?.photoUrl || patientUser?.avatar_url);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-slate-950 flex flex-col">
       
-      {/* 1. FULLSCREEN LEAFLET MAP CANVAS (YANGO STYLE) */}
+      {/* 1. FULLSCREEN LEAFLET MAP CANVAS */}
       <div className="absolute inset-0 z-0">
         <MapContainer
           center={driverPos}
@@ -436,7 +501,7 @@ export function DeliveryActive() {
           zoomControl={false}
           style={{ width: '100%', height: '100%' }}
         >
-          {/* CartoDB Voyager Tile Layer - Ultra clean modern map styling like Yango */}
+          {/* CartoDB Voyager Tile Layer */}
           <TileLayer
             url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
             maxZoom={19}
@@ -464,18 +529,39 @@ export function DeliveryActive() {
             </Popup>
           </Marker>
 
-          {/* Direct Yango-style Route Polyline */}
-          <Polyline
-            positions={[driverPos, activeTargetPos]}
-            color={isPharmacyStep ? "#0d9488" : "#4f46e5"}
-            weight={6}
-            opacity={0.85}
-            dashArray="8, 12"
-          />
+          {/* Real-time Road Network Navigation Polyline */}
+          {routeCoordinates.length > 0 && (
+            <>
+              {/* Outer stroke casing */}
+              <Polyline
+                positions={routeCoordinates}
+                color="#0f172a"
+                weight={8}
+                opacity={0.4}
+              />
+              {/* Main colored navigation polyline */}
+              <Polyline
+                positions={routeCoordinates}
+                color={isPharmacyStep ? "#0d9488" : "#194B4B"}
+                weight={5}
+                opacity={0.95}
+              />
+            </>
+          )}
+
+          {routeCoordinates.length === 0 && (
+            <Polyline
+              positions={[driverPos, activeTargetPos]}
+              color={isPharmacyStep ? "#0d9488" : "#194B4B"}
+              weight={5}
+              opacity={0.85}
+              dashArray="6, 10"
+            />
+          )}
         </MapContainer>
       </div>
 
-      {/* 2. TOP FLOATING YANGO NAVIGATION BANNER & CONTROLS */}
+      {/* 2. TOP FLOATING NAVIGATION BANNER & CONTROLS */}
       <div className="absolute top-4 left-4 right-4 z-10 flex flex-col gap-3 pointer-events-none">
         
         {/* Navigation HUD Banner */}
@@ -490,7 +576,7 @@ export function DeliveryActive() {
             
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${isPharmacyStep ? 'bg-teal-400' : 'bg-orange-500'} animate-ping`} />
+                <span className={`w-2.5 h-2.5 rounded-full ${isPharmacyStep ? 'bg-teal-400' : 'bg-amber-400'} animate-ping`} />
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
                   {isPharmacyStep ? 'Étape 1 : Collecte Pharmacie' : 'Étape 2 : Livraison Client'}
                 </span>
@@ -503,10 +589,10 @@ export function DeliveryActive() {
 
           <div className="text-right pl-3 border-l border-slate-800">
             <div className="text-lg font-black text-emerald-400 leading-tight">
-              {etaMins} <span className="text-xs font-semibold text-slate-300">min</span>
+              {routeEtaMins} <span className="text-xs font-semibold text-slate-300">min</span>
             </div>
             <div className="text-[11px] font-bold text-slate-400">
-              {distText}
+              {routeDistanceText}
             </div>
           </div>
         </div>
@@ -518,7 +604,7 @@ export function DeliveryActive() {
               onClick={() => setLockOnDriver(!lockOnDriver)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold shadow-lg transition backdrop-blur-md ${
                 lockOnDriver 
-                  ? 'bg-indigo-600 text-white' 
+                  ? 'bg-[#194B4B] text-white' 
                   : 'bg-slate-900/90 text-slate-300 hover:bg-slate-800'
               }`}
             >
@@ -536,13 +622,13 @@ export function DeliveryActive() {
           </div>
 
           <span className="bg-slate-900/90 text-white text-[11px] font-bold px-3 py-1.5 rounded-full shadow-lg backdrop-blur-md flex items-center gap-1.5">
-            <Compass size={14} className="text-indigo-400 animate-spin" />
+            <Compass size={14} className="text-teal-400 animate-spin" />
             Vitesse ~ 28 km/h
           </span>
         </div>
       </div>
 
-      {/* 3. YANGO-STYLE SLIDING BOTTOM SHEET */}
+      {/* 3. SLIDING BOTTOM SHEET */}
       <div className={`absolute bottom-0 left-0 right-0 z-20 bg-white dark:bg-zinc-900 rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.3)] border-t border-gray-100 dark:border-zinc-800 transition-all duration-300 ${sheetExpanded ? 'p-6 pb-8' : 'p-4 pb-6'}`}>
         
         {/* Sheet Drag Handle */}
@@ -550,14 +636,27 @@ export function DeliveryActive() {
           onClick={() => setSheetExpanded(!sheetExpanded)}
           className="w-full flex flex-col items-center justify-center py-1 mb-2 group"
         >
-          <div className="w-12 h-1.5 bg-gray-300 dark:bg-zinc-700 rounded-full group-hover:bg-indigo-500 transition-colors" />
+          <div className="w-12 h-1.5 bg-gray-300 dark:bg-zinc-700 rounded-full group-hover:bg-[#194B4B] transition-colors" />
         </button>
 
-        {/* Collapsed Header Bar */}
+        {/* Header Bar */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-md ${isPharmacyStep ? 'bg-teal-600' : 'bg-orange-500'}`}>
-              {isPharmacyStep ? <Store size={22} /> : <User size={22} />}
+            <div className={`w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center text-white shadow-md ${isPharmacyStep ? 'bg-teal-600' : 'bg-amber-600'}`}>
+              {targetPhoto ? (
+                <img 
+                  src={targetPhoto} 
+                  alt={targetName} 
+                  className="w-full h-full object-cover" 
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+              ) : isPharmacyStep ? (
+                <Store size={22} />
+              ) : (
+                <User size={22} />
+              )}
             </div>
             <div>
               <h2 className="font-bold text-gray-900 dark:text-white text-lg leading-snug">
@@ -581,7 +680,7 @@ export function DeliveryActive() {
             )}
             <button
               onClick={() => navigate(`/delivery/messages/${order.id}`)}
-              className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center hover:bg-indigo-100 transition shadow-sm"
+              className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 flex items-center justify-center hover:bg-emerald-100 transition shadow-sm"
               title="Message"
             >
               <MessageCircle size={18} />
@@ -594,11 +693,11 @@ export function DeliveryActive() {
           <div className="space-y-4 pt-2 border-t border-gray-100 dark:border-zinc-800">
             
             {/* Stage Guidance Note */}
-            <div className="bg-indigo-50 dark:bg-indigo-950/40 p-3.5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 flex items-start gap-3">
-              <Navigation size={18} className="text-indigo-600 dark:text-indigo-400 mt-0.5 shrink-0" />
-              <div className="text-xs text-indigo-950 dark:text-indigo-200">
-                <span className="font-bold block mb-0.5">Navigation GPS Active</span>
-                Suivez la ligne sur la carte. Les données de votre trajet sont transmises en direct au client.
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3.5 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 flex items-start gap-3">
+              <Navigation size={18} className="text-[#194B4B] dark:text-emerald-400 mt-0.5 shrink-0" />
+              <div className="text-xs text-slate-800 dark:text-slate-200">
+                <span className="font-bold block mb-0.5">Itinéraire routier en direct</span>
+                Suivez le tracé routier sur la carte. Vos coordonnées GPS réelles sont transmises au client.
               </div>
             </div>
 
@@ -632,7 +731,7 @@ export function DeliveryActive() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full py-4 bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 flex items-center justify-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs"
+                    className="w-full py-4 bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 flex items-center justify-center gap-2 text-[#194B4B] dark:text-teal-400 font-bold text-xs"
                   >
                     <Camera size={18} />
                     <span>Prendre la photo de livraison</span>
@@ -647,7 +746,7 @@ export function DeliveryActive() {
                 <button
                   disabled={processing}
                   onClick={handleAdvanceStage}
-                  className="w-full py-4 bg-slate-900 hover:bg-black text-white rounded-2xl font-black transition flex items-center justify-center gap-2 shadow-xl text-base disabled:opacity-75"
+                  className="w-full py-4 bg-[#194B4B] hover:opacity-90 text-white rounded-2xl font-black transition flex items-center justify-center gap-2 shadow-xl text-base disabled:opacity-75"
                 >
                   {processing && actionLoading === 'to_pharmacy' ? (
                     <>
@@ -687,7 +786,7 @@ export function DeliveryActive() {
                 <button
                   disabled={processing}
                   onClick={handleAdvanceStage}
-                  className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black transition flex items-center justify-center gap-2 shadow-xl text-base disabled:opacity-75"
+                  className="w-full py-4 bg-[#194B4B] hover:opacity-90 text-white rounded-2xl font-black transition flex items-center justify-center gap-2 shadow-xl text-base disabled:opacity-75"
                 >
                   {processing && actionLoading === 'to_customer' ? (
                     <>

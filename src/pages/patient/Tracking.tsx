@@ -1,65 +1,78 @@
-import { ArrowLeft, CheckCircle, Package, Truck, Home, Phone, Star, User, FileText, Printer, MapPin, Navigation, Store, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle, Package, Truck, Home, Phone, Star, User, FileText, Printer, MapPin, Navigation, Store, ShieldCheck, MessageSquare, ChevronRight, X, Bike, Key, PhoneCall, Check, Copy, ExternalLink, HelpCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from 'react';
 import { useTranslation } from "react-i18next";
-import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { doc, onSnapshot, getDoc, db } from '../../lib/firebase';
 import { formatCurrency, parseDate } from '../../lib/utils';
 import { InvoiceModal } from '../../components/InvoiceModal';
 import { printInvoice } from '../../lib/invoice';
 
-const driverLeafletIcon = L.divIcon({
-  className: 'custom-driver-marker',
+// Custom Motorcycle Icon for Leaflet
+const driverMotoLeafletIcon = L.divIcon({
+  className: 'custom-driver-moto-marker',
   html: `
     <div style="
-      width: 40px;
-      height: 40px;
-      background: #4f46e5;
+      width: 44px;
+      height: 44px;
+      background: #194B4B;
       border: 3px solid #ffffff;
       border-radius: 50%;
-      box-shadow: 0 6px 16px rgba(79,70,229,0.4);
+      box-shadow: 0 8px 20px rgba(25, 75, 75, 0.45);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
+      color: #FACC15;
+      transform: translate(-2px, -2px);
     ">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <rect x="1" y="3" width="15" height="13" rx="2"/>
-        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
-        <circle cx="5.5" cy="18.5" r="2.5"/>
-        <circle cx="18.5" cy="18.5" r="2.5"/>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="18.5" cy="17.5" r="3.5"/>
+        <circle cx="5.5" cy="17.5" r="3.5"/>
+        <circle cx="15" cy="5" r="1"/>
+        <path d="M12 17.5V14l-3-3 4-3 2 3h2"/>
       </svg>
     </div>
   `,
-  iconSize: [40, 40],
-  iconAnchor: [20, 20]
+  iconSize: [44, 44],
+  iconAnchor: [22, 22]
 });
 
-const destLeafletIcon = L.divIcon({
-  className: 'custom-patient-marker',
+// Destination Pin matching the screenshot (orange circular pin with white center dot)
+const destPinLeafletIcon = L.divIcon({
+  className: 'custom-patient-dest-marker',
   html: `
     <div style="
-      width: 40px;
-      height: 40px;
+      width: 38px;
+      height: 38px;
       background: #ea580c;
       border: 3px solid #ffffff;
       border-radius: 50%;
-      box-shadow: 0 6px 16px rgba(234,88,12,0.4);
+      box-shadow: 0 6px 18px rgba(234, 88, 12, 0.45);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
     ">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-        <circle cx="12" cy="10" r="3"/>
-      </svg>
+      <div style="
+        width: 12px;
+        height: 12px;
+        background: #ffffff;
+        border-radius: 50%;
+      "></div>
     </div>
   `,
-  iconSize: [40, 40],
-  iconAnchor: [20, 20]
+  iconSize: [38, 38],
+  iconAnchor: [19, 19]
 });
+
+// Component to recenter map view
+function MapAutoCenter({ center }: { center: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, map.getZoom(), { animate: true });
+  }, [center, map]);
+  return null;
+}
 
 export function PatientTracking() {
   const navigate = useNavigate();
@@ -69,11 +82,14 @@ export function PatientTracking() {
   const [order, setOrder] = useState<any>(null);
   const [driver, setDriver] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [truckPos, setTruckPos] = useState<[number, number]>([48.8566, 2.3522]); // Fallback to Paris
-  const [eta, setEta] = useState(15);
+  const [truckPos, setTruckPos] = useState<[number, number]>([4.0511, 9.7679]); // Default Douala coordinates
+  const [eta, setEta] = useState(8);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [pickupPharmacy, setPickupPharmacy] = useState<any>(null);
+  const [showDetailsDrawer, setShowDetailsDrawer] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [copiedOtp, setCopiedOtp] = useState(false);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -81,8 +97,8 @@ export function PatientTracking() {
         (position) => {
           const loc: [number, number] = [position.coords.latitude, position.coords.longitude];
           setUserLocation(loc);
-          if (truckPos[0] === 48.8566 && truckPos[1] === 2.3522) {
-             setTruckPos(loc);
+          if (truckPos[0] === 4.0511 && truckPos[1] === 9.7679) {
+             setTruckPos([loc[0] + 0.008, loc[1] + 0.008]);
           }
         },
         (error) => {
@@ -93,11 +109,11 @@ export function PatientTracking() {
     }
   }, []);
 
-  const destPos: [number, number] = (order?.destLat && order?.destLng && !isNaN(Number(order.destLat)) && Number(order.destLat) !== 48.8566) 
+  const destPos: [number, number] = (order?.destLat && order?.destLng && !isNaN(Number(order.destLat))) 
     ? [Number(order.destLat), Number(order.destLng)]
     : order?.deliveryLocation 
       ? [order.deliveryLocation.lat, order.deliveryLocation.lng]
-      : userLocation || [4.0511, 9.7679]; // Douala default fallback if geolocation fails
+      : userLocation || [4.0511, 9.7679];
 
   useEffect(() => {
     if (!id) return;
@@ -106,10 +122,10 @@ export function PatientTracking() {
     const unsubscribe = onSnapshot(doc(db, 'orders', id), (snapshot) => {
        if (snapshot.exists()) {
           const data = snapshot.data();
-          setOrder(data);
-          let lat = data.driverLat || data.driverLocation?.lat;
-          let lng = data.driverLng || data.driverLocation?.lng;
-          if (lat && lng && !isNaN(Number(lat)) && Number(lat) !== 48.8566) {
+          setOrder({ id: snapshot.id, ...data });
+          const lat = data.driverLat || data.driverLocation?.lat;
+          const lng = data.driverLng || data.driverLocation?.lng;
+          if (lat && lng && !isNaN(Number(lat))) {
              setTruckPos([Number(lat), Number(lng)]);
           }
        }
@@ -124,7 +140,7 @@ export function PatientTracking() {
        if (docObj.exists()) {
           const driverData = docObj.data();
           setDriver({ id: docObj.id, ...driverData });
-          if (driverData.lat && driverData.lng && !isNaN(Number(driverData.lat)) && Number(driverData.lat) !== 48.8566) {
+          if (driverData.lat && driverData.lng && !isNaN(Number(driverData.lat))) {
              setTruckPos([Number(driverData.lat), Number(driverData.lng)]);
           }
        }
@@ -146,12 +162,11 @@ export function PatientTracking() {
     order && (
       order.status === 'PAID' || 
       order.status === 'paid' || 
-      ['accepted', 'preparing', 'ready_for_pickup', 'ready', 'delivered'].includes(order.status)
+      ['accepted', 'preparing', 'ready_for_pickup', 'ready', 'delivered', 'out_for_delivery', 'en_route'].includes(order.status)
     )
   );
 
   useEffect(() => {
-    // Condition stricte : informations de pharmacie débloquées UNIQUEMENT si payée ET en mode retrait (PICKUP)
     if (!isPickup || !isPaid) {
       setPickupPharmacy(null);
       return;
@@ -174,8 +189,8 @@ export function PatientTracking() {
   }, [order?.status, order?.delivery_mode, order?.deliveryMethod, order?.fulfillment_type, order?.pharmacyId, order?.pharmacy_id, isPickup, isPaid]);
 
   useEffect(() => {
-    if (truckPos[0] !== 48.8566) { // Assuming 48.8566 is default and wait until updated
-       const R = 6371; // Radius of the earth in km
+    if (truckPos[0]) {
+       const R = 6371; // Radius of earth in km
        const dLat = (destPos[0] - truckPos[0]) * Math.PI / 180;
        const dLng = (destPos[1] - truckPos[1]) * Math.PI / 180;
        const a = 
@@ -183,308 +198,448 @@ export function PatientTracking() {
           Math.cos(truckPos[0] * Math.PI / 180) * Math.cos(destPos[0] * Math.PI / 180) * 
           Math.sin(dLng/2) * Math.sin(dLng/2); 
        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-       const distance = R * c; // Distance in km
+       const distance = R * c;
 
-       // Assume average speed 40 km/h -> distance / 40 hours -> distance / 40 * 60 minutes
-       let estimatedTime = Math.round((distance / 40) * 60);
-       if(estimatedTime < 1) estimatedTime = 1;
+       // Moto speed in urban area ~30 km/h
+       let estimatedTime = Math.round((distance / 30) * 60);
+       if (estimatedTime < 1) estimatedTime = 1;
        
-       if (distance < 0.05 || order.status === 'delivered') { // within 50m
+       if (distance < 0.05 || order?.status === 'delivered') {
           setEta(0);
        } else {
           setEta(estimatedTime);
        }
     }
-  }, [truckPos, order?.status, destPos[0], destPos[1]]);
+  }, [truckPos, order?.status, destPos]);
 
-   const getTimelineDate = (type: string) => {
+  const getTimelineDate = (type: string) => {
     if (!order) return "";
-    
     const extractDate = (dateField: any) => {
       const parsed = parseDate(dateField);
       if (!parsed) return "";
-      return parsed.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      return parsed.toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     };
 
-    if (type === 'placed') return extractDate(order.createdAt) || t('today', "Today");
-    if (type === 'preparing') return extractDate(order.preparedAt || order.acceptedAt) || (['preparing', 'driver_assigned', 'out_for_delivery', 'ready', 'ready_for_pickup', 'delivered'].includes(order.status) ? "Processing..." : "");
-    if (type === 'out') return extractDate(order.dispatchedAt || order.outForDeliveryAt) || (['driver_assigned', 'out_for_delivery', 'delivered'].includes(order.status) ? "Dispatched" : "");
-    if (type === 'ready') return extractDate(order.readyAt) || (['ready', 'ready_for_pickup', 'delivered'].includes(order.status) ? "Ready" : "");
-    if (type === 'delivered') return extractDate(order.deliveredAt) || (order.status === 'delivered' ? (isPickup ? "Picked up" : "Delivered") : t('pending', "Pending"));
-
+    if (type === 'placed') return extractDate(order.createdAt) || "Aujourd'hui";
+    if (type === 'preparing') return extractDate(order.preparedAt || order.acceptedAt) || (['preparing', 'driver_assigned', 'out_for_delivery', 'ready', 'ready_for_pickup', 'delivered'].includes(order.status) ? "En cours..." : "");
+    if (type === 'out') return extractDate(order.dispatchedAt || order.outForDeliveryAt) || (['driver_assigned', 'out_for_delivery', 'delivered'].includes(order.status) ? "En cours de route" : "");
+    if (type === 'ready') return extractDate(order.readyAt) || (['ready', 'ready_for_pickup', 'delivered'].includes(order.status) ? "Prêt" : "");
+    if (type === 'delivered') return extractDate(order.deliveredAt) || (order.status === 'delivered' ? "Livré avec succès" : "En attente");
     return "";
   };
 
+  // Driver details extraction
+  const driverName = driver?.name || driver?.fullName || driver?.nom || order?.driverName || "Alexandre";
+  const driverFirstName = driverName.split(' ')[0];
+  const driverRating = driver?.rating !== undefined ? Number(driver.rating).toFixed(2).replace('.', ',') : "4,97";
+  const driverPhone = driver?.phone || driver?.phoneNumber || order?.driverPhone || "+237 600 000 000";
+  const driverPhoto = driver?.photoURL || driver?.photoUrl || driver?.avatarUrl || driver?.photo || order?.driverPhoto || null;
+  const vehicleTypeLabel = driver?.vehicleType === 'car' ? 'Voiture' : 'Moto';
+  const vehicleModel = driver?.vehicleModel || driver?.vehicleDetails?.model || (vehicleTypeLabel === 'Moto' ? 'Moto Boxer Noire' : 'Berline Blanche');
+  const vehiclePlate = driver?.vehiclePlate || driver?.vehicleDetails?.plate || 'LT 482 AB';
+  const deliveryOtp = order?.deliveryOtp || order?.pickupOtp || order?.id?.slice(-4)?.toUpperCase() || '4892';
+
+  const copyDeliveryCode = () => {
+    navigator.clipboard.writeText(deliveryOtp);
+    setCopiedOtp(true);
+    setTimeout(() => setCopiedOtp(false), 2000);
+  };
+
   const statuses = isPickup ? [
-    { label: t('order_placed_status', "Commande passée"), date: getTimelineDate('placed'), completed: true, icon: CheckCircle },
-    { label: t('pharmacy_preparing_status', "Préparation par la pharmacie"), date: getTimelineDate('preparing'), completed: ['preparing', 'ready_for_pickup', 'ready', 'delivered'].includes(order?.status), active: order?.status === 'pending', icon: Package },
-    { label: t('ready_for_pickup_status', "Ready for Pickup at Pharmacy"), date: getTimelineDate('ready'), completed: order?.status === 'delivered' || order?.status === 'ready' || order?.status === 'ready_for_pickup', active: order?.status === 'preparing', icon: Home },
-    { label: t('picked_up_status', "Picked Up"), date: order?.status === 'delivered' ? getTimelineDate('delivered') : t('pending', "Pending"), completed: order?.status === 'delivered', icon: CheckCircle },
+    { label: "Commande validée", date: getTimelineDate('placed'), completed: true, icon: CheckCircle },
+    { label: "Préparation par la pharmacie", date: getTimelineDate('preparing'), completed: ['preparing', 'ready_for_pickup', 'ready', 'delivered'].includes(order?.status), active: order?.status === 'pending', icon: Package },
+    { label: "Prête pour retrait en officine", date: getTimelineDate('ready'), completed: order?.status === 'delivered' || order?.status === 'ready' || order?.status === 'ready_for_pickup', active: order?.status === 'preparing', icon: Home },
+    { label: "Médicaments retirés", date: order?.status === 'delivered' ? getTimelineDate('delivered') : "En attente", completed: order?.status === 'delivered', icon: CheckCircle },
   ] : [
-    { label: t('order_placed_status', "Commande passée"), date: getTimelineDate('placed'), completed: true, icon: CheckCircle },
-    { label: t('pharmacy_preparing_status', "Préparation par la pharmacie"), date: getTimelineDate('preparing'), completed: ['preparing', 'driver_assigned', 'out_for_delivery', 'delivered'].includes(order?.status), active: order?.status === 'pending', icon: Package },
-    { label: t('on_the_way_status', "En route"), date: eta > 0 ? t('estimated', "Estimated") + ` ${eta} ${t('mins', 'mins')}` : getTimelineDate('out'), completed: order?.status === 'delivered', active: ['driver_assigned', 'out_for_delivery'].includes(order?.status), icon: Truck },
-    { label: t('delivered_status', "Delivered"), date: order?.status === 'delivered' ? getTimelineDate('delivered') : t('pending', "Pending"), completed: order?.status === 'delivered', icon: Home },
+    { label: "Commande validée & payée", date: getTimelineDate('placed'), completed: true, icon: CheckCircle },
+    { label: "Préparation officine", date: getTimelineDate('preparing'), completed: ['preparing', 'driver_assigned', 'out_for_delivery', 'en_route', 'delivered'].includes(order?.status), active: order?.status === 'pending', icon: Package },
+    { label: "Livreur en route", date: eta > 0 ? `Arrive dans ~${eta} min` : getTimelineDate('out'), completed: order?.status === 'delivered', active: ['driver_assigned', 'out_for_delivery', 'en_route'].includes(order?.status), icon: Bike },
+    { label: "Remis en main propre", date: order?.status === 'delivered' ? getTimelineDate('delivered') : "En attente", completed: order?.status === 'delivered', icon: Home },
   ];
 
   return (
-    <div className="flex-1 bg-slate-50 dark:bg-black flex flex-col h-full overflow-hidden">
-      <div className="px-6 pt-12 pb-4 flex items-center justify-between bg-white dark:bg-black shadow-sm z-10">
-         <button onClick={() => navigate('/patient')} className="w-10 h-10 flex items-center justify-center bg-gray-50 dark:bg-black rounded-full">
-            <ArrowLeft size={20} className="text-gray-900 dark:text-white" />
-         </button>
-         <h1 className="font-bold text-gray-900 dark:text-white text-sm">{t('delivery_status', 'Delivery Status')}</h1>
-         <div className="w-10"></div>
+    <div className="flex-1 bg-white dark:bg-black flex flex-col h-full overflow-hidden relative font-sans">
+      
+      {/* Top Header Bar */}
+      <div className="absolute top-0 left-0 right-0 z-30 pt-10 pb-3 px-4 flex items-center justify-between pointer-events-auto bg-gradient-to-b from-black/50 via-black/20 to-transparent">
+        <button 
+          id="btn-back-patient"
+          onClick={() => navigate('/patient/orders')} 
+          className="w-11 h-11 flex items-center justify-center bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md rounded-full shadow-md text-gray-800 dark:text-white hover:bg-white transition active:scale-95"
+        >
+          <ArrowLeft size={20} />
+        </button>
+        
+        <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md px-4 py-1.5 rounded-full shadow-md border border-gray-100 dark:border-zinc-800 flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span className="text-xs font-black tracking-wide text-[#194B4B] dark:text-teal-300 uppercase">
+            {order?.status === 'delivered' ? 'Livraison effectuée' : (isPickup ? 'Retrait Officine' : 'Livraison en direct')}
+          </span>
+        </div>
+
+        <button 
+          id="btn-open-details-top"
+          onClick={() => setShowDetailsDrawer(true)}
+          className="w-11 h-11 flex items-center justify-center bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md rounded-full shadow-md text-gray-800 dark:text-white hover:bg-white transition active:scale-95"
+          title="Détails de la commande"
+        >
+          <FileText size={18} />
+        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-         {/* Live Map Tracking */}
-         {!isPickup && order && ['driver_assigned', 'en_route_to_pharmacy', 'delivering', 'out_for_delivery', 'en_route', 'delivered'].includes(order.status) && (
-           <div className="w-full h-72 bg-slate-900 rounded-3xl overflow-hidden relative border-4 border-white dark:border-zinc-800 shadow-md z-0">
-             <MapContainer
-               center={truckPos}
-               zoom={14}
-               zoomControl={false}
-               style={{ width: '100%', height: '100%' }}
-             >
-               <TileLayer
-                 url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                 maxZoom={19}
-               />
-               <Marker position={truckPos} icon={driverLeafletIcon} />
-               <Marker position={destPos} icon={destLeafletIcon} />
-               <Polyline positions={[truckPos, destPos]} color="#4f46e5" weight={5} opacity={0.8} dashArray="6, 10" />
-             </MapContainer>
-
-             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] w-48 bg-white/95 dark:bg-black/95 backdrop-blur-md p-3 rounded-2xl shadow-lg flex items-center gap-3 border border-gray-100 dark:border-zinc-800">
-                <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-                   <Truck size={18} />
-                </div>
-                <div>
-                   <p className="font-bold text-gray-900 dark:text-white text-xs">{t('arriving_in', 'Arriving in')}</p>
-                   <p className="font-extrabold text-indigo-600 dark:text-indigo-400 text-sm">{eta > 0 ? `${eta} ${t('mins', 'mins')}` : t('arrived', 'Arrived')}</p>
-                </div>
-             </div>
-           </div>
-         )}
-         
-         {!isPickup && (!order || ['pending', 'preparing', 'ready'].includes(order.status)) && (
-            <div className="bg-gray-50 dark:bg-zinc-900/50 border border-gray-100 dark:border-zinc-800 p-6 rounded-3xl flex flex-col items-center justify-center text-center">
-               <div className="w-16 h-16 bg-white dark:bg-zinc-800 rounded-full shadow-sm flex items-center justify-center mb-4">
-                  <Truck className="w-8 h-8 text-gray-400 dark:text-gray-500" />
-               </div>
-               <h3 className="font-bold text-gray-900 dark:text-white">{t('awaiting_driver_assignment', 'Awaiting driver assignment')}</h3>
-               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-[250px]">{t('driver_assignment_desc', 'We are preparing your order. A map will appear here once a driver is assigned.')}</p>
+      {/* Main Area: Fullscreen Map (or Pickup View) */}
+      <div className="flex-1 w-full h-full relative z-0">
+        {!isPickup ? (
+          <div className="w-full h-full">
+            <MapContainer
+              center={truckPos}
+              zoom={15}
+              zoomControl={false}
+              className="w-full h-full"
+              style={{ width: '100%', height: '100%' }}
+            >
+              <TileLayer
+                url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                maxZoom={19}
+              />
+              <MapAutoCenter center={truckPos} />
+              <Marker position={truckPos} icon={driverMotoLeafletIcon} />
+              <Marker position={destPos} icon={destPinLeafletIcon} />
+              <Polyline positions={[truckPos, destPos]} color="#194B4B" weight={5} opacity={0.85} dashArray="4, 8" />
+            </MapContainer>
+          </div>
+        ) : (
+          /* Mode Retrait Officine */
+          <div className="w-full h-full bg-slate-50 dark:bg-zinc-950 p-6 pt-24 overflow-y-auto space-y-4">
+            <div className="bg-[#194B4B]/10 border border-[#194B4B]/20 p-6 rounded-3xl text-center space-y-3">
+              <div className="w-14 h-14 bg-[#194B4B] text-white rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+                <Store size={28} />
+              </div>
+              <h2 className="text-xl font-black text-[#194B4B] dark:text-teal-300">Retrait en Pharmacie</h2>
+              <p className="text-xs text-gray-600 dark:text-gray-300 max-w-xs mx-auto">
+                Vos médicaments sont préparés et scellés par l'officine partenaire certifiée.
+              </p>
             </div>
-         )}
 
-          {isPickup && (
-            <div className="space-y-4">
-              <div className="bg-[#194B4B]/10 border border-[#194B4B]/20 p-5 rounded-3xl flex flex-col items-center justify-center text-center">
-                <div className="w-12 h-12 bg-[#194B4B] text-white rounded-2xl flex items-center justify-center mb-2 shadow-sm">
-                  <Store size={24} />
+            {pickupPharmacy && (
+              <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-gray-900 dark:text-white text-base">{pickupPharmacy.name || 'Pharmacie Partenaire'}</h3>
+                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                      <MapPin size={13} className="text-[#194B4B]" />
+                      {pickupPharmacy.address || 'Adresse de retrait'}
+                    </p>
+                  </div>
+                  <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-lg border border-emerald-200">
+                    Prête au comptoir
+                  </span>
                 </div>
-                <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 px-2.5 py-1 rounded-full text-[11px] font-bold text-[#194B4B] dark:text-teal-400 mb-2 border border-[#194B4B]/20">
-                  <ShieldCheck size={13} />
-                  Officine de Retrait Assignée & Validée
+
+                <div className="flex gap-2 pt-2">
+                  {pickupPharmacy.phone && (
+                    <a href={`tel:${pickupPharmacy.phone}`} className="flex-1 py-2.5 bg-gray-50 dark:bg-zinc-800 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                      <Phone size={14} className="text-emerald-600" /> Appeler
+                    </a>
+                  )}
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pickupPharmacy.address || '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-2.5 bg-[#194B4B] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2"
+                  >
+                    <Navigation size={14} /> Itinéraire
+                  </a>
                 </div>
-                <h3 className="font-extrabold text-[#194B4B] dark:text-teal-300 text-lg">
-                  {['ready_for_pickup', 'ready'].includes(order?.status)
-                    ? t('head_to_pharmacy', 'Votre commande est prête en officine')
-                    : t('store_pickup', 'Retrait en Pharmacie Sécurisé')}
-                </h3>
-                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 max-w-sm">
-                  {['ready_for_pickup', 'ready'].includes(order?.status)
-                    ? t('pickup_ready_desc', 'Présentez votre numéro de commande au comptoir pour retirer vos médicaments.')
-                    : t('pickup_instructions', 'L\'officine prépare vos produits. Vous recevrez une alerte dès la mise à disposition.')}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* FLOATING BOTTOM CARD (REPLICA DU DESIGN IMAGE CLIENT) */}
+      {!isPickup && (
+        <div className="absolute bottom-4 left-4 right-4 z-20 pointer-events-auto">
+          <div className="bg-white dark:bg-zinc-900 rounded-[28px] p-5 shadow-2xl border border-gray-100 dark:border-zinc-800 space-y-4 max-w-lg mx-auto">
+            
+            {/* Ligne 1: ETA, Véhicule & Plaque d'immatriculation */}
+            <div 
+              id="card-header-eta"
+              onClick={() => setShowDetailsDrawer(true)}
+              className="flex items-center justify-between cursor-pointer hover:opacity-90 transition"
+            >
+              <div>
+                <div className="flex items-center gap-1">
+                  <h3 className="font-extrabold text-gray-900 dark:text-white text-lg tracking-tight">
+                    {eta > 0 ? `Arrive dans ~${eta} min` : 'Arrivé à destination !'}
+                  </h3>
+                  <ChevronRight size={18} className="text-gray-400" />
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium capitalize mt-0.5">
+                  {vehicleModel}
                 </p>
               </div>
 
-              {/* Fiche Officine Débloquée Post-Paiement */}
-              {pickupPharmacy && (
-                <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-bold text-gray-900 dark:text-white text-base">
-                        {pickupPharmacy.name || pickupPharmacy.nom || 'Pharmacie Partenaire'}
-                      </h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
-                        <MapPin size={13} className="text-[#194B4B] dark:text-teal-400 shrink-0" />
-                        {pickupPharmacy.address || pickupPharmacy.adresse || 'Adresse de l\'officine'}, {pickupPharmacy.city || pickupPharmacy.ville || ''}
-                      </p>
-                    </div>
-                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-[10px] font-bold rounded-lg border border-emerald-200 dark:border-emerald-800">
-                      Ouvert
-                    </span>
+              <div className="flex flex-col items-end">
+                {/* Badge Immatriculation */}
+                <div className="bg-gray-100 dark:bg-zinc-800 px-3 py-1 rounded-lg border border-gray-200 dark:border-zinc-700 text-xs font-black text-gray-800 dark:text-gray-200 tracking-wider shadow-sm">
+                  {vehiclePlate}
+                </div>
+                {/* Icône Véhicule (Moto par défaut) */}
+                <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 mt-1">
+                  <Bike size={14} className="text-[#194B4B] dark:text-teal-400" />
+                  <span className="text-[10px] uppercase">{vehicleTypeLabel}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Séparateur discret */}
+            <div className="h-px bg-gray-100 dark:bg-zinc-800 w-full" />
+
+            {/* Ligne 2: Livreur (Photo + Note + Nom), Bouton Contact & Bouton Détails */}
+            <div className="flex items-center justify-between pt-1">
+              
+              {/* Profil Livreur avec Badge Note 4.97 */}
+              <div className="flex flex-col items-center">
+                <div className="relative">
+                  <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-100 dark:bg-zinc-800 border-2 border-white dark:border-zinc-700 shadow-md flex items-center justify-center">
+                    {driverPhoto ? (
+                      <img src={driverPhoto} alt={driverName} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-[#194B4B]/15 text-[#194B4B] dark:text-teal-400 flex items-center justify-center font-black text-lg">
+                        {driverFirstName.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Badge de Note Flottant */}
+                  <div className="absolute -top-1.5 -right-2 bg-white dark:bg-zinc-800 px-1.5 py-0.5 rounded-full shadow-sm border border-gray-100 dark:border-zinc-700 flex items-center gap-0.5 text-[10px] font-black text-gray-800 dark:text-gray-200">
+                    <Star size={10} className="fill-[#FACC15] text-[#FACC15]" />
+                    <span>{driverRating}</span>
+                  </div>
+                </div>
+
+                <span className="text-xs font-bold text-gray-800 dark:text-gray-200 mt-1.5 max-w-[80px] truncate text-center">
+                  {driverFirstName}
+                </span>
+              </div>
+
+              {/* Bouton Contact Livreur */}
+              <div className="flex flex-col items-center">
+                <button
+                  id="btn-contact-driver"
+                  onClick={() => setShowContactModal(true)}
+                  className="w-14 h-14 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-800 dark:text-white flex items-center justify-center shadow-sm transition active:scale-95"
+                  title="Contacter le livreur"
+                >
+                  <Phone size={22} className="text-[#194B4B] dark:text-teal-300" />
+                </button>
+                <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 mt-1.5">
+                  Contact
+                </span>
+              </div>
+
+              {/* Bouton Détails */}
+              <div className="flex flex-col items-center">
+                <button
+                  id="btn-details-drawer"
+                  onClick={() => setShowDetailsDrawer(true)}
+                  className="w-14 h-14 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-800 dark:text-white flex items-center justify-center shadow-sm transition active:scale-95"
+                  title="Afficher les détails de la commande"
+                >
+                  <div className="flex flex-col gap-1 items-center justify-center">
+                    <span className="w-5 h-0.5 bg-gray-800 dark:bg-gray-200 rounded-full"></span>
+                    <span className="w-5 h-0.5 bg-gray-800 dark:bg-gray-200 rounded-full"></span>
+                    <span className="w-5 h-0.5 bg-gray-800 dark:bg-gray-200 rounded-full"></span>
+                  </div>
+                </button>
+                <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 mt-1.5">
+                  Détails
+                </span>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONTACT DU LIVREUR */}
+      {showContactModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[24px] p-6 shadow-2xl space-y-4 border border-gray-100 dark:border-zinc-800">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden flex items-center justify-center font-bold text-[#194B4B]">
+                  {driverPhoto ? <img src={driverPhoto} alt={driverName} className="w-full h-full object-cover" /> : driverFirstName.charAt(0)}
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-gray-900 dark:text-white">{driverName}</h4>
+                  <p className="text-[11px] text-gray-500">Livreur certifié en moto</p>
+                </div>
+              </div>
+              <button onClick={() => setShowContactModal(false)} className="p-2 text-gray-400 hover:text-gray-600">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-2.5 pt-2">
+              <a
+                href={`tel:${driverPhone}`}
+                className="w-full py-3.5 px-4 bg-[#194B4B] hover:bg-[#143d3d] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition"
+              >
+                <PhoneCall size={18} />
+                Appeler ({driverPhone})
+              </a>
+
+              <button
+                onClick={() => {
+                  setShowContactModal(false);
+                  navigate(`/patient/messages/${order?.id}`);
+                }}
+                className="w-full py-3.5 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 text-gray-800 dark:text-gray-200 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition"
+              >
+                <MessageSquare size={18} className="text-[#194B4B] dark:text-teal-300" />
+                Message dans l'application
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DRAWER / BOTTOM SHEET COMPLET DES DÉTAILS DE LIVRAISON */}
+      {showDetailsDrawer && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-t-[32px] max-h-[85vh] flex flex-col shadow-2xl border-t border-gray-100 dark:border-zinc-800">
+            
+            {/* Drawer Header */}
+            <div className="p-5 pb-3 border-b border-gray-100 dark:border-zinc-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#194B4B] dark:bg-teal-400"></div>
+                <h3 className="font-extrabold text-gray-900 dark:text-white text-base">
+                  Suivi de Commande #{order?.id?.slice(0, 8) || id?.slice(0, 8)}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setShowDetailsDrawer(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center text-gray-500 hover:text-gray-800"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Drawer Scrollable Content */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              
+              {/* Code PIN de Livraison Sécurisée */}
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 p-4 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold">
+                    <Key size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wide">
+                      Code de remise sécurisée
+                    </p>
+                    <p className="text-xl font-black text-amber-950 dark:text-amber-200 tracking-widest mt-0.5">
+                      {deliveryOtp}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={copyDeliveryCode}
+                  className="px-3 py-2 bg-white dark:bg-zinc-800 border border-amber-200 dark:border-zinc-700 rounded-xl text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5 shadow-sm active:scale-95"
+                >
+                  {copiedOtp ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                  {copiedOtp ? 'Copié' : 'Copier'}
+                </button>
+              </div>
+
+              {/* Timeline de livraison */}
+              <div className="space-y-4">
+                <h4 className="font-bold text-gray-900 dark:text-white text-sm">Progression de la livraison</h4>
+                <div className="space-y-5 relative pl-2">
+                  <div className="absolute left-[17px] top-[14px] bottom-[14px] w-0.5 bg-gray-100 dark:bg-zinc-800"></div>
+                  {statuses.map((status, index) => {
+                    const Icon = status.icon;
+                    return (
+                      <div key={index} className="flex items-start gap-4 relative z-10">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 border-white dark:border-zinc-900 shadow-sm ${
+                          status.completed ? 'bg-[#194B4B] text-white' : 
+                          status.active ? 'bg-amber-100 text-amber-700 border-amber-300 animate-pulse' : 'bg-gray-100 dark:bg-zinc-800 text-gray-400'
+                        }`}>
+                          <Icon size={14} />
+                        </div>
+                        <div className="pt-0.5 flex-1">
+                          <p className={`font-bold text-xs ${status.active || status.completed ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                            {status.label}
+                          </p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{status.date}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Liste des Médicaments & Produits */}
+              {order?.items && order.items.length > 0 && (
+                <div className="space-y-3 pt-2 border-t border-gray-100 dark:border-zinc-800">
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-bold text-gray-900 dark:text-white text-sm">Contenu de la commande</h4>
+                    <span className="text-xs font-bold text-gray-500">{order.items.length} article(s)</span>
                   </div>
 
-                  <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-zinc-800">
-                    {pickupPharmacy.phone && (
-                      <a
-                        href={`tel:${pickupPharmacy.phone}`}
-                        className="flex-1 py-2.5 px-3 bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition"
-                      >
-                        <Phone size={14} className="text-emerald-600" />
-                        Appeler l'officine
-                      </a>
-                    )}
-                    <a
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-                        pickupPharmacy.latitude && pickupPharmacy.longitude
-                          ? `${pickupPharmacy.latitude},${pickupPharmacy.longitude}`
-                          : `${pickupPharmacy.address || ''} ${pickupPharmacy.city || ''}`
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 py-2.5 px-3 bg-[#194B4B] hover:bg-[#143d3d] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition shadow-sm"
-                    >
-                      <Navigation size={14} />
-                      Itinéraire GPS
-                    </a>
+                  <div className="space-y-2 bg-gray-50 dark:bg-zinc-800/40 p-4 rounded-2xl border border-gray-100 dark:border-zinc-800">
+                    {order.items.map((item: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-center text-xs">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">
+                          {item.quantity}x {item.name || item.productId}
+                        </span>
+                        <span className="font-bold text-gray-900 dark:text-white">
+                          {formatCurrency(Number(item.price || 0) * Number(item.quantity || 1))}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="pt-2 mt-2 border-t border-gray-200 dark:border-zinc-700 flex justify-between items-center text-sm">
+                      <span className="font-black text-gray-900 dark:text-white">Total réglé</span>
+                      <span className="font-black text-[#194B4B] dark:text-teal-300 text-base">
+                        {formatCurrency(Number(order.total || 0))}
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
-            </div>
-          )}
 
-         {/* Driver Info */}
-         {!isPickup && (order && order.driverId ? (
-            <div className="bg-white dark:bg-black p-4 rounded-2xl border border-gray-100 dark:border-zinc-800 flex items-center justify-between shadow-sm">
-               <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden flex items-center justify-center">
-                      {driver?.photoUrl ? (
-                         <img src={driver.photoUrl} alt="Driver" className="w-full h-full object-cover" />
-                      ) : (
-                         <User size={24} className="text-gray-400" />
-                      )}
-                  </div>
-                  <div>
-                     <div className="flex items-center gap-2">
-                       <p className="font-bold text-gray-900 dark:text-white text-sm"> {driver?.name || t('ahmed_hassan', 'Driver')} </p>
-                       <span className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-green-200">
-                         <CheckCircle size={10} />  {t('verified', 'Verified')} </span>
-                     </div>
-                     <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
-                        {driver?.vehicleDetails?.model || driver?.vehicleDetails?.plate || driver?.vehicleDetails?.type || t('delivery_driver', 'Delivery Driver')}  {t('bull_4_9', '&bull;')} {driver?.rating !== undefined ? driver.rating : 'New'} <Star size={10} className="inline fill-yellow-400 text-yellow-400" />
-                     </p>
-                  </div>
-               </div>
-               <div className="flex gap-2">
-                  <button className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center" onClick={() => navigate(`/patient/messages/${order.id}`)}>
-                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                  </button>
-                  {driver && (driver.phone || driver.phoneNumber) && (
-                     <button className="w-10 h-10 bg-green-50 text-green-600 rounded-full flex items-center justify-center" onClick={() => window.location.href = `tel:${driver.phone || driver.phoneNumber}`}>
-                        <Phone size={18} />
-                     </button>
-                  )}
-               </div>
-            </div>
-         ) : (
-            <div className="bg-white dark:bg-black p-4 rounded-2xl border border-gray-100 dark:border-zinc-800 flex items-center shadow-sm">
-               <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gray-100 animate-pulse rounded-full overflow-hidden"></div>
-                  <div>
-                     <p className="font-bold text-gray-900 dark:text-white text-sm"> {t('waiting_for_driver', 'Waiting for a driver...')} </p>
-                     <p className="text-xs text-gray-400">Order is being processed</p>
-                  </div>
-               </div>
-            </div>
-         ))}
-
-         {/* Timeline */}
-         <div className="bg-white dark:bg-black p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm">
-            <h3 className="font-bold text-gray-900 dark:text-white mb-6">{t('order_status', 'Order #{{id}} Status').replace('{{id}}', id || '1123')}</h3>
-            <div className="space-y-6 relative">
-               <div className="absolute left-[15px] top-[20px] bottom-[20px] w-0.5 bg-gray-100 dark:bg-zinc-900"></div>
-               {statuses.map((status, index) => {
-                 const Icon = status.icon;
-                 return (
-                   <div key={index} className="flex gap-4 relative z-10">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-4 border-white shadow-sm ${
-                        status.completed ? 'bg-indigo-600 text-white' : 
-                        status.active ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-gray-100 dark:bg-zinc-900 text-gray-400 dark:text-gray-500'
-                      }`}>
-                         <Icon size={14} className={status.completed ? 'fill-current opacity-80' : ''} />
-                      </div>
-                      <div className="pt-1.5 flex-1 flex justify-between items-start">
-                         <div>
-                            <p className={`font-bold text-sm ${status.active || status.completed ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>{status.label}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-0.5">{status.date}</p>
-                         </div>
-                      </div>
-                   </div>
-                 )
-               })}
-            </div>
-         </div>
-
-         {/* Order Details */}
-         {order && order.items && order.items.length > 0 && (
-           <div className="bg-white dark:bg-black p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-gray-900 dark:text-white">{t('order_details', 'Order Details')}</h3>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowInvoiceModal(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#194B4B]/10 hover:bg-[#194B4B]/20 text-[#194B4B] dark:text-teal-400 rounded-xl text-xs font-bold transition"
-                  >
-                    <FileText size={14} /> Facture
-                  </button>
-                  <button
-                    onClick={() => printInvoice(order)}
-                    className="p-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-700 dark:text-gray-300 rounded-xl transition"
-                    title="Imprimer la facture"
-                  >
-                    <Printer size={14} />
-                  </button>
-                </div>
+              {/* Bouton Facture */}
+              <div className="pt-2">
+                <button
+                  onClick={() => {
+                    setShowDetailsDrawer(false);
+                    setShowInvoiceModal(true);
+                  }}
+                  className="w-full py-3.5 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 text-gray-900 dark:text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition"
+                >
+                  <FileText size={16} className="text-[#194B4B]" />
+                  Afficher / Télécharger la Facture Officielle
+                </button>
               </div>
-              <div className="space-y-3 mb-4">
-                 {order.items.map((item: any, index: number) => (
-                    <div key={index} className="flex justify-between items-center text-sm">
-                       <span className="text-gray-700 dark:text-gray-300 font-medium">
-                          {item.quantity}x {item.name || item.productId}
-                       </span>
-                       <span className="font-bold text-gray-900 dark:text-white">
-                          {formatCurrency(item.price * item.quantity)}
-                       </span>
-                    </div>
-                 ))}
-                 
-                 {/* Substitute Items (if any) */}
-                 {order.substituteItems && order.substituteItems.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-100 dark:border-zinc-800">
-                       <h4 className="text-xs font-bold text-indigo-600 mb-2">{t('substitutes', 'Substitutes')}</h4>
-                       {order.substituteItems.map((item: any, index: number) => (
-                          <div key={`sub-${index}`} className="flex justify-between items-center text-sm">
-                             <span className="text-indigo-700 dark:text-indigo-400 font-medium">
-                                {item.quantity}x {item.name}
-                             </span>
-                             <span className="font-bold text-indigo-900 dark:text-indigo-300">
-                                {formatCurrency(item.price * item.quantity)}
-                             </span>
-                          </div>
-                       ))}
-                    </div>
-                 )}
-              </div>
-              <div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-zinc-800">
-                 <span className="font-bold text-gray-500 dark:text-gray-400">{t('total', 'Total')}</span>
-                 <span className="font-black text-gray-900 dark:text-white text-lg">{formatCurrency(Number(order.total || 0))}</span>
-              </div>
-           </div>
-         )}
 
-         {order && (
-           <InvoiceModal
-             isOpen={showInvoiceModal}
-             onClose={() => setShowInvoiceModal(false)}
-             order={order}
-           />
-         )}
-         <div className="h-8"></div>
-      </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice Modal */}
+      {order && (
+        <InvoiceModal
+          isOpen={showInvoiceModal}
+          onClose={() => setShowInvoiceModal(false)}
+          order={order}
+        />
+      )}
+
     </div>
   );
 }

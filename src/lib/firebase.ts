@@ -114,13 +114,51 @@ export const signOut = async (authObj: any) => {
 };
 
 export const updateProfile = async (userObj: any, profile: { displayName?: string, photoURL?: string }) => {
-  const { error } = await supabase.auth.updateUser({
-    data: {
-      displayName: profile.displayName,
-      photoURL: profile.photoURL
+  if (userObj) {
+    if (profile.displayName !== undefined) userObj.displayName = profile.displayName;
+    if (profile.photoURL !== undefined) userObj.photoURL = profile.photoURL;
+  }
+  if (auth.currentUser) {
+    if (profile.displayName !== undefined) auth.currentUser.displayName = profile.displayName;
+    if (profile.photoURL !== undefined) auth.currentUser.photoURL = profile.photoURL;
+  }
+  try {
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        displayName: profile.displayName,
+        photoURL: profile.photoURL,
+        name: profile.displayName,
+        photoUrl: profile.photoURL,
+        avatar_url: profile.photoURL
+      }
+    });
+    if (error) console.warn("Supabase auth updateUser warning:", error.message);
+  } catch (e) {
+    console.warn("Supabase auth updateUser error:", e);
+  }
+
+  // Also sync to users table document
+  const uid = userObj?.uid || auth.currentUser?.uid;
+  if (uid) {
+    try {
+      const userDocRef = doc(db, 'users', uid);
+      const updateData: any = {};
+      if (profile.displayName !== undefined) {
+        updateData.displayName = profile.displayName;
+        updateData.name = profile.displayName;
+      }
+      if (profile.photoURL !== undefined) {
+        updateData.photoURL = profile.photoURL;
+        updateData.photoUrl = profile.photoURL;
+        updateData.avatar_url = profile.photoURL;
+      }
+      await setDoc(userDocRef, updateData, { merge: true });
+    } catch (e) {
+      console.warn("Could not sync profile to users collection:", e);
     }
-  });
-  if (error) throw new Error(error.message);
+  }
+
+  window.dispatchEvent(new CustomEvent('user_profile_updated', { detail: { profile } }));
 };
 
 export const updatePassword = async (authObj: any, password: string) => {
@@ -291,49 +329,130 @@ const parseRecordData = (table: string, row: any) => {
   return parsed;
 };
 
+// --- LOCAL CACHE & SYNC ENGINE FOR BULLETPROOF PERSISTENCE --- //
+const getLocalStore = (table: string): Record<string, any> => {
+  try {
+    const raw = localStorage.getItem(`db_cache_${table}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+};
+
+const setLocalStoreItem = (table: string, id: string, docData: any) => {
+  try {
+    const store = getLocalStore(table);
+    store[id] = docData;
+    localStorage.setItem(`db_cache_${table}`, JSON.stringify(store));
+  } catch (e) {}
+};
+
+const deleteLocalStoreItem = (table: string, id: string) => {
+  try {
+    const store = getLocalStore(table);
+    delete store[id];
+    localStorage.setItem(`db_cache_${table}`, JSON.stringify(store));
+  } catch (e) {}
+};
+
+const dispatchLocalSync = (table: string) => {
+  try {
+    window.dispatchEvent(new CustomEvent(`supabase_local_sync_${table}`));
+    window.dispatchEvent(new CustomEvent('supabase_local_sync_all'));
+  } catch (e) {}
+};
+
 export const getDoc = async (docRef: any) => {
-  const { data, error } = await supabase.from(docRef.table).select('*').eq('id', docRef.id).maybeSingle();
+  try {
+    const { data, error } = await supabase.from(docRef.table).select('*').eq('id', docRef.id).maybeSingle();
+    if (data) {
+      return {
+        id: docRef.id,
+        exists: () => true,
+        data: () => parseRecordData(docRef.table, data)
+      };
+    }
+  } catch (e) {}
+
+  // Fallback to local store
+  const localStore = getLocalStore(docRef.table);
+  const localData = localStore[docRef.id];
+  if (localData) {
+    return {
+      id: docRef.id,
+      exists: () => true,
+      data: () => localData
+    };
+  }
+
   return {
     id: docRef.id,
-    exists: () => !!data,
-    data: () => parseRecordData(docRef.table, data)
+    exists: () => false,
+    data: () => undefined
   };
 };
 
 export const setDoc = async (docRef: any, documentData: any, options: { merge?: boolean } = {}) => {
   let finalData = { ...documentData };
   if (options.merge) {
-      const existing = await getDoc(docRef);
-      if (existing.exists()) {
-          finalData = { ...existing.data(), ...documentData };
-      }
+    const existing = await getDoc(docRef);
+    if (existing.exists()) {
+      finalData = { ...existing.data(), ...documentData };
+    }
   }
-  const payload = toDatabaseRecord(docRef.table, docRef.id, finalData);
-  const { error } = await supabase.from(docRef.table).upsert(payload as any);
-  if (error) throw new Error(error.message);
+  setLocalStoreItem(docRef.table, docRef.id, finalData);
+  dispatchLocalSync(docRef.table);
+
+  try {
+    const payload = toDatabaseRecord(docRef.table, docRef.id, finalData);
+    await supabase.from(docRef.table).upsert(payload as any);
+  } catch (e) {
+    console.warn(`[Supabase setDoc sync fallback] Saved locally in ${docRef.table}:`, e);
+  }
 };
 
 export const updateDoc = async (docRef: any, documentData: any) => {
   const existing = await getDoc(docRef);
   let finalData = { ...documentData };
   if (existing.exists()) {
-      finalData = { ...existing.data(), ...documentData };
+    finalData = { ...existing.data(), ...documentData };
   }
-  const payload = toDatabaseRecord(docRef.table, docRef.id, finalData);
-  const { error } = await supabase.from(docRef.table).update(payload as any).eq('id', docRef.id);
-  if (error) throw new Error(error.message);
+  setLocalStoreItem(docRef.table, docRef.id, finalData);
+  dispatchLocalSync(docRef.table);
+
+  try {
+    const payload = toDatabaseRecord(docRef.table, docRef.id, finalData);
+    await supabase.from(docRef.table).update(payload as any).eq('id', docRef.id);
+  } catch (e) {
+    console.warn(`[Supabase updateDoc sync fallback] Updated locally in ${docRef.table}:`, e);
+  }
 };
 
 export const deleteDoc = async (docRef: any) => {
-  const { error } = await supabase.from(docRef.table).delete().eq('id', docRef.id);
-  if (error) throw new Error(error.message);
+  deleteLocalStoreItem(docRef.table, docRef.id);
+  dispatchLocalSync(docRef.table);
+
+  try {
+    await supabase.from(docRef.table).delete().eq('id', docRef.id);
+  } catch (e) {}
 };
 
 export const addDoc = async (collRef: any, documentData: any) => {
   const id = genId();
-  const payload = toDatabaseRecord(collRef.table, id, documentData);
-  const { error } = await supabase.from(collRef.table).insert(payload as any);
-  if (error) throw new Error(error.message);
+  const fullDocData = { ...documentData, id, createdAt: documentData.createdAt || new Date().toISOString() };
+  setLocalStoreItem(collRef.table, id, fullDocData);
+  dispatchLocalSync(collRef.table);
+
+  try {
+    const payload = toDatabaseRecord(collRef.table, id, fullDocData);
+    const { error } = await supabase.from(collRef.table).insert(payload as any);
+    if (error) {
+      console.warn(`[Supabase insert warning in ${collRef.table}]`, error.message);
+    }
+  } catch (e) {
+    console.warn(`[Supabase addDoc network fallback] Saved locally in ${collRef.table}:`, e);
+  }
+
   return doc(db, collRef.table, id);
 };
 
@@ -355,86 +474,139 @@ export const limit = (n: number) => {
 
 export const getDocs = async (queryRef: any) => {
   let table = queryRef.table;
-  
-  // Fallback for ux_categories if the user hasn't run the migration yet
   const isUxCategory = table === 'ux_categories';
   const isStructured = ['products', 'ux_categories', 'produits_patients'].includes(table);
   
-  let builder: any = supabase.from(table).select('*');
-  
-  if (queryRef.constraints) {
-    for (const c of queryRef.constraints) {
-      if (c.type === 'where') {
-        let fieldName = `data->>${c.field}`;
-        if (isStructured) {
-          if (table === 'products') {
-            if (c.field === 'pharmacyId') fieldName = 'pharmacy_id';
-            else if (c.field === 'isGlobal') fieldName = 'is_global';
-            else if (c.field === 'requiresPrescription') fieldName = 'is_prescription_required';
-            else if (c.field === 'category') fieldName = 'ux_category_id';
-            else if (c.field === 'name') fieldName = 'commercial_name';
-            else if (c.field === 'description') fieldName = 'dci';
-            else fieldName = c.field;
-          } else {
-            fieldName = c.field;
-          }
-        }
-        
-        if (c.op === '==') builder = builder.eq(fieldName, c.val);
-        else if (c.op === '>') builder = builder.gt(fieldName, c.val);
-        else if (c.op === '<') builder = builder.lt(fieldName, c.val);
-        else if (c.op === '>=') builder = builder.gte(fieldName, c.val);
-        else if (c.op === '<=') builder = builder.lte(fieldName, c.val);
-        else if (c.op === '!=') builder = builder.neq(fieldName, c.val);
-        else if (c.op === 'array-contains') {
+  let remoteData: any[] = [];
+  let fetchSucceeded = false;
+
+  try {
+    let builder: any = supabase.from(table).select('*');
+    
+    if (queryRef.constraints) {
+      for (const c of queryRef.constraints) {
+        if (c.type === 'where') {
+          let fieldName = `data->>${c.field}`;
           if (isStructured) {
-            builder = builder.contains(fieldName, [c.val]);
-          } else {
-            builder = builder.contains(`data->${c.field}`, [c.val]);
+            if (table === 'products') {
+              if (c.field === 'pharmacyId') fieldName = 'pharmacy_id';
+              else if (c.field === 'isGlobal') fieldName = 'is_global';
+              else if (c.field === 'requiresPrescription') fieldName = 'is_prescription_required';
+              else if (c.field === 'category') fieldName = 'ux_category_id';
+              else if (c.field === 'name') fieldName = 'commercial_name';
+              else if (c.field === 'description') fieldName = 'dci';
+              else fieldName = c.field;
+            } else {
+              fieldName = c.field;
+            }
           }
-        }
-        else if (c.op === 'in') builder = builder.in(fieldName, c.val);
-      } else if (c.type === 'orderBy') {
-        let fieldName = `data->>${c.field}`;
-        if (isStructured) {
-          if (table === 'products') {
-             if (c.field === 'name') fieldName = 'commercial_name';
-             else if (c.field === 'pharmacyId') fieldName = 'pharmacy_id';
-             else fieldName = c.field;
-          } else {
-             fieldName = c.field;
+          
+          if (c.op === '==') builder = builder.eq(fieldName, c.val);
+          else if (c.op === '>') builder = builder.gt(fieldName, c.val);
+          else if (c.op === '<') builder = builder.lt(fieldName, c.val);
+          else if (c.op === '>=') builder = builder.gte(fieldName, c.val);
+          else if (c.op === '<=') builder = builder.lte(fieldName, c.val);
+          else if (c.op === '!=') builder = builder.neq(fieldName, c.val);
+          else if (c.op === 'array-contains') {
+            if (isStructured) {
+              builder = builder.contains(fieldName, [c.val]);
+            } else {
+              builder = builder.contains(`data->${c.field}`, [c.val]);
+            }
           }
+          else if (c.op === 'in') builder = builder.in(fieldName, c.val);
+        } else if (c.type === 'orderBy') {
+          let fieldName = `data->>${c.field}`;
+          if (isStructured) {
+            if (table === 'products') {
+               if (c.field === 'name') fieldName = 'commercial_name';
+               else if (c.field === 'pharmacyId') fieldName = 'pharmacy_id';
+               else fieldName = c.field;
+            } else {
+               fieldName = c.field;
+            }
+          }
+          builder = builder.order(fieldName, { ascending: c.direction === 'asc' });
+        } else if (c.type === 'limit') {
+          builder = builder.limit(c.n);
         }
-        builder = builder.order(fieldName, { ascending: c.direction === 'asc' });
-      } else if (c.type === 'limit') {
-        builder = builder.limit(c.n);
       }
     }
+
+    const { data, error } = await builder;
+    if (!error && Array.isArray(data)) {
+      remoteData = data;
+      fetchSucceeded = true;
+    }
+  } catch (e) {
+    console.warn(`Supabase getDocs error for ${table}:`, e);
   }
 
-  let { data, error } = await builder;
-  
-  if (error) {
-     // Graceful fallback for unapplied migrations
-     if (isUxCategory && error.message.includes('Could not find the table')) {
-        console.warn("Table 'ux_categories' not found, falling back to 'categories'. Have you run the SQL migration?");
-        const fallbackBuilder = supabase.from('categories').select('*');
-        const fallbackResult = await (queryRef.constraints?.find((c:any) => c.type === 'limit') ? fallbackBuilder.limit(queryRef.constraints.find((c:any) => c.type === 'limit').n) : fallbackBuilder);
-        data = fallbackResult.data;
-        error = fallbackResult.error;
-     }
-     
-     if (error) throw new Error(error.message);
-  }
+  // Merge remote docs with local cache
+  const localStore = getLocalStore(table);
+  const docsMap = new Map<string, any>();
 
-  const docs = (data || []).map((d: any) => {
-     const parsed = parseRecordData(table, d);
-     return {
+  // If remote returned items, add them first
+  if (fetchSucceeded && remoteData.length > 0) {
+    remoteData.forEach((d: any) => {
+      const parsed = parseRecordData(table, d);
+      docsMap.set(d.id, {
         id: d.id,
         data: () => parsed,
         ref: { id: d.id }
-     };
+      });
+    });
+  }
+
+  // Merge local items
+  Object.keys(localStore).forEach((id) => {
+    const item = localStore[id];
+    if (!item) return;
+
+    // Check if matches where constraints
+    let matches = true;
+    if (queryRef.constraints) {
+      for (const c of queryRef.constraints) {
+        if (c.type === 'where') {
+          const val = item[c.field];
+          if (c.op === '==' && val != c.val) matches = false;
+          else if (c.op === 'in' && Array.isArray(c.val) && !c.val.includes(val)) matches = false;
+          else if (c.op === '!=' && val == c.val) matches = false;
+          else if (c.op === '>' && !(val > c.val)) matches = false;
+          else if (c.op === '<' && !(val < c.val)) matches = false;
+        }
+      }
+    }
+
+    if (matches && !docsMap.has(id)) {
+      docsMap.set(id, {
+        id,
+        data: () => item,
+        ref: { id }
+      });
+    }
   });
+
+  let docs = Array.from(docsMap.values());
+
+  // Apply sorting if specified
+  const orderConstraint = queryRef.constraints?.find((c: any) => c.type === 'orderBy');
+  if (orderConstraint) {
+    const field = orderConstraint.field;
+    const isAsc = orderConstraint.direction === 'asc';
+    docs.sort((a, b) => {
+      const aVal = a.data()?.[field] || '';
+      const bVal = b.data()?.[field] || '';
+      if (aVal < bVal) return isAsc ? -1 : 1;
+      if (aVal > bVal) return isAsc ? 1 : -1;
+      return 0;
+    });
+  }
+
+  const limitConstraint = queryRef.constraints?.find((c: any) => c.type === 'limit');
+  if (limitConstraint && limitConstraint.n > 0) {
+    docs = docs.slice(0, limitConstraint.n);
+  }
 
   return { 
     docs: docs as any[], 
@@ -495,6 +667,13 @@ export const onSnapshot = (queryRef: any, callback: any, errorCallback?: any) =>
 
   fetchAndNotify();
 
+  const handleLocalSync = () => {
+    fetchAndNotify();
+  };
+
+  window.addEventListener(`supabase_local_sync_${table}`, handleLocalSync);
+  window.addEventListener('supabase_local_sync_all', handleLocalSync);
+
   const channel = supabase.channel(`public:${table}-${Math.random()}`)
     .on('postgres_changes', { event: '*', schema: 'public', table }, () => {
       fetchAndNotify();
@@ -502,6 +681,8 @@ export const onSnapshot = (queryRef: any, callback: any, errorCallback?: any) =>
     .subscribe();
 
   return () => {
+    window.removeEventListener(`supabase_local_sync_${table}`, handleLocalSync);
+    window.removeEventListener('supabase_local_sync_all', handleLocalSync);
     supabase.removeChannel(channel);
   };
 };

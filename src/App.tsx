@@ -55,6 +55,7 @@ import { AdminLogin } from './pages/admin/Login';
 import { AdminHome } from './pages/admin/Home';
 import { AdminUsers } from './pages/admin/Users';
 import { AdminFinances } from './pages/admin/Finances';
+import { AdminDeliveriesTracking } from './pages/admin/DeliveriesTracking';
 import { AdminSettings } from './pages/admin/Settings';
 import { AdminOrders } from './pages/admin/Orders';
 import { AdminProducts } from './pages/admin/Products';
@@ -137,6 +138,7 @@ export default function App() {
           {/* Pharmacist Routes */}
           <Route path="/pharmacist" element={<RoleLayout role="pharmacist" />}>
             <Route index element={<PharmacistHome />} />
+            <Route path="deliveries" element={<AdminDeliveriesTracking />} />
             <Route path="orders" element={<PharmacistOrders />} />
             <Route path="inventory" element={<PharmacistInventory />} />
             <Route path="inventory/:id" element={<PharmacistProductDetails />} />
@@ -168,6 +170,7 @@ export default function App() {
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminHome />} />
+            <Route path="deliveries-tracking" element={<AdminDeliveriesTracking />} />
             <Route path="live-map" element={<AdminLiveMap />} />
             <Route path="dpml" element={<AdminDPML />} />
             <Route path="products" element={<AdminProducts />} />

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { 
   HeartPulse, LayoutDashboard, Package, Grid, 
   ShoppingCart, BarChart2, Users, CreditCard, 
-  Settings, LogOut 
+  Settings, LogOut, Truck 
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useTranslation } from "react-i18next";
@@ -55,6 +55,7 @@ export function RoleSidebar({ role }: RoleSidebarProps) {
       title: "MAIN MENU",
       links: [
         { to: "/pharmacist", icon: LayoutDashboard, label: t('dashboard', 'Dashboard'), exact: true },
+        { to: "/pharmacist/deliveries", icon: Truck, label: "Tableau Livraison" },
         { to: "/pharmacist/inventory", icon: Package, label: t('products', 'Products') },
         { to: "/pharmacist/categories", icon: Grid, label: t('categories', 'Categories') },
       ]

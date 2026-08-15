@@ -6,9 +6,9 @@ import { ExternalLink, ShieldAlert, Navigation, Clock, Truck, CheckCircle2, Chev
 import { useTranslation } from 'react-i18next';
 
 import { useGoogleMapsStatus } from '../../hooks/useGoogleMapsStatus';
+import { getGoogleMapsApiKey } from '../../lib/maps';
 
-const rawApiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY || (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY || '';
-const API_KEY = rawApiKey === 'YOUR_GOOGLE_MAPS_API_KEY' || rawApiKey === 'YOUR_KEY_HERE' ? '' : rawApiKey;
+const API_KEY = getGoogleMapsApiKey();
 
 interface Driver {
   id: string;

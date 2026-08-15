@@ -90,6 +90,11 @@ export function ProductCard({ product, basePath, onClick, showSaleBadge = false,
                Ordonnance Obligatoire
              </span>
           )}
+          {product.distance_km !== undefined && product.distance_km !== null && (
+             <span className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-tight flex items-center gap-0.5">
+               📍 {product.distance_km < 1 ? `${Math.round(product.distance_km * 1000)} m` : `${Number(product.distance_km).toFixed(1)} km`}
+             </span>
+          )}
           {product.dosage && !isRx && (
              <span className="bg-[#FDF9EE] dark:bg-yellow-900/20 text-[#786345] dark:text-yellow-500 px-1.5 py-0.5 rounded-sm text-[10px] font-bold tracking-tight truncate max-w-[80px]">
                {product.dosage}

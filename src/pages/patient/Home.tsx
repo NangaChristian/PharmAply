@@ -14,11 +14,10 @@ import { ProductCard } from "../../components/ProductCard";
 import { getCategoryIcon } from "../../lib/icons";
 import { APIProvider, Map, AdvancedMarker, Pin, useMap } from '@vis.gl/react-google-maps';
 import { MarkerClusterer } from '@googlemaps/markerclusterer';
-
+import { getGoogleMapsApiKey } from "../../lib/maps";
 import { useGoogleMapsStatus } from "../../hooks/useGoogleMapsStatus";
 
-const rawApiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY || (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY || '';
-const API_KEY = rawApiKey === 'YOUR_GOOGLE_MAPS_API_KEY' || rawApiKey === 'YOUR_KEY_HERE' ? '' : rawApiKey;
+const API_KEY = getGoogleMapsApiKey();
 
 const PharmacyMarkers = React.memo(({ pharmacies }: { pharmacies: any[] }) => {
   const map = useMap();

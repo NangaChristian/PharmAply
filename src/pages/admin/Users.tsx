@@ -114,28 +114,46 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
       await updateDoc(doc(db, 'users', userId), { role: newRole });
-      setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'users');
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+      toast.success(t('role_updated', 'Rôle mis à jour avec succès'));
+    } catch (error: any) {
+      console.error("Error updating user role:", error);
+      toast.error(t('error_role_update', 'Erreur lors du changement de rôle'));
     }
   };
 
   const handleStatusChange = async (userId: string, newStatus: string) => {
     try {
+      const u = users.find(userItem => userItem.id === userId);
       await updateDoc(doc(db, 'users', userId), { status: newStatus });
-      setUsers(users.map(u => u.id === userId ? { ...u, status: newStatus } : u));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'users');
+      
+      if (u?.role === 'pharmacy' || u?.role === 'pharmacist') {
+        try { await updateDoc(doc(db, 'pharmacies', userId), { status: newStatus }); } catch (_) {}
+      } else if (u?.role === 'driver') {
+        try { await updateDoc(doc(db, 'drivers', userId), { status: newStatus, kyc_status: newStatus }); } catch (_) {}
+      }
+
+      setUsers(prev => prev.map(userItem => userItem.id === userId ? { ...userItem, status: newStatus } : userItem));
+      toast.success(newStatus === 'suspended' ? t('user_suspended', 'Utilisateur suspendu') : t('user_activated', 'Utilisateur activé'));
+    } catch (error: any) {
+      console.error("Error updating status:", error);
+      toast.error(t('error_status_update', 'Erreur lors de la mise à jour du statut'));
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!window.confirm(t('confirm_delete_user', 'Are you sure you want to permanently delete this user?'))) return;
+    if (!window.confirm(t('confirm_delete_user', 'Êtes-vous sûr de vouloir supprimer définitivement cet utilisateur ?'))) return;
     try {
       await deleteDoc(doc(db, 'users', userId));
-      setUsers(users.filter(u => u.id !== userId));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, 'users');
+      try { await deleteDoc(doc(db, 'pharmacies', userId)); } catch (_) {}
+      try { await deleteDoc(doc(db, 'drivers', userId)); } catch (_) {}
+      
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      setSelectedUsers(prev => prev.filter(id => id !== userId));
+      toast.success(t('user_deleted', 'Utilisateur supprimé avec succès'));
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast.error(t('error_delete_user', 'Erreur lors de la suppression'));
     }
   };
 
@@ -144,55 +162,100 @@ export function AdminUsers({ type = 'all' }: { type?: 'vendors' | 'clients' | 'd
       uid: u.id,
       email: u.email,
       emailVerified: true,
-      displayName: u.name,
-      photoURL: null,
+      displayName: u.name || u.displayName || u.email,
+      photoURL: u.photoURL || null,
     };
-    impersonateUser(targetUser, u.role || 'patient');
-    navigate('/');
+    const targetRole = u.role || 'patient';
+    impersonateUser(targetUser, targetRole, u);
+    toast.success(`${t('connected_as', 'Connecté en tant que')} ${u.name || u.email || 'Utilisateur'} (${targetRole})`);
+
+    // Redirection automatique vers le portail approprié selon le rôle
+    if (targetRole === 'pharmacy' || targetRole === 'pharmacist') {
+      navigate('/pharmacist');
+    } else if (targetRole === 'driver') {
+      navigate('/delivery');
+    } else if (targetRole === 'cashier') {
+      navigate('/cashier');
+    } else if (targetRole === 'admin') {
+      navigate('/admin');
+    } else {
+      navigate('/');
+    }
   };
 
+  const [isProcessingBulk, setIsProcessingBulk] = useState(false);
+
   const handleBulkAction = async (action: 'approve' | 'suspend' | 'delete' | 'make_cashier') => {
-    if (!selectedUsers.length) return;
-    
-    if (action === 'approve') {
-       for (const uId of selectedUsers) {
-         try {
-           await updateDoc(doc(db, 'users', uId), { status: 'approved' });
-         } catch (e) {
-           console.error("Bulk approve failed for", uId);
-         }
-       }
-       setUsers(users.map(u => selectedUsers.includes(u.id) ? { ...u, status: 'approved' } : u));
-    } else if (action === 'suspend') {
-       for (const uId of selectedUsers) {
-         try {
-           await updateDoc(doc(db, 'users', uId), { status: 'suspended' });
-         } catch (e) {
-           console.error("Bulk suspend failed for", uId);
-         }
-       }
-       setUsers(users.map(u => selectedUsers.includes(u.id) ? { ...u, status: 'suspended' } : u));
-    } else if (action === 'make_cashier') {
-       for (const uId of selectedUsers) {
-         try {
-           await updateDoc(doc(db, 'users', uId), { role: 'cashier' });
-         } catch (e) {
-           console.error("Bulk make cashier failed for", uId);
-         }
-       }
-       setUsers(users.map(u => selectedUsers.includes(u.id) ? { ...u, role: 'cashier' } : u));
-    } else if (action === 'delete') {
-       if (!window.confirm(t('confirm_bulk_delete_user', 'Are you sure you want to continuously delete selected users?'))) return;
-       for (const uId of selectedUsers) {
-         try {
-           await deleteDoc(doc(db, 'users', uId));
-         } catch (e) {
-           console.error("Bulk delete failed for", uId);
-         }
-       }
-       setUsers(users.filter(u => !selectedUsers.includes(u.id)));
+    if (!selectedUsers.length || isProcessingBulk) return;
+    setIsProcessingBulk(true);
+
+    try {
+      if (action === 'approve') {
+        await Promise.all(
+          selectedUsers.map(async (uId) => {
+            try {
+              await updateDoc(doc(db, 'users', uId), { status: 'approved' });
+              try { await updateDoc(doc(db, 'pharmacies', uId), { status: 'approved' }); } catch (_) {}
+              try { await updateDoc(doc(db, 'drivers', uId), { status: 'approved', kyc_status: 'approved' }); } catch (_) {}
+            } catch (e) {
+              console.error("Bulk approve failed for", uId, e);
+            }
+          })
+        );
+        setUsers(prev => prev.map(u => selectedUsers.includes(u.id) ? { ...u, status: 'approved' } : u));
+        toast.success(`${selectedUsers.length} ${t('users_approved', 'utilisateur(s) approuvé(s)')}`);
+      } else if (action === 'suspend') {
+        await Promise.all(
+          selectedUsers.map(async (uId) => {
+            try {
+              await updateDoc(doc(db, 'users', uId), { status: 'suspended' });
+              try { await updateDoc(doc(db, 'pharmacies', uId), { status: 'suspended' }); } catch (_) {}
+              try { await updateDoc(doc(db, 'drivers', uId), { status: 'suspended' }); } catch (_) {}
+            } catch (e) {
+              console.error("Bulk suspend failed for", uId, e);
+            }
+          })
+        );
+        setUsers(prev => prev.map(u => selectedUsers.includes(u.id) ? { ...u, status: 'suspended' } : u));
+        toast.success(`${selectedUsers.length} ${t('users_suspended', 'utilisateur(s) suspendu(s)')}`);
+      } else if (action === 'make_cashier') {
+        await Promise.all(
+          selectedUsers.map(async (uId) => {
+            try {
+              await updateDoc(doc(db, 'users', uId), { role: 'cashier' });
+            } catch (e) {
+              console.error("Bulk make cashier failed for", uId, e);
+            }
+          })
+        );
+        setUsers(prev => prev.map(u => selectedUsers.includes(u.id) ? { ...u, role: 'cashier' } : u));
+        toast.success(`${selectedUsers.length} ${t('users_made_cashier', 'utilisateur(s) passé(s) caissier')}`);
+      } else if (action === 'delete') {
+        if (!window.confirm(t('confirm_bulk_delete_user', 'Êtes-vous sûr de vouloir supprimer définitivement les utilisateurs sélectionnés ?'))) {
+          setIsProcessingBulk(false);
+          return;
+        }
+        await Promise.all(
+          selectedUsers.map(async (uId) => {
+            try {
+              await deleteDoc(doc(db, 'users', uId));
+              try { await deleteDoc(doc(db, 'pharmacies', uId)); } catch (_) {}
+              try { await deleteDoc(doc(db, 'drivers', uId)); } catch (_) {}
+            } catch (e) {
+              console.error("Bulk delete failed for", uId, e);
+            }
+          })
+        );
+        setUsers(prev => prev.filter(u => !selectedUsers.includes(u.id)));
+        toast.success(`${selectedUsers.length} ${t('users_deleted', 'utilisateur(s) supprimé(s)')}`);
+      }
+      setSelectedUsers([]);
+    } catch (err: any) {
+      console.error("Bulk action error:", err);
+      toast.error(t('bulk_action_error', "Erreur lors de l'exécution de l'action"));
+    } finally {
+      setIsProcessingBulk(false);
     }
-    setSelectedUsers([]);
   };
 
   const toggleSelectUser = (id: string) => {

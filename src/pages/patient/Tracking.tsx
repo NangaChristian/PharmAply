@@ -1,10 +1,10 @@
-import { ArrowLeft, CheckCircle, Package, Truck, Home, Phone, Star, User, FileText, Printer } from "lucide-react";
+import { ArrowLeft, CheckCircle, Package, Truck, Home, Phone, Star, User, FileText, Printer, MapPin, Navigation, Store, ShieldCheck } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from 'react';
 import { useTranslation } from "react-i18next";
 import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import L from 'leaflet';
-import { doc, onSnapshot, db } from '../../lib/firebase';
+import { doc, onSnapshot, getDoc, db } from '../../lib/firebase';
 import { formatCurrency, parseDate } from '../../lib/utils';
 import { InvoiceModal } from '../../components/InvoiceModal';
 import { printInvoice } from '../../lib/invoice';
@@ -73,6 +73,7 @@ export function PatientTracking() {
   const [eta, setEta] = useState(15);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [pickupPharmacy, setPickupPharmacy] = useState<any>(null);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -131,6 +132,47 @@ export function PatientTracking() {
     return () => unsub();
   }, [order?.driverId]);
 
+  const isPickup = Boolean(
+    order && (
+      order.delivery_mode === 'PICKUP' || 
+      order.delivery_mode === 'pickup' || 
+      order.deliveryMethod === 'pickup' || 
+      order.deliveryMethod === 'store_pickup' || 
+      order.fulfillment_type === 'PICKUP'
+    )
+  );
+
+  const isPaid = Boolean(
+    order && (
+      order.status === 'PAID' || 
+      order.status === 'paid' || 
+      ['accepted', 'preparing', 'ready_for_pickup', 'ready', 'delivered'].includes(order.status)
+    )
+  );
+
+  useEffect(() => {
+    // Condition stricte : informations de pharmacie débloquées UNIQUEMENT si payée ET en mode retrait (PICKUP)
+    if (!isPickup || !isPaid) {
+      setPickupPharmacy(null);
+      return;
+    }
+
+    const phId = order?.pharmacyId || order?.pharmacy_id;
+    if (!phId) return;
+
+    const fetchPharmacy = async () => {
+      try {
+        const phDoc = await getDoc(doc(db, 'pharmacies', phId));
+        if (phDoc.exists()) {
+          setPickupPharmacy({ id: phDoc.id, ...phDoc.data() });
+        }
+      } catch (err) {
+        console.error("Error fetching pickup pharmacy:", err);
+      }
+    };
+    fetchPharmacy();
+  }, [order?.status, order?.delivery_mode, order?.deliveryMethod, order?.fulfillment_type, order?.pharmacyId, order?.pharmacy_id, isPickup, isPaid]);
+
   useEffect(() => {
     if (truckPos[0] !== 48.8566) { // Assuming 48.8566 is default and wait until updated
        const R = 6371; // Radius of the earth in km
@@ -155,9 +197,7 @@ export function PatientTracking() {
     }
   }, [truckPos, order?.status, destPos[0], destPos[1]]);
 
-   const isPickup = order?.deliveryMethod === 'pickup';
-
-  const getTimelineDate = (type: string) => {
+   const getTimelineDate = (type: string) => {
     if (!order) return "";
     
     const extractDate = (dateField: any) => {
@@ -238,13 +278,74 @@ export function PatientTracking() {
             </div>
          )}
 
-         {isPickup && (
-            <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900 p-6 rounded-3xl flex flex-col items-center justify-center text-center">
-               <Home className="w-12 h-12 text-indigo-600 mb-2" />
-               <h3 className="font-bold text-indigo-900 dark:text-indigo-100">{['ready_for_pickup', 'ready'].includes(order?.status) ? t('head_to_pharmacy', 'Head to the pharmacy for pickup') : t('store_pickup', 'Store Pickup')}</h3>
-               <p className="text-sm text-indigo-700 dark:text-indigo-300 mt-1">{['ready_for_pickup', 'ready'].includes(order?.status) ? t('pickup_ready_desc', 'Your order is ready to be picked up. Please show your ID at the counter.') : t('pickup_instructions', 'You will be notified when your order is ready to be picked up from the pharmacy.')}</p>
+          {isPickup && (
+            <div className="space-y-4">
+              <div className="bg-[#194B4B]/10 border border-[#194B4B]/20 p-5 rounded-3xl flex flex-col items-center justify-center text-center">
+                <div className="w-12 h-12 bg-[#194B4B] text-white rounded-2xl flex items-center justify-center mb-2 shadow-sm">
+                  <Store size={24} />
+                </div>
+                <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 px-2.5 py-1 rounded-full text-[11px] font-bold text-[#194B4B] dark:text-teal-400 mb-2 border border-[#194B4B]/20">
+                  <ShieldCheck size={13} />
+                  Officine de Retrait Assignée & Validée
+                </div>
+                <h3 className="font-extrabold text-[#194B4B] dark:text-teal-300 text-lg">
+                  {['ready_for_pickup', 'ready'].includes(order?.status)
+                    ? t('head_to_pharmacy', 'Votre commande est prête en officine')
+                    : t('store_pickup', 'Retrait en Pharmacie Sécurisé')}
+                </h3>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 max-w-sm">
+                  {['ready_for_pickup', 'ready'].includes(order?.status)
+                    ? t('pickup_ready_desc', 'Présentez votre numéro de commande au comptoir pour retirer vos médicaments.')
+                    : t('pickup_instructions', 'L\'officine prépare vos produits. Vous recevrez une alerte dès la mise à disposition.')}
+                </p>
+              </div>
+
+              {/* Fiche Officine Débloquée Post-Paiement */}
+              {pickupPharmacy && (
+                <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-bold text-gray-900 dark:text-white text-base">
+                        {pickupPharmacy.name || pickupPharmacy.nom || 'Pharmacie Partenaire'}
+                      </h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
+                        <MapPin size={13} className="text-[#194B4B] dark:text-teal-400 shrink-0" />
+                        {pickupPharmacy.address || pickupPharmacy.adresse || 'Adresse de l\'officine'}, {pickupPharmacy.city || pickupPharmacy.ville || ''}
+                      </p>
+                    </div>
+                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-[10px] font-bold rounded-lg border border-emerald-200 dark:border-emerald-800">
+                      Ouvert
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-zinc-800">
+                    {pickupPharmacy.phone && (
+                      <a
+                        href={`tel:${pickupPharmacy.phone}`}
+                        className="flex-1 py-2.5 px-3 bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition"
+                      >
+                        <Phone size={14} className="text-emerald-600" />
+                        Appeler l'officine
+                      </a>
+                    )}
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+                        pickupPharmacy.latitude && pickupPharmacy.longitude
+                          ? `${pickupPharmacy.latitude},${pickupPharmacy.longitude}`
+                          : `${pickupPharmacy.address || ''} ${pickupPharmacy.city || ''}`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-2.5 px-3 bg-[#194B4B] hover:bg-[#143d3d] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition shadow-sm"
+                    >
+                      <Navigation size={14} />
+                      Itinéraire GPS
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
-         )}
+          )}
 
          {/* Driver Info */}
          {!isPickup && (order && order.driverId ? (

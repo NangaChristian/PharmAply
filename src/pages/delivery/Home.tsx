@@ -13,9 +13,9 @@ import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps
 import { RouteDisplay } from './RouteDisplay';
 import { NotificationBell } from "../../components/NotificationBell";
 import { useGoogleMapsStatus } from "../../hooks/useGoogleMapsStatus";
+import { getGoogleMapsApiKey } from "../../lib/maps";
 
-const rawApiKey = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY || (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY || '';
-const API_KEY = rawApiKey === 'YOUR_GOOGLE_MAPS_API_KEY' || rawApiKey === 'YOUR_KEY_HERE' ? '' : rawApiKey;
+const API_KEY = getGoogleMapsApiKey();
 
 export function DeliveryHome() {
   const [mapType, setMapType] = useState('roadmap');
@@ -100,6 +100,7 @@ export function DeliveryHome() {
 
   useEffect(() => {
     if (!isOnline || !user) return;
+    if (!navigator.geolocation) return;
     const watchId = navigator.geolocation.watchPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
@@ -119,8 +120,10 @@ export function DeliveryHome() {
           }
         } catch(e) {}
       },
-      (error) => { console.error('Error watching location', error); },
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+      (error) => {
+        console.warn('Location watch status:', error?.message || 'Unavailable');
+      },
+      { enableHighAccuracy: false, maximumAge: 15000, timeout: 10000 }
     );
     return () => navigator.geolocation.clearWatch(watchId);
   }, [isOnline, user, currentRequest]);

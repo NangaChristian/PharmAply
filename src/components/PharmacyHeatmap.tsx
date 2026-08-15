@@ -4,14 +4,10 @@ import { GoogleMapsOverlay } from '@deck.gl/google-maps';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import { useTranslation } from "react-i18next";
 import { useGoogleMapsStatus } from "../hooks/useGoogleMapsStatus";
+import { getGoogleMapsApiKey } from "../lib/maps";
 
-const API_KEY =
-  process.env.GOOGLE_MAPS_PLATFORM_KEY ||
-  (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
-  (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY ||
-  (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
-  '';
-const hasValidKey = Boolean(API_KEY) && API_KEY !== 'YOUR_API_KEY' && API_KEY !== 'YOUR_GOOGLE_MAPS_API_KEY';
+const API_KEY = getGoogleMapsApiKey();
+const hasValidKey = Boolean(API_KEY);
 
 function DeckGlOverlay({ layers }: { layers: any[] }) {
   const map = useMap();

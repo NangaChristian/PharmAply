@@ -6,7 +6,8 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: "30mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "30mb" }));
 
   // Health check endpoints for deployment probes
   app.get("/health", (req: express.Request, res: express.Response) => {
@@ -14,6 +15,379 @@ async function startServer() {
   });
   app.get("/api/health", (req: express.Request, res: express.Response) => {
     res.json({ status: "ok" });
+  });
+
+  // Helper Haversine Distance (in kilometers)
+  function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return 999;
+    const R = 6371; // Rayon terrestre en km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  // Helper string similarity score (0 to 1)
+  function stringSimilarity(s1: string, s2: string): number {
+    if (!s1 || !s2) return 0;
+    const a = s1.toLowerCase().trim();
+    const b = s2.toLowerCase().trim();
+    if (a === b) return 1;
+    if (a.includes(b) || b.includes(a)) return 0.85;
+
+    // Word tokens overlap
+    const wordsA = a.split(/[\s,/-]+/).filter(w => w.length > 2);
+    const wordsB = b.split(/[\s,/-]+/).filter(w => w.length > 2);
+    if (wordsA.length === 0 || wordsB.length === 0) return 0;
+    
+    let matches = 0;
+    for (const w of wordsA) {
+      if (wordsB.some(wb => wb.includes(w) || w.includes(wb))) {
+        matches++;
+      }
+    }
+    return matches / Math.max(wordsA.length, wordsB.length);
+  }
+
+  // =========================================================================
+  // SMART SCAN ORDONNANCE AVEC IA MULTIMODALE & MATCHING GÉOGRAPHIQUE
+  // =========================================================================
+  app.post("/api/ai/scan-prescription", async (req: express.Request, res: express.Response): Promise<any> => {
+    try {
+      const { imageBase64, mimeType, latitude, longitude } = req.body;
+
+      if (!imageBase64) {
+        return res.status(400).json({ success: false, error: "Image base64 manquante." });
+      }
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ success: false, error: "Clé GEMINI_API_KEY non configurée sur le serveur." });
+      }
+
+      // Patient location (default to Douala coordinates if not provided)
+      const userLat = typeof latitude === 'number' ? latitude : 4.0511;
+      const userLng = typeof longitude === 'number' ? longitude : 9.7679;
+
+      // 1. Appel du modèle multimodal Gemini 1.5 Pro
+      const { GoogleGenAI } = await import("@google/genai");
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      const visionPrompt = `Tu es un assistant pharmacien expert en déchiffrage d'ordonnances médicales manuscrites et imprimées.
+Analyse attentivement cette image d'ordonnance médicale ou de boîte de médicament.
+
+Extrais TOUS les médicaments prescrits et retourne UNIQUEMENT un tableau JSON structuré.
+Pour chaque médicament identifié, retourne un objet avec ces champs exacts :
+- "nom_medicament": string (Nom commercial ou nom principal, ex: "Doliprane", "Amoxicilline", "Spasfon", "Augmentin")
+- "dosage": string (ex: "1000mg", "500mg", "1g", "50mg/ml", ou "Standard" si absent)
+- "forme": string (ex: "Comprimé", "Gélule", "Sirop", "Injectable", "Sachet", "Pommade", etc.)
+- "quantite": number (Quantité/boîtes prescrites, nombre entier positif, par défaut 1 si non spécifié)
+- "posologie": string (Instructions de prise, ex: "1 comprimé matin et soir pendant 5 jours")
+- "dci": string (Dénomination Commune Internationale si déductible, ex: "Paracétamol", "Amoxicilline", ou identique au nom)
+- "ordonnance_requise": boolean (true si médicament sous prescription obligatoire, false sinon)
+- "remarques": string (Conseils ou avertissements)
+
+Réponds STRICTEMENT par un JSON valide sans formatage Markdown superflu. Exemple :
+[
+  {
+    "nom_medicament": "Doliprane",
+    "dosage": "1000mg",
+    "forme": "Comprimé",
+    "quantite": 2,
+    "posologie": "1 cp toutes les 8 heures si douleur",
+    "dci": "Paracétamol",
+    "ordonnance_requise": false,
+    "remarques": "Ne pas dépasser 3g par jour"
+  }
+]`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-1.5-pro",
+        contents: [
+          { inlineData: { data: imageBase64, mimeType: mimeType || "image/jpeg" } },
+          visionPrompt
+        ],
+        config: {
+          responseMimeType: "application/json",
+        },
+      });
+
+      let rawAiText = response.text || "[]";
+      // Nettoyage au cas où des backticks markdown seraient inclus
+      if (rawAiText.startsWith("```json")) {
+        rawAiText = rawAiText.replace(/^```json/, "").replace(/```$/, "").trim();
+      } else if (rawAiText.startsWith("```")) {
+        rawAiText = rawAiText.replace(/^```/, "").replace(/```$/, "").trim();
+      }
+
+      let detectedMeds: any[] = [];
+      try {
+        const parsed = JSON.parse(rawAiText);
+        detectedMeds = Array.isArray(parsed) ? parsed : (parsed.medications || [parsed]);
+      } catch (parseErr) {
+        console.error("Failed to parse Gemini response as JSON:", rawAiText);
+        return res.status(422).json({
+          success: false,
+          error: "L'IA n'a pas pu structurer les médicaments de l'ordonnance.",
+          rawText: rawAiText
+        });
+      }
+
+      // 2. Connexion à Supabase pour le Matching & la Géolocalisation
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+      let allProducts: any[] = [];
+      let allPharmacies: any[] = [];
+      let globalCatalog: any[] = [];
+
+      if (supabaseUrl && supabaseKey) {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // Fetch pharmacies
+        const { data: pharmaciesData } = await supabase
+          .from('pharmacies')
+          .select('*');
+        if (pharmaciesData) {
+          allPharmacies = pharmaciesData.map((ph: any) => {
+            const extra = ph.data || {};
+            return {
+              id: ph.id,
+              name: ph.name || extra.name || extra.pharmacy_name || "Pharmacie Partenaire",
+              address: ph.address || extra.address || "Douala",
+              phone: ph.phone || extra.phone || "",
+              latitude: Number(ph.latitude ?? extra.latitude ?? extra.lat ?? 4.0511),
+              longitude: Number(ph.longitude ?? extra.longitude ?? extra.lng ?? 9.7679),
+              status: ph.status || extra.status || 'approved'
+            };
+          });
+        }
+
+        // Fetch pharmacy stock products
+        const { data: productsData } = await supabase
+          .from('products')
+          .select('*');
+        if (productsData) {
+          allProducts = productsData.map((p: any) => {
+            const extra = p.data || {};
+            return {
+              id: p.id,
+              nom_commercial: p.nom_commercial || p.commercial_name || p.name || extra.nom_commercial || extra.name || "",
+              dci: p.dci || extra.dci || "",
+              dosage: p.dosage || extra.dosage || "",
+              form: p.form || p.forme || extra.form || "",
+              price: Number(p.price ?? extra.price ?? 0),
+              stock: Number(p.stock ?? extra.stock ?? 0),
+              pharmacy_id: p.pharmacy_id || p.pharmacyId || extra.pharmacy_id || extra.pharmacyId,
+              is_prescription_required: p.is_prescription_required ?? extra.is_prescription_required ?? true,
+              image_url: p.image_url || extra.image_url || null,
+              category: p.category || p.ux_category || extra.category || "Pharmacie"
+            };
+          });
+        }
+
+        // Fetch global national catalog (produits_patients) for fallback
+        const { data: catalogData } = await supabase
+          .from('produits_patients')
+          .select('*');
+        if (catalogData) {
+          globalCatalog = catalogData.map((c: any) => ({
+            id: c.id,
+            nom_commercial: c.nom_commercial || c.commercial_name || c.name || "",
+            dci: c.dci || "",
+            dosage: c.dosage || "",
+            forme: c.forme || c.form || "",
+            prix_moyen: Number(c.prix_moyen || c.price || 1500),
+            ordonnance_requise: c.ordonnance_requise ?? true,
+            categorie_ux: c.categorie_ux || c.category || "Médicament"
+          }));
+        }
+      }
+
+      // 3. Matching & Sélection Géographique Optimale
+      const extracted_items: any[] = [];
+      const pharmaciesMap = new Map<string, any>();
+      allPharmacies.forEach(ph => pharmaciesMap.set(ph.id, ph));
+
+      for (const detected of detectedMeds) {
+        const queryName = (detected.nom_medicament || "").trim();
+        const queryDci = (detected.dci || "").trim();
+        const queryDosage = (detected.dosage || "").trim();
+
+        // Trouver les correspondances parmi les stocks en pharmacie
+        const candidates: any[] = [];
+
+        for (const prod of allProducts) {
+          const simName = stringSimilarity(queryName, prod.nom_commercial);
+          const simDci = queryDci ? stringSimilarity(queryDci, prod.dci) : 0;
+          const bestScore = Math.max(simName, simDci);
+
+          if (bestScore >= 0.45) {
+            const pharmacy = pharmaciesMap.get(prod.pharmacy_id);
+            const phLat = pharmacy ? pharmacy.latitude : 4.0511;
+            const phLng = pharmacy ? pharmacy.longitude : 9.7679;
+            const distance = calculateDistanceKm(userLat, userLng, phLat, phLng);
+
+            candidates.push({
+              product: {
+                id: prod.id,
+                nom_commercial: prod.nom_commercial,
+                dci: prod.dci,
+                dosage: prod.dosage || queryDosage,
+                form: prod.form || detected.forme,
+                price: prod.price || 1500,
+                stock: prod.stock,
+                image_url: prod.image_url,
+                pharmacy_id: prod.pharmacy_id,
+                pharmacy_name: pharmacy ? pharmacy.name : "Pharmacie Partenaire",
+                pharmacy_address: pharmacy ? pharmacy.address : "Douala",
+                pharmacy_phone: pharmacy ? pharmacy.phone : "",
+                distance_km: Math.round(distance * 10) / 10,
+                latitude: phLat,
+                longitude: phLng,
+                is_prescription_required: prod.is_prescription_required
+              },
+              similarityScore: bestScore,
+              distanceKm: distance,
+              hasStock: prod.stock > 0
+            });
+          }
+        }
+
+        // Tri : priorité aux produits EN STOCK (stock > 0), puis par distance géographique la plus courte, puis par score de similarité
+        candidates.sort((a, b) => {
+          if (a.hasStock && !b.hasStock) return -1;
+          if (!a.hasStock && b.hasStock) return 1;
+          if (Math.abs(a.distanceKm - b.distanceKm) > 0.5) {
+            return a.distanceKm - b.distanceKm;
+          }
+          return b.similarityScore - a.similarityScore;
+        });
+
+        if (candidates.length > 0) {
+          const best = candidates[0];
+          extracted_items.push({
+            detected: {
+              ...detected,
+              quantite: Number(detected.quantite) || 1
+            },
+            matched: true,
+            in_stock: best.hasStock,
+            product: best.product,
+            similarity_score: best.similarityScore,
+            available_alternatives: candidates.slice(1, 4).map(c => c.product)
+          });
+        } else {
+          // Recherche dans le catalogue national (produits_patients)
+          const catalogMatches = globalCatalog.filter(c => {
+            const sName = stringSimilarity(queryName, c.nom_commercial);
+            const sDci = queryDci ? stringSimilarity(queryDci, c.dci) : 0;
+            return Math.max(sName, sDci) >= 0.45;
+          });
+
+          if (catalogMatches.length > 0) {
+            const catItem = catalogMatches[0];
+            // Trouver la pharmacie la plus proche pour ce produit du catalogue
+            const nearestPh = allPharmacies.length > 0 ? [...allPharmacies].sort((a, b) => {
+              const dA = calculateDistanceKm(userLat, userLng, a.latitude, a.longitude);
+              const dB = calculateDistanceKm(userLat, userLng, b.latitude, b.longitude);
+              return dA - dB;
+            })[0] : null;
+
+            const dist = nearestPh ? calculateDistanceKm(userLat, userLng, nearestPh.latitude, nearestPh.longitude) : 1.5;
+
+            extracted_items.push({
+              detected: {
+                ...detected,
+                quantite: Number(detected.quantite) || 1
+              },
+              matched: true,
+              in_stock: false,
+              product: {
+                id: catItem.id,
+                nom_commercial: catItem.nom_commercial,
+                dci: catItem.dci,
+                dosage: catItem.dosage || queryDosage,
+                form: catItem.forme || detected.forme,
+                price: catItem.prix_moyen || 2000,
+                stock: 5, // Quantité estimée disponible sur commande
+                image_url: null,
+                pharmacy_id: nearestPh?.id || "default_pharmacy",
+                pharmacy_name: nearestPh?.name || "Pharmacie de Référence",
+                pharmacy_address: nearestPh?.address || "Douala",
+                distance_km: Math.round(dist * 10) / 10,
+                latitude: nearestPh?.latitude || userLat,
+                longitude: nearestPh?.longitude || userLng,
+                is_prescription_required: catItem.ordonnance_requise
+              },
+              similarity_score: 0.8,
+              available_alternatives: []
+            });
+          } else {
+            // Aucun produit correspondant trouvé en base
+            extracted_items.push({
+              detected: {
+                ...detected,
+                quantite: Number(detected.quantite) || 1
+              },
+              matched: false,
+              in_stock: false,
+              product: null,
+              similarity_score: 0,
+              available_alternatives: []
+            });
+          }
+        }
+      }
+
+      // Déduire les pharmacies distinctes impliquées
+      const distinctPharmacies = new Map<string, any>();
+      extracted_items.forEach(item => {
+        if (item.product && item.product.pharmacy_id) {
+          distinctPharmacies.set(item.product.pharmacy_id, {
+            id: item.product.pharmacy_id,
+            name: item.product.pharmacy_name,
+            address: item.product.pharmacy_address,
+            distance_km: item.product.distance_km
+          });
+        }
+      });
+
+      const result = {
+        success: true,
+        extracted_items,
+        pharmacies_involved: Array.from(distinctPharmacies.values()),
+        summary: {
+          total_detected: detectedMeds.length,
+          total_matched: extracted_items.filter(i => i.matched).length,
+          total_unmatched: extracted_items.filter(i => !i.matched).length,
+          multi_pharmacy: distinctPharmacies.size > 1,
+          pharmacy_count: distinctPharmacies.size
+        }
+      };
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Erreur dans /api/ai/scan-prescription:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Échec de l'analyse intelligente de l'ordonnance."
+      });
+    }
   });
 
   // Nodemailer transporter (for production, configure this via process.env)

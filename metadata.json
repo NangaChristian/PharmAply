@@ -2,7 +2,8 @@
   "name": "PharmAply",
   "description": "Plateforme de commande et de livraison express de médicaments avec suivi en temps réel par géolocalisation.",
   "requestFramePermissions": [
-    "geolocation"
+    "geolocation",
+    "camera"
   ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

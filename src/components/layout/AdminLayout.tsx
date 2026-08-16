@@ -84,7 +84,6 @@ export function AdminLayout() {
          { to: "/admin/orders", icon: Package, label: t('admin_orders', "Orders"), end: true },
          { to: "/admin/finances", icon: CreditCard, label: t('admin_finances', "Payment & Finances"), end: true },
          { to: "/admin/reports", icon: FileBarChart, label: t('admin_reports', "Reports"), end: true },
-         { to: "/admin/settings/promotions", icon: Ticket, label: t('admin_promos', "Promo codes & Offers"), end: true },
          { to: "/admin/support", icon: HeadphonesIcon, label: t('admin_support', "Customer Queries / Support"), end: true }
        ]
     },

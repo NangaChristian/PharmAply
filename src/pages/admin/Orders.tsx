@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { collection, query, onSnapshot, orderBy } from '../../lib/firebase';
 import { db } from "../../lib/firebase";
-import { formatCurrency, parseDate } from "../../lib/utils";
+import { formatCurrency, parseDate, sortByDateDesc } from "../../lib/utils";
 import { Search, Package, MapPin, Calendar, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -12,10 +12,10 @@ export function AdminOrders() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "orders"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setOrders(data);
+      setOrders(sortByDateDesc(data));
       setLoading(false);
     }, (error) => {
       console.error(error);
@@ -25,9 +25,12 @@ export function AdminOrders() {
     return () => unsubscribe();
   }, []);
 
-  const filteredOrders = orders.filter(o => 
-    (o.id.toLowerCase() || "").includes(search.toLowerCase()) ||
-    (o.patientId?.toLowerCase() || "").includes(search.toLowerCase())
+  const filteredOrders = sortByDateDesc(
+    orders.filter(o => 
+      (o.id?.toLowerCase() || "").includes(search.toLowerCase()) ||
+      (o.patientId?.toLowerCase() || "").includes(search.toLowerCase()) ||
+      (o.patientName?.toLowerCase() || "").includes(search.toLowerCase())
+    )
   );
 
   const getStatusBadge = (status: string) => {

@@ -4,7 +4,7 @@ import { Activity, Clock, FileText, Search, AlertTriangle, Check, X } from "luci
 import { collection, query, where, onSnapshot, orderBy, updateDoc, doc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
-import { formatCurrency, parseDate } from '../../lib/utils';
+import { formatCurrency, parseDate, sortByDateDesc } from '../../lib/utils';
 import { printInvoice } from '../../lib/invoice';
 import { useTranslation } from "react-i18next";
 
@@ -22,9 +22,10 @@ export function PatientOrders() {
     const fetchOrders = async () => {
       if (!user) return;
       try {
-        const q = query(collection(db, 'orders'), where('patientId', '==', user.uid), orderBy('createdAt', 'desc'));
+        const q = query(collection(db, 'orders'), where('patientId', '==', user.uid));
         unsubscribe = onSnapshot(q, (snapshot) => {
-          setOrders(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+          const rawOrders = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          setOrders(sortByDateDesc(rawOrders));
           setLoading(false);
         });
       } catch (error) {

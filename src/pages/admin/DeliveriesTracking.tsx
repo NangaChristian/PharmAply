@@ -10,7 +10,7 @@ import {
   CartesianGrid, PieChart, Pie, Cell 
 } from "recharts";
 import { db, collection, query, onSnapshot, orderBy } from "../../lib/firebase";
-import { formatCurrency, parseDate } from "../../lib/utils";
+import { formatCurrency, parseDate, sortByDateDesc } from "../../lib/utils";
 import { useTranslation } from "react-i18next";
 
 export function AdminDeliveriesTracking() {
@@ -25,9 +25,9 @@ export function AdminDeliveriesTracking() {
 
   // Synchronisation en temps réel avec Firebase / Supabase
   useEffect(() => {
-    const ordersQuery = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+    const ordersQuery = query(collection(db, "orders"));
     const unsubOrders = onSnapshot(ordersQuery, (snap) => {
-      const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const docs = sortByDateDesc(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setOrders(docs);
       setLoading(false);
     }, (err) => {

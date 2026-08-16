@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { collection, query, getDocs, doc, deleteDoc, onSnapshot, addDoc, serverTimestamp, updateDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from "../../lib/firebase";
-import { Search, Plus, Edit2, Trash2, Tags, Image as ImageIcon, Database } from "lucide-react";
+import { Search, Plus, Edit2, Trash2, Tags, Image as ImageIcon, Database, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { seedData } from '../../seed_data';
@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { getCategoryIcon } from "../../lib/icons";
 
 export function AdminCategories() {
-    const { t } = useTranslation();
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -18,6 +18,9 @@ export function AdminCategories() {
   const [newCatImage, setNewCatImage] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const filteredCategories = categories.filter(c => 
@@ -44,19 +47,22 @@ export function AdminCategories() {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (!window.confirm(`Are you sure you want to delete ${selectedIds.size} categories?`)) return;
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer définitivement ces ${selectedIds.size} catégories ?`)) return;
     
+    setIsBulkDeleting(true);
     let successCount = 0;
     try {
       for (const id of selectedIds) {
         await deleteDoc(doc(db, "categories", id));
         successCount++;
       }
-      toast.success(`Deleted ${successCount} categories`);
+      toast.success(`${successCount} catégories supprimées`);
       setSelectedIds(new Set());
     } catch (e) {
-      toast.error("Failed to delete some categories");
+      toast.error("Échec de la suppression de certaines catégories");
       console.error(e);
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -75,7 +81,7 @@ export function AdminCategories() {
   }, []);
 
   const handleSeed = async () => {
-    if (!window.confirm("Are you sure you want to seed categories? This might duplicate existing ones.")) return;
+    if (!window.confirm("Êtes-vous sûr de vouloir injecter les catégories de base ?")) return;
     setSeeding(true);
     try {
       const uniqueCategories = [...new Set(seedData.map((p: any) => p.category))].filter(Boolean);
@@ -97,10 +103,9 @@ export function AdminCategories() {
         }
       }
       
-      toast.success(`Successfully seeded ${successCount} categories!`, { id: 'seed_cat' });
-      setTimeout(() => window.location.reload(), 1500);
+      toast.success(`Succès : ${successCount} catégories ajoutées !`, { id: 'seed_cat' });
     } catch (e) {
-      toast.error("Failed to seed categories.", { id: 'seed_cat' });
+      toast.error("Erreur lors de l'insertion des catégories.", { id: 'seed_cat' });
       console.error(e);
     } finally {
       setSeeding(false);
@@ -108,12 +113,15 @@ export function AdminCategories() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this category?")) return;
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer définitivement cette catégorie ?")) return;
+    setDeletingId(id);
     try {
       await deleteDoc(doc(db, "categories", id));
-      toast.success("Category deleted");
+      toast.success("Catégorie supprimée avec succès");
     } catch (e) {
       handleFirestoreError(e, OperationType.DELETE, `categories/${id}`);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -126,13 +134,14 @@ export function AdminCategories() {
 
   const handleSave = async () => {
     if (!newCatName.trim()) return;
+    setIsSaving(true);
     try {
       if (editingId) {
         await updateDoc(doc(db, "categories", editingId), {
           name: newCatName,
           imageUrl: newCatImage,
         });
-        toast.success("Category updated");
+        toast.success("Catégorie mise à jour");
       } else {
         await addDoc(collection(db, "categories"), {
           name: newCatName,
@@ -140,7 +149,7 @@ export function AdminCategories() {
           createdAt: serverTimestamp(),
           isActive: true,
         });
-        toast.success("Category created");
+        toast.success("Catégorie créée");
       }
       setShowModal(false);
       setNewCatName("");
@@ -148,6 +157,8 @@ export function AdminCategories() {
       setEditingId(null);
     } catch (e) {
       handleFirestoreError(e, editingId ? OperationType.UPDATE : OperationType.CREATE, `categories`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -176,18 +187,19 @@ export function AdminCategories() {
                {selectedIds.size > 0 && (
                  <button 
                     onClick={handleBulkDelete}
-                    className="bg-red-50 text-red-600 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-red-100 transition flex items-center gap-2"
+                    disabled={isBulkDeleting}
+                    className="bg-red-50 text-red-600 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-red-100 transition flex items-center gap-2 disabled:opacity-50"
                  >
-                    <Trash2 size={18} />
-                    Delete Selected ({selectedIds.size})
+                    {isBulkDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                    {isBulkDeleting ? "Suppression..." : `Delete Selected (${selectedIds.size})`}
                  </button>
                )}
                <button 
                   onClick={handleSeed}
                   disabled={seeding}
-                  className="bg-slate-100 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-200 transition flex items-center gap-2"
+                  className="bg-slate-100 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-200 transition flex items-center gap-2 disabled:opacity-50"
                >
-                  <Database size={18} />
+                  {seeding ? <Loader2 size={18} className="animate-spin" /> : <Database size={18} />}
                   {seeding ? "Seeding..." : "Seed Global Categories"}
                </button>
                <button 
@@ -260,8 +272,13 @@ export function AdminCategories() {
                                     <button onClick={() => handleEditClick(c)} className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg transition" title={t('edit', 'Edit')}>
                                        <Edit2 size={16} />
                                     </button>
-                                    <button onClick={() => handleDelete(c.id)} className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition" title={t('delete', 'Delete')}>
-                                       <Trash2 size={16} />
+                                    <button 
+                                      onClick={() => handleDelete(c.id)} 
+                                      disabled={deletingId === c.id}
+                                      className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition disabled:opacity-50" 
+                                      title={t('delete', 'Delete')}
+                                    >
+                                       {deletingId === c.id ? <Loader2 size={16} className="animate-spin text-red-500" /> : <Trash2 size={16} />}
                                     </button>
                                  </div>
                               </td>
@@ -316,9 +333,11 @@ export function AdminCategories() {
                        {t('cancel', 'Cancel')} </button>
                     <button 
                       onClick={handleSave}
-                      className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition shadow-sm"
+                      disabled={isSaving}
+                      className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition shadow-sm disabled:opacity-50 flex items-center gap-2"
                     >
-                      {editingId ? "Save Changes" : "Create Category"}
+                      {isSaving && <Loader2 size={14} className="animate-spin" />}
+                      {isSaving ? "Enregistrement..." : (editingId ? "Enregistrer" : "Créer la catégorie")}
                     </button>
                  </div>
               </div>

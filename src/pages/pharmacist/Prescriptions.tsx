@@ -3,8 +3,9 @@ import { collection, query, orderBy, onSnapshot, doc, updateDoc, getDocs, where 
 import { db } from "../../lib/firebase";
 import { useAuth } from "../../components/AuthProvider";
 import { useTranslation } from "react-i18next";
-import { FileText, CheckCircle, XCircle, Search, Clock, MessageSquare, Loader2, Image as ImageIcon } from "lucide-react";
-import { parseDate } from "../../lib/utils";
+import { FileText, CheckCircle, XCircle, Search, Clock, MessageSquare, Loader2, Image as ImageIcon, Sparkles, ShieldCheck } from "lucide-react";
+import { parseDate, sortByDateDesc } from "../../lib/utils";
+import { PrescriptionAiModal, PrescriptionScanResult } from "../../components/PrescriptionAiModal";
 
 export function PharmacistPrescriptions() {
   const { user } = useAuth();
@@ -14,6 +15,11 @@ export function PharmacistPrescriptions() {
   const [loading, setLoading] = useState(true);
   const [pharmacyId, setPharmacyId] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
+
+  // Modal State for AI DPML Audit
+  const [selectedScan, setSelectedScan] = useState<PrescriptionScanResult | null>(null);
+  const [selectedPrescription, setSelectedPrescription] = useState<any | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     let unsubscribe: () => void;
@@ -30,11 +36,26 @@ export function PharmacistPrescriptions() {
           setPharmacyId(pId);
         }
         
-        const q = query(collection(db, 'prescriptions'), orderBy('createdAt', 'desc'));
-        unsubscribe = onSnapshot(q, (snapshot) => {
-          const allDocs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        const q = query(collection(db, 'prescriptions'));
+        unsubscribe = onSnapshot(q, async (snapshot) => {
+          const allDocs = sortByDateDesc(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+          
+          // Fetch associated AI scans
+          const scanSnap = await getDocs(collection(db, 'prescription_scans'));
+          const scansByPrescriptionId: Record<string, any> = {};
+          scanSnap.docs.forEach(d => {
+            const data = d.data();
+            if (data.prescriptionId) {
+              scansByPrescriptionId[data.prescriptionId] = data.mappedItems;
+            }
+          });
+
           // Filter to those belonging to this pharmacy, or general ones (no pharmacyId)
-          const filtered = allDocs.filter(d => !d.pharmacyId || d.pharmacyId === pId);
+          const filtered = allDocs.filter(d => !d.pharmacyId || d.pharmacyId === pId).map(d => ({
+            ...d,
+            aiScanData: scansByPrescriptionId[d.id] || d.aiAnalysis || null
+          }));
+
           setPrescriptions(filtered);
           setLoading(false);
         });
@@ -50,12 +71,21 @@ export function PharmacistPrescriptions() {
     };
   }, [user]);
 
+  const handleOpenAiModal = (prescription: any) => {
+    setSelectedPrescription(prescription);
+    setSelectedScan(prescription.aiScanData || null);
+    setIsModalOpen(true);
+  };
+
   const handleUpdateStatus = async (id: string, status: string) => {
     try {
       setProcessingId(id);
       await updateDoc(doc(db, 'prescriptions', id), {
         status,
       });
+      if (selectedPrescription?.id === id) {
+        setIsModalOpen(false);
+      }
     } catch (err) {
       console.error(err);
       alert(t('error_updating_status', 'Error updating status.'));
@@ -66,9 +96,11 @@ export function PharmacistPrescriptions() {
 
   return (
     <div className="flex-1 bg-transparent flex flex-col h-full overflow-hidden relative">
-      <div className="px-8 pt-8 pb-4 shrink-0 z-10">
-         <h1 className="font-bold text-gray-900 dark:text-white text-2xl tracking-tight">{t('prescriptions', 'Prescriptions')}</h1>
-         <p className="text-gray-500 font-medium text-sm mt-1">{t('review_uploaded_rx', 'Review and approve uploaded prescriptions')}</p>
+      <div className="px-8 pt-8 pb-4 shrink-0 z-10 flex items-center justify-between">
+         <div>
+            <h1 className="font-bold text-gray-900 dark:text-white text-2xl tracking-tight">{t('prescriptions', 'Prescriptions')}</h1>
+            <p className="text-gray-500 font-medium text-sm mt-1">{t('review_uploaded_rx', 'Review and approve uploaded prescriptions with DPML AI assistance')}</p>
+         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-8 pb-8 space-y-6 custom-scrollbar">
@@ -89,6 +121,7 @@ export function PharmacistPrescriptions() {
                const isPdf = p.fileName ? /\.pdf$/i.test(p.fileName) : /\.pdf(\?.*)?$/i.test(p.fileUrl);
                const displayFilename = p.fileName || p.fileUrl?.split('%2F').pop()?.split('?')[0] || 'Document';
                const isPending = p.status === 'pending_review';
+               const hasAiScan = Boolean(p.aiScanData);
 
                return (
                   <div key={p.id} className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col overflow-hidden group">
@@ -99,9 +132,15 @@ export function PharmacistPrescriptions() {
                              {p.status === 'approved' ? <CheckCircle size={12} /> : p.status === 'rejected' ? <XCircle size={12} /> : <Clock size={12} className="text-amber-500" />}
                              {t(p.status || 'pending', p.status || 'Pending')}
                            </span>
+
+                           {hasAiScan && (
+                             <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#194B4B] text-yellow-300 shadow-sm flex items-center gap-1 backdrop-blur-md">
+                               <Sparkles size={11} /> AI DPML
+                             </span>
+                           )}
                         </div>
 
-                        <div className="flex-1 flex items-center justify-center cursor-pointer p-4 h-full" onClick={() => window.open(p.fileUrl, '_blank')}>
+                        <div className="flex-1 flex items-center justify-center cursor-pointer p-4 h-full" onClick={() => handleOpenAiModal(p)}>
                            {isImage ? (
                               <img src={p.fileUrl} className="w-full h-full object-contain filter drop-shadow-sm group-hover:scale-105 transition-all duration-300" alt={displayFilename} />
                            ) : (
@@ -125,8 +164,17 @@ export function PharmacistPrescriptions() {
                            </div>
                         </div>
 
+                        {/* AI Quick Button */}
+                        <button
+                          onClick={() => handleOpenAiModal(p)}
+                          className="w-full mt-2 mb-3 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border border-emerald-200 dark:border-emerald-800 text-[#194B4B] dark:text-teal-300 font-bold py-2.5 rounded-xl text-xs flex justify-center items-center gap-2 transition hover:shadow-sm"
+                        >
+                           <ShieldCheck size={15} className="text-[#194B4B] dark:text-teal-400" />
+                           {hasAiScan ? "Consulter l'Audit DPML (IA)" : "Analyser avec l'IA"}
+                        </button>
+
                         {/* Actions */}
-                        <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-3">
                            <button 
                              disabled={!isPending || processingId === p.id}
                              onClick={() => handleUpdateStatus(p.id, 'approved')}
@@ -153,6 +201,17 @@ export function PharmacistPrescriptions() {
           </div>
         )}
       </div>
+
+      {/* AI DPML Audit Modal */}
+      <PrescriptionAiModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        scanData={selectedScan}
+        prescriptionUrl={selectedPrescription?.fileUrl}
+        isProcessing={processingId === selectedPrescription?.id}
+        onApprove={selectedPrescription?.status === 'pending_review' ? () => handleUpdateStatus(selectedPrescription.id, 'approved') : undefined}
+        onReject={selectedPrescription?.status === 'pending_review' ? () => handleUpdateStatus(selectedPrescription.id, 'rejected') : undefined}
+      />
     </div>
   );
 }

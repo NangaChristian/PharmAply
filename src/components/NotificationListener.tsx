@@ -11,7 +11,6 @@ export function NotificationListener() {
   const { t } = useTranslation();
   const notifiedOrders = useRef<Set<string>>(new Set());
   const notifiedMessages = useRef<Set<string>>(new Set());
-  const notifiedSales = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     // Request notification and geolocation permissions
@@ -133,29 +132,6 @@ export function NotificationListener() {
       });
       unsubscribers.push(unsubMessages);
     }
-
-    // 3. Flash Sales Notifications (For patients primarily, but can be for anyone)
-    const salesQ = query(collection(db, 'flash_sales'));
-    const unsubSales = onSnapshot(salesQ, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const sale = change.doc.data();
-          if (!notifiedSales.current.has(change.doc.id)) {
-            notifiedSales.current.add(change.doc.id);
-            const isRecent = parseDate(sale.createdAt) && (Date.now() - parseDate(sale.createdAt)!.getTime() < 60000);
-            if (isRecent && role === 'patient') {
-               toast(`${t('flash_sale', 'Flash Sale!')} ${sale.title}`, { icon: '⚡' });
-               if (Notification.permission === 'granted') {
-                 new Notification(t('flash_sale_emoji', 'Flash Sales 🔥'), {
-                   body: `${sale.title}: ${sale.discountPercentage}% ${t('off', 'off')}.`,
-                 });
-               }
-            }
-          }
-        }
-      });
-    });
-    unsubscribers.push(unsubSales);
 
     return () => {
       unsubscribers.forEach(unsub => unsub());

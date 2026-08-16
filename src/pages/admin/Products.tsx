@@ -69,6 +69,9 @@ export function AdminProducts() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isSeeding, setIsSeeding] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Filters & Sorting
@@ -79,7 +82,6 @@ export function AdminProducts() {
   // Add/Edit Modal
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -119,9 +121,7 @@ export function AdminProducts() {
                isGlobal: true,
                pharmacyId: null
            }));
-           // we prepend these global reference catalogs
            setProducts(prev => {
-               // filter out existing seeded to avoid duplicates in the UI
                const withoutGlobals = prev.filter(p => !mappedOut.find(m => m.name === p.name));
                return [...mappedOut, ...withoutGlobals];
            });
@@ -130,6 +130,51 @@ export function AdminProducts() {
          console.error('Error fetching global catalog', err);
      }
   };
+
+  // Primary useEffect to fetch products and categories with safety timeout
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+
+    // 1. Fetch categories
+    const catQuery = query(collection(db, "categories"));
+    const unsubCats = onSnapshot(catQuery, (catSnap) => {
+      if (!isMounted) return;
+      const cats = catSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setCategories(cats);
+    }, (err) => {
+      console.warn("Failed to listen to categories in Firestore", err);
+    });
+
+    // 2. Fetch products from Firestore with onSnapshot
+    const prodQuery = query(collection(db, "products"));
+    const unsubProducts = onSnapshot(prodQuery, (snapshot) => {
+      if (!isMounted) return;
+      const fsProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setProducts(fsProducts);
+      setLoading(false);
+      // Fetch global reference products asynchronously
+      fetchGlobalProducts().catch(() => {});
+    }, (error) => {
+      console.error("Error fetching Firestore products:", error);
+      if (isMounted) {
+        setLoading(false);
+        fetchGlobalProducts().catch(() => {});
+      }
+    });
+
+    // Fallback safety timeout so loading state never hangs indefinitely
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false);
+    }, 4000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimer);
+      unsubCats();
+      unsubProducts();
+    };
+  }, []);
 
   const handleSeed = async () => {
      if (!window.confirm("Êtes-vous sûr de vouloir insérer les produits de base ? Les entrées en double pourraient survenir.")) return;
@@ -354,6 +399,8 @@ export function AdminProducts() {
         return;
     }
 
+    setIsSubmitting(true);
+
     // Convert formData to Supabase payload matching database schema types
     const payload = {
         id: editingId || undefined,
@@ -385,12 +432,15 @@ export function AdminProducts() {
     } catch (e: any) {
        toast.error(`Erreur: ${e.message}`);
        console.error("Upsert product error", e);
+    } finally {
+       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce produit ?")) return;
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer définitivement ce produit ?")) return;
     
+    setDeletingId(id);
     // Optimistic deletion
     const previousProducts = [...products];
     setProducts(products.filter(p => p.id !== id));
@@ -413,6 +463,8 @@ export function AdminProducts() {
        setProducts(previousProducts);
        toast.error(`Erreur lors de la suppression: ${e.message}`);
        console.error("Delete product error", e);
+    } finally {
+       setDeletingId(null);
     }
   };
 
@@ -479,19 +531,22 @@ export function AdminProducts() {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (!window.confirm(`Are you sure you want to delete ${selectedIds.size} products?`)) return;
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer définitivement ces ${selectedIds.size} produits ?`)) return;
     
+    setIsBulkDeleting(true);
     let successCount = 0;
     try {
       for (const id of selectedIds) {
         await deleteDoc(doc(db, "products", id));
         successCount++;
       }
-      toast.success(`Deleted ${successCount} products`);
+      toast.success(`${successCount} produits supprimés avec succès`);
       setSelectedIds(new Set());
     } catch (e) {
-      toast.error("Failed to delete some products");
+      toast.error("Erreur lors de la suppression de certains produits");
       console.error(e);
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -540,10 +595,11 @@ export function AdminProducts() {
                {selectedIds.size > 0 && (
                  <button 
                     onClick={handleBulkDelete}
-                    className="bg-red-50 text-red-600 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-red-100 transition flex items-center gap-2"
+                    disabled={isBulkDeleting}
+                    className="bg-red-50 text-red-600 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-red-100 transition flex items-center gap-2 disabled:opacity-50"
                  >
-                    <Trash2 size={18} />
-                    Delete Selected ({selectedIds.size})
+                    {isBulkDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                    {isBulkDeleting ? "Suppression en cours..." : `Supprimer sélection (${selectedIds.size})`}
                  </button>
                )}
                <input 
@@ -678,8 +734,13 @@ export function AdminProducts() {
                                     <button onClick={() => openEditModal(p)} className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg transition" title={t('edit', 'Edit')}>
                                        <Edit2 size={16} />
                                     </button>
-                                    <button onClick={() => handleDelete(p.id)} className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition" title={t('delete', 'Delete')}>
-                                       <Trash2 size={16} />
+                                    <button 
+                                      onClick={() => handleDelete(p.id)} 
+                                      disabled={deletingId === p.id}
+                                      className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition disabled:opacity-50" 
+                                      title={t('delete', 'Delete')}
+                                    >
+                                       {deletingId === p.id ? <Loader2 size={16} className="animate-spin text-red-500" /> : <Trash2 size={16} />}
                                     </button>
                                  </div>
                               </td>
@@ -913,10 +974,13 @@ export function AdminProducts() {
                  > 
                     {t('cancel', 'Cancel')} 
                  </button>
-                 <button type="submit" 
-                    className="px-6 py-3 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 rounded-xl shadow-md dark:shadow-none transition transform active:scale-95"
+                 <button 
+                    type="submit" 
+                    disabled={isSubmitting}
+                    className="px-6 py-3 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 rounded-xl shadow-md dark:shadow-none transition transform active:scale-95 disabled:opacity-50 flex items-center gap-2"
                  >
-                    {editingId ? t('update_product', 'Update Product') : t('save_product', 'Save Product')}
+                    {isSubmitting && <Loader2 size={14} className="animate-spin" />}
+                    {isSubmitting ? "Enregistrement..." : (editingId ? t('update_product', 'Update Product') : t('save_product', 'Save Product'))}
                  </button>
               </div>
               </form>

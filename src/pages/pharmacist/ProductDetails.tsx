@@ -19,6 +19,7 @@ export function PharmacistProductDetails() {
    const [editStockValue, setEditStockValue] = useState("");
    const [editExpiryDate, setEditExpiryDate] = useState("");
    const [savingStock, setSavingStock] = useState(false);
+   const [markingOutOfStock, setMarkingOutOfStock] = useState(false);
    const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
    const [stockHistory, setStockHistory] = useState<any[]>([]);
    const [loadingHistory, setLoadingHistory] = useState(false);
@@ -116,6 +117,9 @@ export function PharmacistProductDetails() {
    };
 
    const handleMarkOutOfStock = async () => {
+      if (!window.confirm("Êtes-vous sûr de vouloir marquer ce produit comme étant en rupture de stock ?")) return;
+
+      setMarkingOutOfStock(true);
       try {
          await updateDoc(doc(db, 'products', product.id), { stock: 0 });
          
@@ -134,6 +138,8 @@ export function PharmacistProductDetails() {
          setStockHistory([{ ...historyItem, date: { seconds: Date.now() / 1000 }, id: Date.now().toString() }, ...stockHistory]);
       } catch (error) {
          console.error('Failed to update stock', error);
+      } finally {
+         setMarkingOutOfStock(false);
       }
    };
 
@@ -229,8 +235,12 @@ export function PharmacistProductDetails() {
                      }} className="flex-1 bg-[#0B3B3C] hover:bg-[#082a2b] transition-colors text-white py-4 rounded-full font-bold text-sm shadow-sm cursor-pointer whitespace-nowrap focus:outline-none">
                         Update Stock
                      </button>
-                     <button onClick={handleMarkOutOfStock} className="flex-1 bg-white hover:bg-red-50 border border-gray-200 hover:border-red-100 hover:text-red-600 text-gray-700 py-4 rounded-full font-bold text-sm cursor-pointer transition-colors shadow-sm whitespace-nowrap focus:outline-none">
-                        Mark Out of Stock
+                     <button 
+                        disabled={markingOutOfStock}
+                        onClick={handleMarkOutOfStock} 
+                        className="flex-1 bg-white hover:bg-red-50 border border-gray-200 hover:border-red-100 hover:text-red-600 text-gray-700 py-4 rounded-full font-bold text-sm cursor-pointer transition-colors shadow-sm whitespace-nowrap focus:outline-none disabled:opacity-50 flex items-center justify-center gap-2"
+                     >
+                        {markingOutOfStock ? 'En cours...' : 'Mark Out of Stock'}
                      </button>
                   </div>
 

@@ -5,7 +5,7 @@ import { collection, query, where, onSnapshot, orderBy, doc, deleteDoc } from '.
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { useTranslation } from "react-i18next";
-import { parseDate } from "../../lib/utils";
+import { parseDate, sortByDateDesc } from "../../lib/utils";
 
 export function PatientPrescriptions() {
   const navigate = useNavigate();
@@ -17,9 +17,10 @@ export function PatientPrescriptions() {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'prescriptions'), where('patientId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'prescriptions'), where('patientId', '==', user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setPrescriptions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const raw = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setPrescriptions(sortByDateDesc(raw));
     });
     return () => unsubscribe();
   }, [user]);

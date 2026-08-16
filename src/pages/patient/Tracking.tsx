@@ -1,4 +1,9 @@
-import { ArrowLeft, CheckCircle, Package, Truck, Home, Phone, Star, User, FileText, Printer, MapPin, Navigation, Store, ShieldCheck, MessageSquare, ChevronRight, X, Bike, Key, PhoneCall, Check, Copy, ExternalLink, HelpCircle } from "lucide-react";
+import { 
+  ArrowLeft, CheckCircle, Package, Truck, Home, Phone, Star, 
+  FileText, MapPin, Navigation, Store, MessageSquare, 
+  ChevronRight, X, Bike, Key, PhoneCall, Check, Copy, Clock, 
+  AlertCircle, ShieldCheck, RefreshCw, ShoppingBag 
+} from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from 'react';
 import { useTranslation } from "react-i18next";
@@ -7,7 +12,6 @@ import L from 'leaflet';
 import { doc, onSnapshot, getDoc, db } from '../../lib/firebase';
 import { formatCurrency, parseDate } from '../../lib/utils';
 import { InvoiceModal } from '../../components/InvoiceModal';
-import { printInvoice } from '../../lib/invoice';
 
 // Custom Motorcycle Icon for Leaflet
 const driverMotoLeafletIcon = L.divIcon({
@@ -24,7 +28,6 @@ const driverMotoLeafletIcon = L.divIcon({
       align-items: center;
       justify-content: center;
       color: #FACC15;
-      transform: translate(-2px, -2px);
     ">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="18.5" cy="17.5" r="3.5"/>
@@ -38,7 +41,7 @@ const driverMotoLeafletIcon = L.divIcon({
   iconAnchor: [22, 22]
 });
 
-// Destination Pin matching the screenshot (orange circular pin with white center dot)
+// Destination Pin (Patient)
 const destPinLeafletIcon = L.divIcon({
   className: 'custom-patient-dest-marker',
   html: `
@@ -65,7 +68,35 @@ const destPinLeafletIcon = L.divIcon({
   iconAnchor: [19, 19]
 });
 
-// Component to recenter map view
+// Pharmacy Pin
+const pharmacyLeafletIcon = L.divIcon({
+  className: 'custom-pharma-marker',
+  html: `
+    <div style="
+      width: 38px;
+      height: 38px;
+      background: #194B4B;
+      border: 3px solid #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 6px 18px rgba(25, 75, 75, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+    ">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/>
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+        <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/>
+        <path d="M2 7h20"/>
+      </svg>
+    </div>
+  `,
+  iconSize: [38, 38],
+  iconAnchor: [19, 19]
+});
+
+// Component to auto recenter map
 function MapAutoCenter({ center }: { center: [number, number] }) {
   const map = useMap();
   useEffect(() => {
@@ -81,25 +112,23 @@ export function PatientTracking() {
   
   const [order, setOrder] = useState<any>(null);
   const [driver, setDriver] = useState<any>(null);
+  const [pharmacy, setPharmacy] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [truckPos, setTruckPos] = useState<[number, number]>([4.0511, 9.7679]); // Default Douala coordinates
-  const [eta, setEta] = useState(8);
+  const [driverPos, setDriverPos] = useState<[number, number] | null>(null);
+  const [eta, setEta] = useState<number | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [pickupPharmacy, setPickupPharmacy] = useState<any>(null);
   const [showDetailsDrawer, setShowDetailsDrawer] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [copiedOtp, setCopiedOtp] = useState(false);
 
+  // User Geolocation
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const loc: [number, number] = [position.coords.latitude, position.coords.longitude];
           setUserLocation(loc);
-          if (truckPos[0] === 4.0511 && truckPos[1] === 9.7679) {
-             setTruckPos([loc[0] + 0.008, loc[1] + 0.008]);
-          }
         },
         (error) => {
           console.warn("User location unavailable in tracking:", error?.message || "Permission denied");
@@ -109,24 +138,19 @@ export function PatientTracking() {
     }
   }, []);
 
-  const destPos: [number, number] = (order?.destLat && order?.destLng && !isNaN(Number(order.destLat))) 
-    ? [Number(order.destLat), Number(order.destLng)]
-    : order?.deliveryLocation 
-      ? [order.deliveryLocation.lat, order.deliveryLocation.lng]
-      : userLocation || [4.0511, 9.7679];
-
+  // Listen to order updates
   useEffect(() => {
     if (!id) return;
     
-    // Listen to order updates
     const unsubscribe = onSnapshot(doc(db, 'orders', id), (snapshot) => {
        if (snapshot.exists()) {
           const data = snapshot.data();
           setOrder({ id: snapshot.id, ...data });
+          
           const lat = data.driverLat || data.driverLocation?.lat;
           const lng = data.driverLng || data.driverLocation?.lng;
-          if (lat && lng && !isNaN(Number(lat))) {
-             setTruckPos([Number(lat), Number(lng)]);
+          if (lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng))) {
+             setDriverPos([Number(lat), Number(lng)]);
           }
        }
        setLoading(false);
@@ -134,19 +158,45 @@ export function PatientTracking() {
     return () => unsubscribe();
   }, [id]);
 
+  // Fetch Pharmacy info
   useEffect(() => {
-    if (!order?.driverId) return;
-    const unsub = onSnapshot(doc(db, 'drivers', order.driverId), (docObj) => {
+    const phId = order?.pharmacyId || order?.pharmacy_id;
+    if (!phId) return;
+
+    const fetchPharmacy = async () => {
+      try {
+        const phDoc = await getDoc(doc(db, 'pharmacies', phId));
+        if (phDoc.exists()) {
+          setPharmacy({ id: phDoc.id, ...phDoc.data() });
+        }
+      } catch (err) {
+        console.error("Error fetching pharmacy:", err);
+      }
+    };
+    fetchPharmacy();
+  }, [order?.pharmacyId, order?.pharmacy_id]);
+
+  // Fetch Assigned Driver in real-time
+  const assignedDriverId = order?.driverId || order?.driver_id;
+  useEffect(() => {
+    if (!assignedDriverId) {
+      setDriver(null);
+      return;
+    }
+    const unsub = onSnapshot(doc(db, 'drivers', assignedDriverId), (docObj) => {
        if (docObj.exists()) {
           const driverData = docObj.data();
           setDriver({ id: docObj.id, ...driverData });
-          if (driverData.lat && driverData.lng && !isNaN(Number(driverData.lat))) {
-             setTruckPos([Number(driverData.lat), Number(driverData.lng)]);
+          
+          const lat = driverData.lat || driverData.latitude || driverData.location?.lat;
+          const lng = driverData.lng || driverData.longitude || driverData.location?.lng;
+          if (lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng))) {
+             setDriverPos([Number(lat), Number(lng)]);
           }
        }
     });
     return () => unsub();
-  }, [order?.driverId]);
+  }, [assignedDriverId]);
 
   const isPickup = Boolean(
     order && (
@@ -158,49 +208,25 @@ export function PatientTracking() {
     )
   );
 
-  const isPaid = Boolean(
-    order && (
-      order.status === 'PAID' || 
-      order.status === 'paid' || 
-      ['accepted', 'preparing', 'ready_for_pickup', 'ready', 'delivered', 'out_for_delivery', 'en_route'].includes(order.status)
-    )
-  );
+  const destPos: [number, number] = (order?.destLat && order?.destLng && !isNaN(Number(order.destLat))) 
+    ? [Number(order.destLat), Number(order.destLng)]
+    : order?.deliveryLocation 
+      ? [order.deliveryLocation.lat, order.deliveryLocation.lng]
+      : userLocation || [4.0511, 9.7679];
 
+  // ETA Calculation
   useEffect(() => {
-    if (!isPickup || !isPaid) {
-      setPickupPharmacy(null);
-      return;
-    }
-
-    const phId = order?.pharmacyId || order?.pharmacy_id;
-    if (!phId) return;
-
-    const fetchPharmacy = async () => {
-      try {
-        const phDoc = await getDoc(doc(db, 'pharmacies', phId));
-        if (phDoc.exists()) {
-          setPickupPharmacy({ id: phDoc.id, ...phDoc.data() });
-        }
-      } catch (err) {
-        console.error("Error fetching pickup pharmacy:", err);
-      }
-    };
-    fetchPharmacy();
-  }, [order?.status, order?.delivery_mode, order?.deliveryMethod, order?.fulfillment_type, order?.pharmacyId, order?.pharmacy_id, isPickup, isPaid]);
-
-  useEffect(() => {
-    if (truckPos[0]) {
+    if (driverPos && destPos) {
        const R = 6371; // Radius of earth in km
-       const dLat = (destPos[0] - truckPos[0]) * Math.PI / 180;
-       const dLng = (destPos[1] - truckPos[1]) * Math.PI / 180;
+       const dLat = (destPos[0] - driverPos[0]) * Math.PI / 180;
+       const dLng = (destPos[1] - driverPos[1]) * Math.PI / 180;
        const a = 
           Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(truckPos[0] * Math.PI / 180) * Math.cos(destPos[0] * Math.PI / 180) * 
+          Math.cos(driverPos[0] * Math.PI / 180) * Math.cos(destPos[0] * Math.PI / 180) * 
           Math.sin(dLng/2) * Math.sin(dLng/2); 
        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
        const distance = R * c;
 
-       // Moto speed in urban area ~30 km/h
        let estimatedTime = Math.round((distance / 30) * 60);
        if (estimatedTime < 1) estimatedTime = 1;
        
@@ -210,8 +236,17 @@ export function PatientTracking() {
           setEta(estimatedTime);
        }
     }
-  }, [truckPos, order?.status, destPos]);
+  }, [driverPos, order?.status, destPos]);
 
+  // Order Approval & Driver Assignment Conditions (CHANTIER 1)
+  const isApproved = Boolean(
+    order && 
+    ['APPROVED', 'approved', 'preparing', 'ready', 'ready_for_pickup', 'driver_assigned', 'picked_up', 'out_for_delivery', 'en_route', 'delivered'].includes(order.status)
+  );
+
+  const hasAssignedDriver = Boolean(assignedDriverId && driver);
+
+  // Status timeline dates
   const getTimelineDate = (type: string) => {
     if (!order) return "";
     const extractDate = (dateField: any) => {
@@ -221,6 +256,7 @@ export function PatientTracking() {
     };
 
     if (type === 'placed') return extractDate(order.createdAt) || "Aujourd'hui";
+    if (type === 'approved') return extractDate(order.approvedAt || order.acceptedAt) || (isApproved ? "Validée" : "En cours");
     if (type === 'preparing') return extractDate(order.preparedAt || order.acceptedAt) || (['preparing', 'driver_assigned', 'out_for_delivery', 'ready', 'ready_for_pickup', 'delivered'].includes(order.status) ? "En cours..." : "");
     if (type === 'out') return extractDate(order.dispatchedAt || order.outForDeliveryAt) || (['driver_assigned', 'out_for_delivery', 'delivered'].includes(order.status) ? "En cours de route" : "");
     if (type === 'ready') return extractDate(order.readyAt) || (['ready', 'ready_for_pickup', 'delivered'].includes(order.status) ? "Prêt" : "");
@@ -228,16 +264,16 @@ export function PatientTracking() {
     return "";
   };
 
-  // Driver details extraction
-  const driverName = driver?.name || driver?.fullName || driver?.nom || order?.driverName || "Alexandre";
+  // Driver details (Real data only)
+  const driverName = driver?.name || driver?.fullName || driver?.nom || order?.driverName || "Livreur Assigné";
   const driverFirstName = driverName.split(' ')[0];
-  const driverRating = driver?.rating !== undefined ? Number(driver.rating).toFixed(2).replace('.', ',') : "4,97";
-  const driverPhone = driver?.phone || driver?.phoneNumber || order?.driverPhone || "+237 600 000 000";
+  const driverRating = driver?.rating !== undefined ? Number(driver.rating).toFixed(2).replace('.', ',') : "4.9";
+  const driverPhone = driver?.phone || driver?.phoneNumber || order?.driverPhone || "";
   const driverPhoto = driver?.photoURL || driver?.photoUrl || driver?.avatarUrl || driver?.photo || order?.driverPhoto || null;
   const vehicleTypeLabel = driver?.vehicleType === 'car' ? 'Voiture' : 'Moto';
-  const vehicleModel = driver?.vehicleModel || driver?.vehicleDetails?.model || (vehicleTypeLabel === 'Moto' ? 'Moto Boxer Noire' : 'Berline Blanche');
-  const vehiclePlate = driver?.vehiclePlate || driver?.vehicleDetails?.plate || 'LT 482 AB';
-  const deliveryOtp = order?.deliveryOtp || order?.pickupOtp || order?.id?.slice(-4)?.toUpperCase() || '4892';
+  const vehicleModel = driver?.vehicleModel || driver?.vehicleDetails?.model || (vehicleTypeLabel === 'Moto' ? 'Moto de livraison' : 'Véhicule de livraison');
+  const vehiclePlate = driver?.vehiclePlate || driver?.vehicleDetails?.plate || 'LT ---';
+  const deliveryOtp = order?.deliveryOtp || order?.pickupOtp || order?.id?.slice(-4)?.toUpperCase() || '----';
 
   const copyDeliveryCode = () => {
     navigator.clipboard.writeText(deliveryOtp);
@@ -248,14 +284,43 @@ export function PatientTracking() {
   const statuses = isPickup ? [
     { label: "Commande validée", date: getTimelineDate('placed'), completed: true, icon: CheckCircle },
     { label: "Préparation par la pharmacie", date: getTimelineDate('preparing'), completed: ['preparing', 'ready_for_pickup', 'ready', 'delivered'].includes(order?.status), active: order?.status === 'pending', icon: Package },
-    { label: "Prête pour retrait en officine", date: getTimelineDate('ready'), completed: order?.status === 'delivered' || order?.status === 'ready' || order?.status === 'ready_for_pickup', active: order?.status === 'preparing', icon: Home },
+    { label: "Prête pour retrait en officine", date: getTimelineDate('ready'), completed: order?.status === 'delivered' || order?.status === 'ready' || order?.status === 'ready_for_pickup', active: order?.status === 'preparing', icon: Store },
     { label: "Médicaments retirés", date: order?.status === 'delivered' ? getTimelineDate('delivered') : "En attente", completed: order?.status === 'delivered', icon: CheckCircle },
   ] : [
-    { label: "Commande validée & payée", date: getTimelineDate('placed'), completed: true, icon: CheckCircle },
-    { label: "Préparation officine", date: getTimelineDate('preparing'), completed: ['preparing', 'driver_assigned', 'out_for_delivery', 'en_route', 'delivered'].includes(order?.status), active: order?.status === 'pending', icon: Package },
-    { label: "Livreur en route", date: eta > 0 ? `Arrive dans ~${eta} min` : getTimelineDate('out'), completed: order?.status === 'delivered', active: ['driver_assigned', 'out_for_delivery', 'en_route'].includes(order?.status), icon: Bike },
+    { label: "Commande enregistrée & payée", date: getTimelineDate('placed'), completed: true, icon: CheckCircle },
+    { label: "Approbation & préparation pharmacie", date: getTimelineDate('preparing'), completed: isApproved, active: !isApproved, icon: Package },
+    { label: "Livreur assigné & en route", date: (eta !== null && eta > 0) ? `Arrive dans ~${eta} min` : getTimelineDate('out'), completed: order?.status === 'delivered', active: isApproved && hasAssignedDriver, icon: Bike },
     { label: "Remis en main propre", date: order?.status === 'delivered' ? getTimelineDate('delivered') : "En attente", completed: order?.status === 'delivered', icon: Home },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex-1 bg-white dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
+        <RefreshCw className="w-8 h-8 text-[#194B4B] animate-spin mb-3" />
+        <p className="text-sm font-bold text-gray-700 dark:text-gray-300">Chargement des informations de suivi...</p>
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="flex-1 bg-white dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center space-y-4">
+        <AlertCircle className="w-12 h-12 text-amber-500" />
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white">Commande introuvable</h2>
+        <p className="text-xs text-gray-500 max-w-xs">Cette commande n'existe pas ou vous n'avez pas l'autorisation d'y accéder.</p>
+        <button onClick={() => navigate('/patient/orders')} className="px-5 py-2.5 bg-[#194B4B] text-white text-xs font-bold rounded-full">
+          Retour aux commandes
+        </button>
+      </div>
+    );
+  }
+
+  /* =========================================================================
+     CAS 1 : COMMANDE EN ATTENTE D'APPROBATION PHARMACIE OU SANS LIVREUR
+     (Chantier 1 : Masquer la carte tant que la commande n'est pas approuvée
+     avec chauffeur assigné)
+     ========================================================================= */
+  const shouldShowWaitingScreen = !isPickup && (!isApproved || !hasAssignedDriver);
 
   return (
     <div className="flex-1 bg-white dark:bg-black flex flex-col h-full overflow-hidden relative font-sans">
@@ -271,9 +336,14 @@ export function PatientTracking() {
         </button>
         
         <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md px-4 py-1.5 rounded-full shadow-md border border-gray-100 dark:border-zinc-800 flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span className={`w-2.5 h-2.5 rounded-full ${
+            order?.status === 'delivered' ? 'bg-emerald-500' :
+            shouldShowWaitingScreen ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500 animate-pulse'
+          }`}></span>
           <span className="text-xs font-black tracking-wide text-[#194B4B] dark:text-teal-300 uppercase">
-            {order?.status === 'delivered' ? 'Livraison effectuée' : (isPickup ? 'Retrait Officine' : 'Livraison en direct')}
+            {order?.status === 'delivered' ? 'Livraison effectuée' : 
+             isPickup ? 'Retrait Officine' : 
+             shouldShowWaitingScreen ? 'En attente pharmacie' : 'Livraison en direct'}
           </span>
         </div>
 
@@ -287,12 +357,125 @@ export function PatientTracking() {
         </button>
       </div>
 
-      {/* Main Area: Fullscreen Map (or Pickup View) */}
+      {/* Main Area */}
       <div className="flex-1 w-full h-full relative z-0">
-        {!isPickup ? (
+        
+        {/* VUE 1 : ÉCRAN D'ATTENTE DE VALIDATION PHARMACIE / ASSIGNATION DU COURSIER */}
+        {shouldShowWaitingScreen ? (
+          <div className="w-full h-full bg-slate-50 dark:bg-zinc-950 p-6 pt-24 overflow-y-auto space-y-6">
+            
+            {/* Header d'attente */}
+            <div className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 p-6 rounded-3xl text-center space-y-4 shadow-sm">
+              <div className="w-16 h-16 bg-[#194B4B]/10 text-[#194B4B] dark:text-teal-300 rounded-full flex items-center justify-center mx-auto relative">
+                <Clock size={32} className="animate-spin" style={{ animationDuration: '6s' }} />
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full border-2 border-white dark:border-zinc-900"></span>
+              </div>
+              
+              <div>
+                <h2 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                  {!isApproved 
+                    ? "En attente de l'approbation de la pharmacie" 
+                    : "Recherche d'un livreur en cours..."}
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-sm mx-auto leading-relaxed">
+                  {!isApproved
+                    ? "L'officine certifiée vérifie la conformité de vos ordonnances et prépare votre colis sécurisé."
+                    : "Votre commande est approuvée et prête ! Un coursier certifié va être assigné d'un instant à l'autre."}
+                </p>
+              </div>
+
+              {pharmacy && (
+                <div className="bg-gray-50 dark:bg-zinc-800/60 p-3.5 rounded-2xl border border-gray-100 dark:border-zinc-800 flex items-center justify-between text-left">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-[#194B4B] text-white flex items-center justify-center font-bold">
+                      <Store size={18} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-900 dark:text-white">{pharmacy.name || 'Pharmacie Partenaire'}</p>
+                      <p className="text-[11px] text-gray-500">{pharmacy.address || 'Officine locale certifiée'}</p>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-1 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 text-[10px] font-bold rounded-lg border border-amber-200 dark:border-amber-800">
+                    {!isApproved ? "En cours" : "Prête"}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Étapes du processus */}
+            <div className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 p-6 rounded-3xl shadow-sm space-y-4">
+              <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">
+                Progression de votre commande
+              </h3>
+
+              <div className="space-y-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <Check size={14} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900 dark:text-white">Commande transmise & enregistrée</p>
+                    <p className="text-[11px] text-gray-500">Paiement validé avec succès</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3.5">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
+                    isApproved ? 'bg-emerald-500 text-white' : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 animate-pulse'
+                  }`}>
+                    {isApproved ? <Check size={14} /> : <Clock size={14} />}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900 dark:text-white">Validation officinale par le pharmacien</p>
+                    <p className="text-[11px] text-gray-500">
+                      {isApproved ? "Ordonnance & médicaments validés" : "Vérification du stock et scellage en cours"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3.5">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+                    hasAssignedDriver ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-zinc-800 text-gray-400'
+                  }`}>
+                    <Bike size={14} />
+                  </div>
+                  <div>
+                    <p className={`text-xs font-bold ${hasAssignedDriver ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                      Attribution du livreur certifié
+                    </p>
+                    <p className="text-[11px] text-gray-400">
+                      {hasAssignedDriver ? "Chauffeur en route vers l'officine" : "La carte GPS s'activera automatiquement dès l'assignation"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions rapides */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDetailsDrawer(true)}
+                className="flex-1 py-3.5 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 text-gray-800 dark:text-gray-200 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition active:scale-95"
+              >
+                <ShoppingBag size={16} className="text-[#194B4B]" /> Détails commande
+              </button>
+
+              <button
+                onClick={() => navigate(`/patient/messages/${order.id}`)}
+                className="flex-1 py-3.5 bg-[#194B4B] text-white rounded-2xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition active:scale-95"
+              >
+                <MessageSquare size={16} /> Contacter pharmacie
+              </button>
+            </div>
+
+          </div>
+        ) : !isPickup ? (
+          /* =========================================================================
+             VUE 2 : SUIVI GPS EN DIRECT AVEC LE VRAI LIVREUR ASSIGNÉ
+             ========================================================================= */
           <div className="w-full h-full">
             <MapContainer
-              center={truckPos}
+              center={driverPos || destPos}
               zoom={15}
               zoomControl={false}
               className="w-full h-full"
@@ -302,14 +485,26 @@ export function PatientTracking() {
                 url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                 maxZoom={19}
               />
-              <MapAutoCenter center={truckPos} />
-              <Marker position={truckPos} icon={driverMotoLeafletIcon} />
+              <MapAutoCenter center={driverPos || destPos} />
+              
+              {/* Driver Marker */}
+              {driverPos && (
+                <Marker position={driverPos} icon={driverMotoLeafletIcon} />
+              )}
+
+              {/* Destination Marker */}
               <Marker position={destPos} icon={destPinLeafletIcon} />
-              <Polyline positions={[truckPos, destPos]} color="#194B4B" weight={5} opacity={0.85} dashArray="4, 8" />
+
+              {/* Polyline Route */}
+              {driverPos && (
+                <Polyline positions={[driverPos, destPos]} color="#194B4B" weight={5} opacity={0.85} dashArray="4, 8" />
+              )}
             </MapContainer>
           </div>
         ) : (
-          /* Mode Retrait Officine */
+          /* =========================================================================
+             VUE 3 : MODE RETRAIT EN OFFICINE
+             ========================================================================= */
           <div className="w-full h-full bg-slate-50 dark:bg-zinc-950 p-6 pt-24 overflow-y-auto space-y-4">
             <div className="bg-[#194B4B]/10 border border-[#194B4B]/20 p-6 rounded-3xl text-center space-y-3">
               <div className="w-14 h-14 bg-[#194B4B] text-white rounded-2xl flex items-center justify-center mx-auto shadow-sm">
@@ -321,14 +516,14 @@ export function PatientTracking() {
               </p>
             </div>
 
-            {pickupPharmacy && (
+            {pharmacy && (
               <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-bold text-gray-900 dark:text-white text-base">{pickupPharmacy.name || 'Pharmacie Partenaire'}</h3>
+                    <h3 className="font-bold text-gray-900 dark:text-white text-base">{pharmacy.name || 'Pharmacie Partenaire'}</h3>
                     <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                       <MapPin size={13} className="text-[#194B4B]" />
-                      {pickupPharmacy.address || 'Adresse de retrait'}
+                      {pharmacy.address || 'Adresse de retrait'}
                     </p>
                   </div>
                   <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-lg border border-emerald-200">
@@ -337,13 +532,13 @@ export function PatientTracking() {
                 </div>
 
                 <div className="flex gap-2 pt-2">
-                  {pickupPharmacy.phone && (
-                    <a href={`tel:${pickupPharmacy.phone}`} className="flex-1 py-2.5 bg-gray-50 dark:bg-zinc-800 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                  {pharmacy.phone && (
+                    <a href={`tel:${pharmacy.phone}`} className="flex-1 py-2.5 bg-gray-50 dark:bg-zinc-800 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
                       <Phone size={14} className="text-emerald-600" /> Appeler
                     </a>
                   )}
                   <a
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pickupPharmacy.address || '')}`}
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pharmacy.address || '')}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-1 py-2.5 bg-[#194B4B] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2"
@@ -357,8 +552,8 @@ export function PatientTracking() {
         )}
       </div>
 
-      {/* FLOATING BOTTOM CARD (REPLICA DU DESIGN IMAGE CLIENT) */}
-      {!isPickup && (
+      {/* FLOATING BOTTOM CARD (Affiché uniquement quand un vrai livreur est assigné) */}
+      {!isPickup && hasAssignedDriver && isApproved && (
         <div className="absolute bottom-4 left-4 right-4 z-20 pointer-events-auto">
           <div className="bg-white dark:bg-zinc-900 rounded-[28px] p-5 shadow-2xl border border-gray-100 dark:border-zinc-800 space-y-4 max-w-lg mx-auto">
             
@@ -371,7 +566,7 @@ export function PatientTracking() {
               <div>
                 <div className="flex items-center gap-1">
                   <h3 className="font-extrabold text-gray-900 dark:text-white text-lg tracking-tight">
-                    {eta > 0 ? `Arrive dans ~${eta} min` : 'Arrivé à destination !'}
+                    {(eta !== null && eta > 0) ? `Arrive dans ~${eta} min` : 'Arrivé à destination !'}
                   </h3>
                   <ChevronRight size={18} className="text-gray-400" />
                 </div>
@@ -385,7 +580,7 @@ export function PatientTracking() {
                 <div className="bg-gray-100 dark:bg-zinc-800 px-3 py-1 rounded-lg border border-gray-200 dark:border-zinc-700 text-xs font-black text-gray-800 dark:text-gray-200 tracking-wider shadow-sm">
                   {vehiclePlate}
                 </div>
-                {/* Icône Véhicule (Moto par défaut) */}
+                {/* Type de véhicule */}
                 <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 mt-1">
                   <Bike size={14} className="text-[#194B4B] dark:text-teal-400" />
                   <span className="text-[10px] uppercase">{vehicleTypeLabel}</span>
@@ -393,13 +588,13 @@ export function PatientTracking() {
               </div>
             </div>
 
-            {/* Séparateur discret */}
+            {/* Séparateur */}
             <div className="h-px bg-gray-100 dark:bg-zinc-800 w-full" />
 
             {/* Ligne 2: Livreur (Photo + Note + Nom), Bouton Contact & Bouton Détails */}
             <div className="flex items-center justify-between pt-1">
               
-              {/* Profil Livreur avec Badge Note 4.97 */}
+              {/* Profil Livreur */}
               <div className="flex flex-col items-center">
                 <div className="relative">
                   <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-100 dark:bg-zinc-800 border-2 border-white dark:border-zinc-700 shadow-md flex items-center justify-center">
@@ -412,7 +607,7 @@ export function PatientTracking() {
                     )}
                   </div>
                   
-                  {/* Badge de Note Flottant */}
+                  {/* Badge de Note */}
                   <div className="absolute -top-1.5 -right-2 bg-white dark:bg-zinc-800 px-1.5 py-0.5 rounded-full shadow-sm border border-gray-100 dark:border-zinc-700 flex items-center gap-0.5 text-[10px] font-black text-gray-800 dark:text-gray-200">
                     <Star size={10} className="fill-[#FACC15] text-[#FACC15]" />
                     <span>{driverRating}</span>
@@ -475,7 +670,7 @@ export function PatientTracking() {
                 </div>
                 <div>
                   <h4 className="font-bold text-sm text-gray-900 dark:text-white">{driverName}</h4>
-                  <p className="text-[11px] text-gray-500">Livreur certifié en moto</p>
+                  <p className="text-[11px] text-gray-500">Livreur certifié PharmAply</p>
                 </div>
               </div>
               <button onClick={() => setShowContactModal(false)} className="p-2 text-gray-400 hover:text-gray-600">
@@ -484,13 +679,15 @@ export function PatientTracking() {
             </div>
 
             <div className="space-y-2.5 pt-2">
-              <a
-                href={`tel:${driverPhone}`}
-                className="w-full py-3.5 px-4 bg-[#194B4B] hover:bg-[#143d3d] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition"
-              >
-                <PhoneCall size={18} />
-                Appeler ({driverPhone})
-              </a>
+              {driverPhone && (
+                <a
+                  href={`tel:${driverPhone}`}
+                  className="w-full py-3.5 px-4 bg-[#194B4B] hover:bg-[#143d3d] text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition"
+                >
+                  <PhoneCall size={18} />
+                  Appeler ({driverPhone})
+                </a>
+              )}
 
               <button
                 onClick={() => {
@@ -643,5 +840,3 @@ export function PatientTracking() {
     </div>
   );
 }
-
- 

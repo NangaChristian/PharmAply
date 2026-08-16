@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { collection, query, where, getDocs, onSnapshot, doc, getDoc } from '../../lib/firebase';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
-import { formatCurrency, parseDate } from '../../lib/utils';
+import { formatCurrency, parseDate, sortByDateDesc } from '../../lib/utils';
 import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
 
@@ -15,7 +15,8 @@ export function PharmacistOrders() {
   
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'All' | 'pending' | 'preparing' | 'ready'>('All');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState<'All' | 'pending' | 'preparing' | 'ready' | 'cancelled' | 'rejected'>('All');
 
   useEffect(() => {
     let unsubscribeOrders: () => void;
@@ -33,7 +34,7 @@ export function PharmacistOrders() {
 
         const ordersQuery = query(collection(db, 'orders'), where('pharmacyId', '==', pharmacyId));
         unsubscribeOrders = onSnapshot(ordersQuery, async (oSnap) => {
-          const ordersData = oSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const ordersData = sortByDateDesc(oSnap.docs.map(d => ({ id: d.id, ...d.data() })));
           
           // Fetch patient names
           const patientsCache: Record<string, string> = {};
@@ -64,7 +65,16 @@ export function PharmacistOrders() {
     };
   }, [user]);
 
-  const filteredOrders = activeTab === 'All' ? orders : orders.filter(o => o.status === activeTab);
+  const filteredOrders = sortByDateDesc(
+    orders.filter(o => {
+      const matchTab = activeTab === 'All' ? true : o.status === activeTab;
+      const matchSearch = !searchTerm.trim() || 
+        o.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        o.patientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        o.items?.some((i: any) => i.name?.toLowerCase().includes(searchTerm.toLowerCase()));
+      return matchTab && matchSearch;
+    })
+  );
 
   return (
     <div className="flex-1 bg-transparent flex flex-col relative h-full overflow-hidden">
@@ -77,6 +87,8 @@ export function PharmacistOrders() {
                 <input 
                    type="text" 
                    placeholder="Search Orders" 
+                   value={searchTerm}
+                   onChange={(e) => setSearchTerm(e.target.value)}
                    className="w-full bg-[#FAFBFA] dark:bg-slate-800 border border-transparent focus:border-gray-200 py-3 pl-12 pr-4 rounded-full text-sm outline-none text-gray-900 dark:text-white transition-all shadow-sm"
                 />
              </div>

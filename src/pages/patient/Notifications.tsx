@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useNotifications } from "../../hooks/useNotifications";
 
-type TabType = 'All' | 'Offers' | 'Medicine Reminders' | 'Rating';
+type TabType = 'All' | 'Medicine Reminders' | 'Rating';
 
 export function PatientNotifications() {
   const navigate = useNavigate();
@@ -15,7 +15,6 @@ export function PatientNotifications() {
 
   const getFilteredItems = () => {
     switch (activeTab) {
-      case 'Offers': return allItems.filter(i => i.type === 'offer');
       case 'Medicine Reminders': return allItems.filter(i => i.type === 'reminder');
       case 'Rating': return allItems.filter(i => i.type === 'rating');
       default: return allItems;
@@ -28,17 +27,8 @@ export function PatientNotifications() {
     setActiveTab(tabKey as TabType);
   };
 
-  // Mark viewed notifications as read automatically or keep it explicit
-  useEffect(() => {
-    // When visiting the page, mark all currently visible items in the `filteredItems` array as read?
-    // Wait, let's mark them as read if they are clicked, or maybe just mark them all read when "mark all as read" is clicked.
-    // The prompt says "decreases in number according to the number of read or opened notification (marked read)".
-    // So you can either click the element to mark reading or click the "Mark as read" button.
-  }, []);
-
   const tabs: { key: TabType, label: string }[] = [
     { key: 'All', label: t('all', 'All') },
-    { key: 'Offers', label: t('offers', 'Offers') },
     { key: 'Medicine Reminders', label: t('medicine_reminders', 'Medicine Reminders') },
     { key: 'Rating', label: t('rating', 'Rating') }
   ];
@@ -86,18 +76,6 @@ export function PatientNotifications() {
                filteredItems.map(item => (
                   <div key={item.id} onClick={() => markAsRead(item.id)} className={`bg-white dark:bg-black p-4 rounded-3xl border ${readIds.includes(item.id) ? 'border-gray-50 dark:border-zinc-900' : 'border-indigo-100 dark:border-indigo-900/50'} shadow-sm relative cursor-pointer transition`}>
                      {!readIds.includes(item.id) && <div className="absolute top-4 right-4 w-2 h-2 bg-red-500 rounded-full"></div>}
-                     {item.type === 'offer' && (
-                        <div className="flex gap-4">
-                           <div className="mt-1 w-10 h-10 bg-indigo-50 flex items-center justify-center rounded-2xl shrink-0 text-indigo-600 border border-indigo-100">
-                             <Tag size={18} />
-                           </div>
-                           <div>
-                              <h3 className="font-bold text-sm text-indigo-900">{item.title}</h3>
-                              <p className="text-xs text-indigo-700/80 mt-1 leading-relaxed">{item.description}</p>
-                              <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 block w-full">{t('now', 'Now')}</span>
-                           </div>
-                        </div>
-                     )}
 
                      {item.type === 'rating' && (
                         <div className="flex flex-col items-center justify-center text-center py-2">

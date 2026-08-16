@@ -211,29 +211,126 @@ export function PatientCheckout() {
       }
       
       if (isCartCheckout) {
-        orderData = {
-          patientId: currentUser.uid,
-          patientName: currentUser.displayName || currentUser.email || 'Client',
-          patientPhone: currentUser.phone || userData?.phone || '+237600000000',
-          pharmacyId: targetPharmacyId,
-          ...pharmacyDetails,
-          items: items.map(i => ({ 
-            productId: i.id, 
-            name: i.commercial_name || i.nom_commercial || i.name || 'Produit', 
-            price: Number(i.price) || 0, 
-            quantity: Number(i.quantity) || 1 
-          })),
-          total: orderTotal,
-          status: 'pending',
-          createdAt: serverTimestamp(),
-          deliveryMethod,
-          deliveryAddress: deliveryMethod === 'delivery' ? (addressLine || "Livraison à domicile") : null,
-          destLat: deliveryMethod === 'delivery' ? (addressLat || 4.0511) : null,
-          destLng: deliveryMethod === 'delivery' ? (addressLng || 9.7679) : null,
-          paymentMethod,
-          hasPrescription: !!prescriptionUrl,
-          prescriptionUrl: prescriptionUrl || null,
-        };
+        // Multi-pharmacy Splitting: Group items by pharmacyId
+        const itemsByPharmacy: Record<string, typeof items> = {};
+        items.forEach(item => {
+          const pId = item.pharmacyId || (item as any).pharmacy_id || 'pharmacy_default';
+          if (!itemsByPharmacy[pId]) itemsByPharmacy[pId] = [];
+          itemsByPharmacy[pId].push(item);
+        });
+
+        const pharmacyIds = Object.keys(itemsByPharmacy);
+        const createdOrders: string[] = [];
+
+        for (const pId of pharmacyIds) {
+          const pharmItems = itemsByPharmacy[pId];
+          const subtotal = pharmItems.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
+          const perPharmDeliveryFee = deliveryMethod === 'delivery' ? 1000 : 0;
+          const pharmTotal = subtotal + perPharmDeliveryFee;
+
+          let pharmDetails: any = {};
+          if (pId !== 'pharmacy_default') {
+            try {
+              const pharmSnap = await getDoc(doc(db, 'pharmacies', pId));
+              if (pharmSnap.exists()) {
+                const pData = pharmSnap.data();
+                pharmDetails = {
+                  pharmacyName: pData.name || pData.pharmacyName || pharmItems[0]?.pharmacyName || 'Pharmacie',
+                  pharmacyAddress: pData.address || 'Adresse pharmacie',
+                  pharmacyPhone: pData.phone || pData.phoneNumber || '',
+                  pharmacyLat: pData.lat || pData.latitude || 4.0511,
+                  pharmacyLng: pData.lng || pData.longitude || 9.7679
+                };
+              }
+            } catch (e) {
+              console.warn("Could not fetch pharmacy details for order:", e);
+            }
+          }
+
+          const singleOrderData = {
+            patientId: currentUser.uid,
+            patientName: currentUser.displayName || currentUser.email || 'Client',
+            patientPhone: currentUser.phone || userData?.phone || '+237600000000',
+            pharmacyId: pId,
+            ...pharmDetails,
+            items: pharmItems.map(i => ({ 
+              productId: i.id, 
+              name: i.commercial_name || (i as any).nom_commercial || i.name || 'Produit', 
+              price: Number(i.price) || 0, 
+              quantity: Number(i.quantity) || 1 
+            })),
+            total: pharmTotal,
+            subtotal,
+            deliveryFee: perPharmDeliveryFee,
+            status: 'pending',
+            createdAt: serverTimestamp(),
+            deliveryMethod,
+            deliveryAddress: deliveryMethod === 'delivery' ? (addressLine || "Livraison à domicile") : null,
+            destLat: deliveryMethod === 'delivery' ? (addressLat || 4.0511) : null,
+            destLng: deliveryMethod === 'delivery' ? (addressLng || 9.7679) : null,
+            paymentMethod,
+            hasPrescription: !!prescriptionUrl,
+            prescriptionUrl: prescriptionUrl || null,
+          };
+
+          let orderId = 'order_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+          try {
+            const docRef = await addDoc(collection(db, 'orders'), singleOrderData);
+            if (docRef && docRef.id) {
+              orderId = docRef.id;
+            }
+          } catch (dbErr) {
+            console.warn("Firestore order insert warning, proceeding with order ID:", dbErr);
+          }
+
+          createdOrders.push(orderId);
+
+          // Notification to each pharmacy
+          try {
+            await addDoc(collection(db, 'notifications'), {
+              userId: pId,
+              type: 'new_order',
+              title: 'Nouvelle commande reçue',
+              message: `Nouvelle commande d'un montant de ${formatCurrency(singleOrderData.total)}`,
+              isRead: false,
+              relatedId: orderId,
+              createdAt: serverTimestamp()
+            });
+          } catch (notifErr) {
+            console.warn("Notification insert warning:", notifErr);
+          }
+        }
+        
+        clearCart();
+
+        // Fapshi API payment handling for Cart Checkout
+        if (paymentMethod === 'Fapshi') {
+           try {
+              const fapshiRes = await fetch('/api/payment/initialize', {
+                 method: 'POST',
+                 headers: {
+                    'Content-Type': 'application/json'
+                 },
+                 body: JSON.stringify({
+                    amount: orderTotal,
+                    email: currentUser.email || 'client@example.com',
+                    externalId: createdOrders[0], // Using the first order ID as the reference
+                    redirectUrl: window.location.origin + `/patient/tracking/${createdOrders[0]}`
+                 })
+              });
+              const payData = await fapshiRes.json();
+              if (payData && payData.link) {
+                 window.location.href = payData.link;
+                 return;
+              }
+           } catch (fapshiErr) {
+              console.warn('Fapshi API skipped or unreachable:', fapshiErr);
+           }
+        }
+
+        setProcessing(false);
+        navigate(`/patient/tracking/${createdOrders[0]}`);
+        return;
       } else {
         orderData = {
           patientId: currentUser.uid,
@@ -248,6 +345,7 @@ export function PatientCheckout() {
              quantity: 1
           }],
           total: orderTotal,
+          deliveryFee,
           status: 'pending',
           createdAt: serverTimestamp(),
           deliveryMethod,
@@ -258,64 +356,60 @@ export function PatientCheckout() {
           hasPrescription: product.needsPrescription || product.is_prescription_required ? !!prescriptionUrl : false,
           prescriptionUrl: prescriptionUrl || null,
         };
-      }
-      
-      let createdOrderId = 'order_' + Date.now();
-      try {
-        const docRef = await addDoc(collection(db, 'orders'), orderData);
-        if (docRef && docRef.id) {
-          createdOrderId = docRef.id;
-        }
-      } catch (dbErr) {
-        console.warn("Firestore order insert warning, proceeding with order ID:", dbErr);
-      }
 
-      // Notification to pharmacy
-      try {
-        await addDoc(collection(db, 'notifications'), {
-          userId: orderData.pharmacyId || 'pharmacy_default',
-          type: 'new_order',
-          title: 'Nouvelle commande reçue',
-          message: `Nouvelle commande d'un montant de ${formatCurrency(orderData.total)}`,
-          isRead: false,
-          relatedId: createdOrderId,
-          createdAt: serverTimestamp()
-        });
-      } catch (notifErr) {
-        console.warn("Notification insert warning:", notifErr);
+        let createdOrderId = 'order_' + Date.now();
+        try {
+          const docRef = await addDoc(collection(db, 'orders'), orderData);
+          if (docRef && docRef.id) {
+            createdOrderId = docRef.id;
+          }
+        } catch (dbErr) {
+          console.warn("Firestore single order insert warning:", dbErr);
+        }
+
+        // Notification to pharmacy
+        try {
+          await addDoc(collection(db, 'notifications'), {
+            userId: orderData.pharmacyId || 'pharmacy_default',
+            type: 'new_order',
+            title: 'Nouvelle commande reçue',
+            message: `Nouvelle commande d'un montant de ${formatCurrency(orderData.total)}`,
+            isRead: false,
+            relatedId: createdOrderId,
+            createdAt: serverTimestamp()
+          });
+        } catch (notifErr) {
+          console.warn("Notification insert warning:", notifErr);
+        }
+
+        // Fapshi API payment handling
+        if (paymentMethod === 'Fapshi') {
+           try {
+              const fapshiRes = await fetch('/api/payment/initialize', {
+                 method: 'POST',
+                 headers: {
+                    'Content-Type': 'application/json'
+                 },
+                 body: JSON.stringify({
+                    amount: orderData.total,
+                    email: currentUser.email || 'client@example.com',
+                    externalId: createdOrderId,
+                    redirectUrl: window.location.origin + `/patient/tracking/${createdOrderId}`
+                 })
+              });
+              const payData = await fapshiRes.json();
+              if (payData && payData.link) {
+                 window.location.href = payData.link;
+                 return;
+              }
+           } catch (fapshiErr) {
+              console.warn('Fapshi API skipped or unreachable:', fapshiErr);
+           }
+        }
+        
+        setProcessing(false);
+        navigate(`/patient/tracking/${createdOrderId}`);
       }
-      
-      if (isCartCheckout) clearCart();
-      
-      // Fapshi API payment handling
-      if (paymentMethod === 'Fapshi') {
-         try {
-            const fapshiRes = await fetch('/api/payment/initialize', {
-               method: 'POST',
-               headers: {
-                  'Content-Type': 'application/json'
-               },
-               body: JSON.stringify({
-                  amount: orderData.total,
-                  email: currentUser.email || 'client@example.com',
-                  externalId: createdOrderId,
-                  redirectUrl: window.location.origin + `/patient/tracking/${createdOrderId}`
-               })
-            });
-            const payData = await fapshiRes.json();
-            if (payData && payData.link) {
-               window.location.href = payData.link;
-               return;
-            } else if (payData && !payData.success) {
-               console.warn('Fapshi initiation response:', payData.error);
-            }
-         } catch (fapshiErr) {
-            console.warn('Fapshi API skipped or unreachable:', fapshiErr);
-         }
-      }
-      
-      setProcessing(false);
-      navigate(`/patient/tracking/${createdOrderId}`);
     } catch (error) {
       console.error("Order submission error:", error);
       setProcessing(false);
@@ -331,7 +425,19 @@ export function PatientCheckout() {
     ? items.some((item: any) => item.classification_liste === 'Liste_1' || item.classification_liste === 'Liste_2' || item.classification_liste === 'Stupefiant' || item.is_prescription_required || item.needsPrescription)
     : (product?.classification_liste === 'Liste_1' || product?.classification_liste === 'Liste_2' || product?.classification_liste === 'Stupefiant' || product?.is_prescription_required || product?.needsPrescription);
 
-  const deliveryFee = deliveryMethod === 'delivery' ? 1000 : 0;
+  // Group items by pharmacy for multi-pharmacy calculations and display
+  const itemsByPharmacy: Record<string, { name: string; items: typeof items }> = isCartCheckout ? items.reduce((acc, item) => {
+    const pId = item.pharmacyId || (item as any).pharmacy_id || 'pharmacy_default';
+    const pName = item.pharmacyName || (item as any).pharmacy_name || 'Pharmacie Partenaire';
+    if (!acc[pId]) {
+      acc[pId] = { name: pName, items: [] };
+    }
+    acc[pId].items.push(item);
+    return acc;
+  }, {} as Record<string, { name: string; items: typeof items }>) : {};
+
+  const numPharmacies = isCartCheckout ? Math.max(1, Object.keys(itemsByPharmacy).length) : 1;
+  const deliveryFee = deliveryMethod === 'delivery' ? 1000 * numPharmacies : 0;
   const totalItemsPrice = isCartCheckout ? cartTotal : product.price;
 
   const hasRecalledItem = isCartCheckout 
@@ -364,26 +470,49 @@ export function PatientCheckout() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
+         {/* Multi-Pharmacy Notice if cart spans multiple pharmacies */}
+         {isCartCheckout && numPharmacies > 1 && (
+            <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/50 rounded-2xl flex items-start gap-3">
+              <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                {numPharmacies}
+              </div>
+              <div>
+                <h4 className="font-bold text-indigo-950 dark:text-indigo-200 text-xs">Commande Multi-Officines ({numPharmacies} pharmacies)</h4>
+                <p className="text-[11px] text-indigo-800/80 dark:text-indigo-300/80 mt-0.5 leading-relaxed">
+                  Vos articles proviennent de {numPharmacies} officines différentes. Pour garantir la traçabilité et des livraisons rapides, {numPharmacies} sous-commandes distinctes seront créées automatiquement avec des coursiers dédiés.
+                </p>
+              </div>
+            </div>
+         )}
+
          {/* Order Items */}
          <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm space-y-4">
             <h3 className="font-bold text-gray-900 dark:text-white border-b border-gray-50 dark:border-zinc-800 pb-3">{t('order_summary', 'Order Summary')}</h3>
             
             {isCartCheckout ? (
-               <div className="space-y-4">
-                 {items.map((item, idx) => (
-                   <div key={idx} className="flex gap-4">
-                      <div className="w-16 h-16 bg-gray-50 dark:bg-black rounded-xl flex items-center justify-center overflow-hidden shrink-0 border border-gray-100 dark:border-zinc-800">
-                         {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-contain p-1" /> : <Package size={20} className="text-gray-400" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                         <div className="flex justify-between items-start gap-2">
-                            <h4 className="font-bold text-gray-900 dark:text-white text-sm truncate">{item.commercial_name || item.name}</h4>
-                            <span className="font-bold text-[#1a3b8d] dark:text-indigo-400 text-sm whitespace-nowrap">{formatCurrency(item.price)}</span>
-                         </div>
-                         <div className="flex justify-between mt-2">
-                             <p className="text-xs text-gray-600 dark:text-gray-400">{t('qty', 'Qty')}: {item.quantity}</p>
-                         </div>
-                      </div>
+               <div className="space-y-6">
+                 {Object.entries(itemsByPharmacy).map(([pId, group]) => (
+                   <div key={pId} className="space-y-3 pb-4 border-b border-gray-100 dark:border-zinc-800 last:border-0 last:pb-0">
+                     <div className="flex items-center gap-2 text-xs font-bold text-[#194B4B] dark:text-teal-400 uppercase tracking-wider">
+                       <span className="w-2 h-2 rounded-full bg-[#194B4B] dark:bg-teal-400"></span>
+                       {group.name}
+                     </div>
+                     {group.items.map((item, idx) => (
+                       <div key={idx} className="flex gap-4 pl-2">
+                          <div className="w-14 h-14 bg-gray-50 dark:bg-black rounded-xl flex items-center justify-center overflow-hidden shrink-0 border border-gray-100 dark:border-zinc-800">
+                             {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-contain p-1" /> : <Package size={18} className="text-gray-400" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                             <div className="flex justify-between items-start gap-2">
+                                <h4 className="font-bold text-gray-900 dark:text-white text-xs truncate">{item.commercial_name || item.name}</h4>
+                                <span className="font-bold text-[#1a3b8d] dark:text-indigo-400 text-xs whitespace-nowrap">{formatCurrency(item.price)}</span>
+                             </div>
+                             <div className="flex justify-between mt-1">
+                                 <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('qty', 'Qty')}: {item.quantity}</p>
+                             </div>
+                          </div>
+                       </div>
+                     ))}
                    </div>
                  ))}
                </div>

@@ -8,10 +8,11 @@ import { db } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { useTheme } from '../../components/ThemeProvider';
 import { useDarkMode } from '../../components/DarkModeProvider';
-import { formatCurrency, parseDate } from '../../lib/utils';
+import { formatCurrency, parseDate, sortByDateDesc } from '../../lib/utils';
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
 import { NotificationBell } from "../../components/NotificationBell";
+import { PharmacyDriverMap } from "../../components/pharmacist/PharmacyDriverMap";
 
 export function PharmacistHome() {
   const { t } = useTranslation();
@@ -45,7 +46,7 @@ export function PharmacistHome() {
 
         const ordersQuery = query(collection(db, 'orders'), where('pharmacyId', '==', pharmacyId));
         unsubscribeOrders = onSnapshot(ordersQuery, (oSnap) => {
-           const fetchedOrders = oSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+           const fetchedOrders = sortByDateDesc(oSnap.docs.map(d => ({ id: d.id, ...d.data() })));
            setOrders(fetchedOrders);
            
            // Calculate unique customers
@@ -281,6 +282,9 @@ export function PharmacistHome() {
                </div>
             </div>
          </div>
+
+         {/* Live Driver Tracking Section for Pharmacist */}
+         <PharmacyDriverMap orders={orders} pharmacy={pharmacy} />
 
          {/* Charts Section */}
          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

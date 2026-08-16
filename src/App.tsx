@@ -38,7 +38,6 @@ import { PharmacistReports } from './pages/pharmacist/Reports';
 import { PharmacistProfile } from './pages/pharmacist/Profile';
 import { PharmacistPrescriptions } from './pages/pharmacist/Prescriptions';
 import { PharmacistSupport } from './pages/pharmacist/Support';
-import { PharmacistCategories } from './pages/pharmacist/Categories';
 import { PharmacistSales } from './pages/pharmacist/Sales';
 import { PharmacistCustomers } from './pages/pharmacist/Customers';
 import { PharmacistPayments } from './pages/pharmacist/Payments';
@@ -71,7 +70,6 @@ import { WebsiteSettings } from './pages/admin/settings/WebsiteSettings';
 import { DeliveryZones } from './pages/admin/settings/DeliveryZones';
 import { ThemeSettings } from './pages/admin/settings/ThemeSettings';
 import { ThemeProvider } from './components/ThemeProvider';
-import { Promotions } from './pages/admin/settings/Promotions';
 import { Compliance } from './pages/admin/settings/Compliance';
 import { SecurityRoles } from './pages/admin/settings/SecurityRoles';
 import { GlobalSettings } from './pages/admin/settings/GlobalSettings';
@@ -138,11 +136,9 @@ export default function App() {
           {/* Pharmacist Routes */}
           <Route path="/pharmacist" element={<RoleLayout role="pharmacist" />}>
             <Route index element={<PharmacistHome />} />
-            <Route path="deliveries" element={<AdminDeliveriesTracking />} />
             <Route path="orders" element={<PharmacistOrders />} />
             <Route path="inventory" element={<PharmacistInventory />} />
             <Route path="inventory/:id" element={<PharmacistProductDetails />} />
-            <Route path="categories" element={<PharmacistCategories />} />
             <Route path="sales" element={<PharmacistSales />} />
             <Route path="customers" element={<PharmacistCustomers />} />
             <Route path="payments" element={<PharmacistPayments />} />
@@ -187,7 +183,6 @@ export default function App() {
             <Route path="profile" element={<AdminProfile />} />
             <Route path="settings/app" element={<AppSettings />} />
             <Route path="settings/website" element={<WebsiteSettings />} />
-            <Route path="settings/promotions" element={<Promotions />} />
             <Route path="settings/delivery-zones" element={<DeliveryZones />} />
             <Route path="settings/compliance" element={<Compliance />} />
             <Route path="settings/security" element={<SecurityRoles />} />

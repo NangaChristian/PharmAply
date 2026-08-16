@@ -9,6 +9,10 @@ export function PatientCart() {
   const { t } = useTranslation();
   const { items, removeFromCart, updateQuantity, cartTotal } = useCart();
 
+  const pharmaciesInCart = Array.from(new Set(items.map(i => i.pharmacyId || (i as any).pharmacy_id || 'pharmacy_default')));
+  const pharmacyCount = pharmaciesInCart.length;
+  const deliveryFee = 1000 * Math.max(1, pharmacyCount);
+
   return (
     <div className="flex-1 bg-gray-50 dark:bg-black flex flex-col h-full overflow-hidden">
       <div className="bg-white dark:bg-zinc-900 px-6 pt-12 pb-4 z-10 flex items-center justify-between">
@@ -30,6 +34,15 @@ export function PatientCart() {
            </div>
          ) : (
            <div className="space-y-6">
+              {/* Multi-pharmacy breakdown badge */}
+              {pharmacyCount > 1 && (
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 p-3 rounded-2xl flex items-center gap-3 text-xs text-amber-800 dark:text-amber-300">
+                  <span className="w-6 h-6 rounded-full bg-amber-500 text-white font-bold flex items-center justify-center text-[10px] shrink-0">
+                    {pharmacyCount}
+                  </span>
+                  <span>Articles issus de <strong>{pharmacyCount} pharmacies différentes</strong>. Les livraisons seront gérées séparément.</span>
+                </div>
+              )}
               
               {/* Items List */}
               <div className="space-y-4">
@@ -85,12 +98,12 @@ export function PatientCart() {
               <span className="font-bold text-gray-900 dark:text-white text-sm">{formatCurrency(cartTotal)}</span>
            </div>
            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-100 dark:border-zinc-800">
-              <span className="text-gray-500 font-medium text-sm">{t('delivery', 'Delivery')}</span>
-              <span className="font-bold text-gray-900 dark:text-white text-sm">{formatCurrency(3.0)}</span>
+              <span className="text-gray-500 font-medium text-sm">{t('delivery', 'Delivery')} {pharmacyCount > 1 ? `(${pharmacyCount} officines)` : ''}</span>
+              <span className="font-bold text-gray-900 dark:text-white text-sm">{formatCurrency(deliveryFee)}</span>
            </div>
            <div className="flex justify-between items-center mb-6">
               <span className="text-gray-900 dark:text-white font-bold">{t('total', 'Total')}</span>
-              <span className="text-xl font-bold text-gray-900 dark:text-white">{formatCurrency(cartTotal + 3.0)}</span>
+              <span className="text-xl font-bold text-gray-900 dark:text-white">{formatCurrency(cartTotal + deliveryFee)}</span>
            </div>
            <button onClick={() => navigate('/patient/checkout')} className="w-full bg-[#0a1128] hover:bg-black text-white font-bold py-4 min-h-[56px] rounded-2xl transition-colors touch-manipulation shadow-md">
               {t('submit_order', 'Submit Order')}

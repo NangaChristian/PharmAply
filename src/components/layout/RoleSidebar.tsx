@@ -55,9 +55,7 @@ export function RoleSidebar({ role }: RoleSidebarProps) {
       title: "MAIN MENU",
       links: [
         { to: "/pharmacist", icon: LayoutDashboard, label: t('dashboard', 'Dashboard'), exact: true },
-        { to: "/pharmacist/deliveries", icon: Truck, label: "Tableau Livraison" },
         { to: "/pharmacist/inventory", icon: Package, label: t('products', 'Products') },
-        { to: "/pharmacist/categories", icon: Grid, label: t('categories', 'Categories') },
       ]
     },
     {

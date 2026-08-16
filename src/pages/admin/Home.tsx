@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { collection, query, getDocs, onSnapshot, where } from '../../lib/firebase';
 import { db } from "../../lib/firebase";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
-import { formatCurrency, parseDate } from "../../lib/utils";
+import { formatCurrency, parseDate, sortByDateDesc } from "../../lib/utils";
 import { useTranslation } from "react-i18next";
 import { useAuth } from '../../components/AuthProvider';
 
@@ -64,17 +64,11 @@ export function AdminHome() {
 
       const qOrders = collection(db, "orders");
       unsubscribeOrders = onSnapshot(qOrders, (ordersSnap) => {
-        const orders: any[] = ordersSnap.docs.map(d => ({id: d.id, ...d.data()}));
+        const orders: any[] = sortByDateDesc(ordersSnap.docs.map(d => ({id: d.id, ...d.data()})));
         const activeOrdersCount = orders.filter(o => o.status !== "delivered" && o.status !== "cancelled").length;
-        const totalRev = orders.reduce((acc, order) => acc + (Number(order.totalPrice) || 0), 0);
+        const totalRev = orders.reduce((acc, order) => acc + (Number(order.totalPrice || order.total) || 0), 0);
 
-        // Sort orders by createdAt if available, otherwise just use latest
-        const sortedOrders = orders.sort((a, b) => {
-          const tA = parseDate(a.createdAt) ? parseDate(a.createdAt)!.getTime() : 0;
-          const tB = parseDate(b.createdAt) ? parseDate(b.createdAt)!.getTime() : 0;
-          return tB - tA;
-        });
-        setRecentOrders(sortedOrders.slice(0, 5));
+        setRecentOrders(orders.slice(0, 5));
 
         setStats(prev => ({
           ...prev,

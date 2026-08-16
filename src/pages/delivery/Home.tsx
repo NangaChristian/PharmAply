@@ -7,7 +7,7 @@ import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { supabase } from '../../lib/supabase';
 import { useDarkMode } from "../../components/DarkModeProvider";
-import { formatCurrency } from '../../lib/utils';
+import { formatCurrency, sortByDateDesc } from '../../lib/utils';
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../components/ThemeProvider";
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
@@ -138,7 +138,7 @@ export function DeliveryHome() {
       try {
         const q = query(collection(db, 'orders'), where('status', '==', 'ready'), where('deliveryMethod', '==', 'delivery'));
         unsubscribe = onSnapshot(q, (snapshot) => {
-          const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          const fetched = sortByDateDesc(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
           setOrders(fetched);
           if (fetched.length > 0 && !currentRequest) {
              setCurrentRequest(fetched[0]);

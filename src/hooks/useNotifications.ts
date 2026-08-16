@@ -7,7 +7,6 @@ import { parseDate } from '../lib/utils';
 export function useNotifications() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [flashSales, setFlashSales] = useState<any[]>([]);
   const [ratings, setRatings] = useState<any[]>([]);
   const [readIds, setReadIds] = useState<string[]>([]);
   
@@ -29,11 +28,6 @@ export function useNotifications() {
       setRatings(ratedOrders);
     });
 
-    const salesQ = query(collection(db, 'flash_sales'), orderBy('createdAt', 'desc'));
-    const unsubSales = onSnapshot(salesQ, (snapshot) => {
-      setFlashSales(snapshot.docs.map(d => ({ id: d.id, type: 'offer', ...d.data() })));
-    });
-
     const notifQ = query(collection(db, 'notifications'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
     const unsubNotif = onSnapshot(notifQ, (snapshot) => {
       setNotifications(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -41,12 +35,11 @@ export function useNotifications() {
 
     return () => {
       unsubRating();
-      unsubSales();
       unsubNotif();
     };
   }, [user]);
 
-  const allItems = [...notifications, ...flashSales, ...ratings].sort((a, b) => {
+  const allItems = [...notifications, ...ratings].sort((a, b) => {
     const timeA = parseDate(a.createdAt) ? parseDate(a.createdAt)!.getTime() : Date.now();
     const timeB = parseDate(b.createdAt) ? parseDate(b.createdAt)!.getTime() : Date.now();
     return timeB - timeA;

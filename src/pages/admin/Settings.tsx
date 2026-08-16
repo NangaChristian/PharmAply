@@ -7,7 +7,6 @@ export function AdminSettings() {
   const navigate = useNavigate();
   const sections = [
     { title: "Delivery Zones & Logistics", icon: Map, color: "text-blue-600", bg: "bg-blue-50", desc: "Service areas, shipping rules", path: "/admin/settings/delivery-zones" },
-    { title: "Marketing & Promotions", icon: Tag, color: "text-pink-600", bg: "bg-pink-50", desc: "Campaigns, notification templates", path: "/admin/settings/promotions" },
     { title: "Financial & Payments", icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-50", desc: "Payment gateways, tax, commissions", path: "/admin/settings/financial" },
     { title: "Vendor & Pharmacist", icon: Store, color: "text-indigo-600", bg: "bg-indigo-50", desc: "KYC, licensing requirements", path: "/admin/settings/vendors" },
     { title: "Catalog & Inventory", icon: ShoppingCart, color: "text-cyan-600", bg: "bg-cyan-50", desc: "Pricing rules, substitution config", path: "/admin/settings/catalog" },

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { ArrowLeft, Search, Mic, TrendingUp, ShieldAlert, BarChart2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { formatCurrency } from "../../lib/utils";
+import { formatCurrency, sortByDateDesc } from "../../lib/utils";
 import { collection, query, where, getDocs, onSnapshot, orderBy, db } from "../../lib/firebase";
 import { useAuth } from "../../components/AuthProvider";
 import dayjs from "dayjs";
@@ -36,7 +36,7 @@ export function PharmacistReports() {
 
         const ordersQuery = query(collection(db, 'orders'), where('pharmacyId', '==', pharmacyId));
         unsubscribeOrders = onSnapshot(ordersQuery, (oSnap: any) => {
-          setOrders(oSnap.docs.map((d: any) => ({ id: d.id, ...d.data() })));
+          setOrders(sortByDateDesc(oSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }))));
         });
 
         const productsQuery = query(collection(db, 'products'), where('pharmacyId', '==', pharmacyId));

@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { collection, query, where, getDocs, orderBy } from '../../lib/firebase';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
-import { formatCurrency, parseDate } from '../../lib/utils';
+import { formatCurrency, parseDate, sortByDateDesc } from '../../lib/utils';
 import { useTranslation } from "react-i18next";
 
 export function DeliveryHistory() {
@@ -25,13 +25,7 @@ export function DeliveryHistory() {
         );
         const snapshot = await getDocs(q);
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-        // Manual sort if index is an issue otherwise use firebase orderBy
-        data.sort((a, b) => {
-           const tA = parseDate(a.createdAt) ? parseDate(a.createdAt)!.getTime() : 0;
-           const tB = parseDate(b.createdAt) ? parseDate(b.createdAt)!.getTime() : 0;
-           return tB - tA;
-        });
-        setHistory(data);
+        setHistory(sortByDateDesc(data));
       } catch (err) {
         console.error(err);
       } finally {

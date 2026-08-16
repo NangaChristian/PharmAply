@@ -130,14 +130,54 @@ async function startServer() {
               // L'utilisation d'une fonction RPC Supabase (ex: 'credit_wallet') assure une transaction atomique côté base de données
               // Voici le code pour l'intégration RPC, les procédures RPC doivent être définies dans Supabase:
               
+              const transactionRecords = [];
+
               if (driverId) {
                   await supabase.rpc('credit_wallet', { user_id: driverId, amount: driverShare });
+                  transactionRecords.push({
+                    user_id: driverId,
+                    amount: driverShare,
+                    type: 'credit',
+                    description: `Livraison commande ${externalId}`,
+                    reference: transId
+                  });
               }
               if (pharmacyId) {
                   await supabase.rpc('credit_wallet', { user_id: pharmacyId, amount: pharmacyShare });
+                  transactionRecords.push({
+                    user_id: pharmacyId,
+                    amount: pharmacyShare,
+                    type: 'credit',
+                    description: `Paiement commande ${externalId}`,
+                    reference: transId
+                  });
               }
               // Créditer le wallet de la plateforme (avec un identifiant générique interne)
               await supabase.rpc('credit_wallet', { user_id: 'PLATFORM_MASTER_WALLET', amount: platformTotalShare });
+              transactionRecords.push({
+                user_id: 'PLATFORM_MASTER_WALLET',
+                amount: platformTotalShare,
+                type: 'credit',
+                description: `Commission plateforme commande ${externalId}`,
+                reference: transId
+              });
+
+              // Add Patient Payment Record
+              const patientId = orderData.patientId;
+              if (patientId) {
+                transactionRecords.push({
+                  user_id: patientId,
+                  amount: totalAmount,
+                  type: 'debit',
+                  description: `Paiement Mobile Money commande ${externalId}`,
+                  reference: transId
+                });
+              }
+
+              // Insert transaction logs
+              if (transactionRecords.length > 0) {
+                 await supabase.from('wallet_transactions').insert(transactionRecords);
+              }
               
               const datePaid = new Date().toISOString();
 
@@ -165,7 +205,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/ocr", async (req: express.Request, res: express.Response) => {
+  app.post("/api/ocr", async (req: express.Request, res: express.Response): Promise<any> => {
     try {
       const { imageBase64, mimeType } = req.body;
       
@@ -185,21 +225,50 @@ async function startServer() {
       });
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-1.5-pro",
         contents: [
           { inlineData: { data: imageBase64, mimeType: mimeType || "image/jpeg" } },
-          "Analyze this medical prescription or medicine box. Extract the medications, dosages, and quantities. Map them as closely as possible to standard inventory. Return a JSON array of objects with the following keys: { name: \"string\", dosage: \"string\", quantity: \"number\" }."
+          `Tu es un pharmacien expert et auditeur réglementaire DPML (Direction de la Pharmacie, du Médicament et des Laboratoires).
+Analyse rigoureusement cette ordonnance médicale ou boîte de médicament.
+
+Extrais les informations de prescription et effectue un contrôle de conformité DPML.
+Retourne un objet JSON valide avec la structure suivante :
+{
+  "doctor_name": string ou null,
+  "patient_name": string ou null,
+  "date": string ou null,
+  "medications": [
+    {
+      "name": "Nom commercial ou DCI",
+      "dosage": "Posologie (ex: 500mg, 1g)",
+      "form": "Forme galénique (comprimé, sirop, injectable...)",
+      "quantity": 1,
+      "frequency": "Fréquence (ex: 1 cp matin et soir pendant 5 jours)",
+      "duration": "Durée du traitement",
+      "dpml_classification": "Liste_1" | "Liste_2" | "Stupefiant" | "OTC",
+      "requires_prescription": boolean,
+      "warnings": "Mises en garde, contre-indications ou interactions potentielles"
+    }
+  ],
+  "dpml_safety_checks": {
+    "has_controlled_substances": boolean,
+    "requires_original_counterfoil": boolean,
+    "validity_period_days": number,
+    "compliance_notes": string
+  },
+  "overall_summary": string
+}`
         ],
         config: {
           responseMimeType: "application/json",
         },
       });
 
-      const text = response.text;
+      const text = response.text || "{}";
       const data = JSON.parse(text);
       res.json({ success: true, data });
     } catch (error) {
-      console.error("Error in OCR:", error);
+      console.error("Error in OCR & DPML analysis:", error);
       res.status(500).json({ success: false, error: "Failed to process prescription image." });
     }
   });

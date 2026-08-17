@@ -1,11 +1,113 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr" dir="ltr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PharmAply</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    
+    <!-- Primary SEO Meta Tags -->
+    <title>PharmAply — Pharmacie en Ligne, Scan d'Ordonnance IA & Livraison Rapide</title>
+    <meta name="title" content="PharmAply — Pharmacie en Ligne, Scan d'Ordonnance IA & Livraison Rapide" />
+    <meta name="description" content="PharmAply : Commandez vos médicaments en ligne, trouvez les pharmacies de garde les plus proches et numérisez vos ordonnances grâce à l'IA. Livraison express géolocalisée et sécurisée à Douala, Yaoundé et partout au Cameroun." />
+    <meta name="keywords" content="pharmacie en ligne, ordonnance, scanner ordonnance IA, livraison médicaments, pharmacie de garde Douala, pharmacie Yaoundé, médicaments essentiels, DPML Cameroun, télépharmacie, santé en ligne, PharmaAply, pharma.visualiz.net" />
+    <meta name="author" content="PharmAply — Chrine Digital Agency" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="theme-color" content="#194B4B" />
+    <link rel="canonical" href="https://pharma.visualiz.net/" />
+
+    <!-- GEO / Localization Meta Tags (Douala & Yaoundé, Cameroun) -->
+    <meta name="geo.region" content="CM-LT" />
+    <meta name="geo.placename" content="Douala, Yaoundé, Cameroun" />
+    <meta name="geo.position" content="4.051056;9.767869" />
+    <meta name="ICBM" content="4.051056, 9.767869" />
+    <meta name="language" content="French, English" />
+    <meta name="coverage" content="Cameroon, Central Africa, Worldwide" />
+    <meta name="distribution" content="Global" />
+    <meta name="target" content="all" />
+    <meta name="rating" content="general" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://pharma.visualiz.net/" />
+    <meta property="og:title" content="PharmAply — Pharmacie en Ligne, Scan d'Ordonnance IA & Livraison Rapide" />
+    <meta property="og:description" content="Numérisez votre ordonnance par IA, trouvez les pharmacies de garde avec stock garanti et recevez vos médicaments en express avec PharmAply." />
+    <meta property="og:image" content="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=1200&q=80" />
+    <meta property="og:image:alt" content="PharmAply Plateforme Pharmaceutique Intelligente" />
+    <meta property="og:site_name" content="PharmAply" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:locale:alternate" content="en_US" />
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://pharma.visualiz.net/" />
+    <meta name="twitter:title" content="PharmAply — Pharmacie en Ligne & Scan d'Ordonnance IA" />
+    <meta name="twitter:description" content="Accédez aux pharmacies certifiées, comparez les prix, vérifiez la conformité DPML et faites-vous livrer en temps réel sur pharma.visualiz.net." />
+    <meta name="twitter:image" content="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=1200&q=80" />
+
+    <!-- Structured Data / JSON-LD (Schema.org) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "MedicalOrganization",
+          "@id": "https://pharma.visualiz.net/#organization",
+          "name": "PharmAply",
+          "url": "https://pharma.visualiz.net/",
+          "logo": "https://pharma.visualiz.net/logo.png",
+          "description": "Réseau intelligent de télépharmacie, détection d'ordonnances par IA et livraison rapide de médicaments certifiés.",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Boulevard de la Liberté, Akwa",
+            "addressLocality": "Douala",
+            "addressRegion": "Littoral",
+            "postalCode": "BP 1234",
+            "addressCountry": "CM"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 4.051056,
+            "longitude": 9.767869
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "Customer Support & Pharmacist Hotline",
+            "telephone": "+237-600-000-000",
+            "availableLanguage": ["French", "English"]
+          },
+          "sameAs": [
+            "https://ref.chrinedigitalagency.com"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://pharma.visualiz.net/#website",
+          "url": "https://pharma.visualiz.net/",
+          "name": "PharmAply",
+          "publisher": {
+            "@id": "https://pharma.visualiz.net/#organization"
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://pharma.visualiz.net/patient/search?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "PharmAply Web App",
+          "applicationCategory": "HealthApplication",
+          "operatingSystem": "Web, iOS, Android",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "XAF"
+          }
+        }
+      ]
+    }
+    </script>
   </head>
-  <body>
+  <body class="bg-white text-gray-900 antialiased selection:bg-[#194B4B] selection:text-white">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

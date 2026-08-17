@@ -17,11 +17,23 @@ export async function seedProducts(data: any[]) {
 
       return {
         dci: dci,
+        nom_commercial: nom_commercial,
         commercial_name: nom_commercial,
-        dosage: item.dosage,
-        form: item.forme || item.form,
+        name: nom_commercial,
+        dosage: item.dosage || '',
+        forme: item.forme || item.form || '',
+        form: item.forme || item.form || '',
+        brand: item.brand || item.marque || '',
+        marque: item.brand || item.marque || '',
+        category: item.category || item.categorie || item.categorie_ux || item.ux_category || 'Uncategorized',
+        categorie: item.category || item.categorie || item.categorie_ux || item.ux_category || 'Uncategorized',
+        categorie_ux: item.categorie_ux || item.ux_category || item.category || 'Uncategorized',
+        ux_category: item.categorie_ux || item.ux_category || item.category || 'Uncategorized',
+        ordonnance_requise: Boolean(item.ordonnance_requise ?? item.is_prescription_required ?? false),
         is_prescription_required: Boolean(item.ordonnance_requise ?? item.is_prescription_required ?? false),
-        ux_category: item.categorie_ux || item.ux_category,
+        image_url: item.image_url || item.imageUrl || item.image || null,
+        price: item.price ? Number(item.price) : 0,
+        stock: item.stock !== undefined ? Number(item.stock) : 0
       };
     });
 

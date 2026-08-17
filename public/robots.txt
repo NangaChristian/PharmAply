@@ -1,0 +1,17 @@
+# Robots.txt for https://pharma.visualiz.net/
+User-agent: *
+Allow: /
+Allow: /patient/
+Allow: /patient/home
+Allow: /patient/search
+Allow: /patient/pharmacies
+Allow: /patient/prescription-upload
+Allow: /patient/smart-scan
+
+# Disallow authenticated private / admin areas from public crawl index
+Disallow: /admin/
+Disallow: /pharmacist/
+Disallow: /delivery/
+Disallow: /api/
+
+Sitemap: https://pharma.visualiz.net/sitemap.xml

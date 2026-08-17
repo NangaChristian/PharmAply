@@ -225,40 +225,80 @@ export const doc = (dbObj: any, pathOrCollection: any, ...segments: string[]) =>
 const toDatabaseRecord = (table: string, id: string, docData: any) => {
   if (table === 'products') {
      const commName = docData.nom_commercial || docData.commercial_name || docData.name || '';
+     const img = docData.image_url || docData.imageUrl || docData.image || docData.ImageURL || null;
+     const brand = docData.brand || docData.marque || '';
+     const category = docData.category || docData.categorie || docData.categorie_ux || docData.ux_category || 'Général';
+     const catId = docData.category_id || docData.ux_category_id || null;
      return {
         id: id,
         nom_commercial: commName,
         commercial_name: commName,
+        name: commName,
         dci: docData.description || docData.dci || '',
+        description: docData.description || docData.dci || '',
         dosage: docData.dosage || '',
-        form: docData.form || '',
+        form: docData.form || docData.forme || '',
+        forme: docData.forme || docData.form || '',
+        brand: brand,
+        marque: brand,
+        category: category,
+        categorie: category,
+        categorie_ux: category,
+        ux_category: category,
+        category_id: catId,
+        ux_category_id: catId,
         is_prescription_required: docData.requiresPrescription !== undefined ? !!docData.requiresPrescription : (!!docData.is_prescription_required || false),
         price: docData.price ? Number(docData.price) : 0,
         stock: docData.stock ? Number(docData.stock) : 0,
+        image_url: img,
         pharmacy_id: docData.pharmacyId || docData.pharmacy_id || null,
-        ux_category_id: docData.ux_category_id || docData.category_id || null,
         symptoms: docData.symptoms || [],
+        effects: docData.effects || docData.effets || '',
+        directions: docData.directions || docData.mode_emploi || '',
         created_at: docData.createdAt || docData.created_at || new Date().toISOString()
      };
   }
   if (table === 'produits_patients') {
-     return {
+     const commName = docData.name || docData.commercial_name || docData.nom_commercial || '';
+     const img = docData.image_url || docData.imageUrl || docData.image || docData.ImageURL || null;
+     const brand = docData.brand || docData.marque || '';
+     const category = docData.category || docData.categorie || docData.categorie_ux || docData.ux_category || 'Général';
+     const catId = docData.category_id || docData.ux_category_id || null;
+     const record: any = {
         id: id,
-        nom_commercial: docData.name || docData.commercial_name || docData.nom_commercial || '',
+        nom_commercial: commName,
+        commercial_name: commName,
+        name: commName,
         dci: docData.description || docData.dci || '',
+        description: docData.description || docData.dci || '',
         dosage: docData.dosage || '',
-        form: docData.form || '',
+        forme: docData.forme || docData.form || '',
+        form: docData.forme || docData.form || '',
+        ordonnance_requise: docData.requiresPrescription !== undefined ? !!docData.requiresPrescription : (!!docData.is_prescription_required || false),
         is_prescription_required: docData.requiresPrescription !== undefined ? !!docData.requiresPrescription : (!!docData.is_prescription_required || false),
-        categorie_ux: docData.category || docData.categorie_ux || docData.ux_category || null,
+        categorie_ux: category,
+        ux_category: category,
+        category: category,
+        category_id: catId,
+        ux_category_id: catId,
+        brand: brand,
+        marque: brand,
+        price: docData.price ? Number(docData.price) : 0,
+        stock: docData.stock ? Number(docData.stock) : 0,
+        effects: docData.effects || docData.effets || '',
+        directions: docData.directions || docData.mode_emploi || '',
         created_at: docData.createdAt || docData.created_at || new Date().toISOString()
      };
+     if (img) record.image_url = img;
+     return record;
   }
-  if (table === 'ux_categories') {
+  if (table === 'ux_categories' || table === 'categories') {
      return {
         id: id,
         name: docData.name || '',
         slug: docData.slug || docData.name?.toLowerCase().replace(/\s+/g, '-') || '',
         icon: docData.icon || '',
+        image_url: docData.imageUrl || docData.image_url || null,
         description: docData.description || '',
         created_at: docData.createdAt || docData.created_at || new Date().toISOString()
      };
@@ -272,6 +312,8 @@ const parseRecordData = (table: string, row: any) => {
   if (row.data) {
      parsed = { ...row.data };
   } else if (table === 'products') {
+     const img = row.image_url || row.image || row.imageUrl || row.ImageURL || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80";
+     const catVal = row.category || row.categorie || row.categorie_ux || row.ux_category || '';
      parsed = {
         name: row.commercial_name || row.nom_commercial || row.name || '',
         commercial_name: row.commercial_name || row.nom_commercial || row.name || '',
@@ -279,19 +321,32 @@ const parseRecordData = (table: string, row: any) => {
         description: row.dci || row.description || '',
         dci: row.dci || row.description || '',
         dosage: row.dosage || '',
-        form: row.form || '',
-        requiresPrescription: row.is_prescription_required !== undefined ? !!row.is_prescription_required : (!!row.requires_prescription || false),
-        is_prescription_required: row.is_prescription_required !== undefined ? !!row.is_prescription_required : (!!row.requires_prescription || false),
+        form: row.form || row.forme || '',
+        forme: row.forme || row.form || '',
+        brand: row.brand || row.marque || '',
+        marque: row.marque || row.brand || '',
+        category: catVal,
+        categorie: catVal,
+        categorie_ux: catVal,
+        ux_category: catVal,
+        category_id: row.category_id || row.ux_category_id || null,
+        ux_category_id: row.ux_category_id || row.category_id || null,
+        requiresPrescription: row.is_prescription_required !== undefined ? !!row.is_prescription_required : (!!row.requires_prescription || !!row.ordonnance_requise || false),
+        is_prescription_required: row.is_prescription_required !== undefined ? !!row.is_prescription_required : (!!row.requires_prescription || !!row.ordonnance_requise || false),
         price: row.price ? Number(row.price) : 0,
-        stock: row.stock || 0,
-        imageUrl: row.image_url || row.image || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
-        category: row.ux_category_id || '',
+        stock: row.stock !== undefined ? Number(row.stock) : 0,
+        imageUrl: img,
+        image_url: img,
+        effects: row.effects || row.effets || '',
+        directions: row.directions || row.mode_emploi || '',
         pharmacyId: row.pharmacy_id || null,
         isGlobal: row.is_global !== undefined ? row.is_global : (row.pharmacy_id === null),
         createdAt: row.created_at || null,
         ...row 
      };
   } else if (table === 'produits_patients') {
+     const img = row.image_url || row.image || row.imageUrl || row.ImageURL || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80";
+     const catVal = row.category || row.categorie || row.categorie_ux || row.ux_category || '';
      parsed = {
         name: row.nom_commercial || row.commercial_name || row.name || '',
         commercial_name: row.nom_commercial || row.commercial_name || row.name || '',
@@ -299,19 +354,35 @@ const parseRecordData = (table: string, row: any) => {
         description: row.dci || row.description || '',
         dci: row.dci || row.description || '',
         dosage: row.dosage || '',
-        form: row.form || '',
-        requiresPrescription: row.is_prescription_required !== undefined ? !!row.is_prescription_required : (!!row.requires_prescription || false),
-        is_prescription_required: row.is_prescription_required !== undefined ? !!row.is_prescription_required : (!!row.requires_prescription || false),
-        category: row.categorie_ux || row.ux_category || '',
+        form: row.forme || row.form || '',
+        forme: row.forme || row.form || '',
+        brand: row.brand || row.marque || '',
+        marque: row.marque || row.brand || '',
+        category: catVal,
+        categorie: catVal,
+        categorie_ux: catVal,
+        ux_category: catVal,
+        category_id: row.category_id || row.ux_category_id || null,
+        ux_category_id: row.ux_category_id || row.category_id || null,
+        requiresPrescription: row.is_prescription_required !== undefined ? !!row.is_prescription_required : (!!row.requires_prescription || !!row.ordonnance_requise || false),
+        is_prescription_required: row.is_prescription_required !== undefined ? !!row.is_prescription_required : (!!row.requires_prescription || !!row.ordonnance_requise || false),
+        price: row.price ? Number(row.price) : 0,
+        stock: row.stock !== undefined ? Number(row.stock) : 0,
+        imageUrl: img,
+        image_url: img,
+        effects: row.effects || row.effets || '',
+        directions: row.directions || row.mode_emploi || '',
         createdAt: row.created_at || null,
         ...row 
      };
-  } else if (table === 'ux_categories') {
+  } else if (table === 'ux_categories' || table === 'categories') {
      parsed = {
         name: row.name || '',
         slug: row.slug || '',
         icon: row.icon || '',
         description: row.description || '',
+        imageUrl: row.image_url || row.imageUrl || null,
+        image_url: row.image_url || row.imageUrl || null,
         createdAt: row.created_at || null,
         ...row
      };

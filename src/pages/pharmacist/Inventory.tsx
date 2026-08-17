@@ -53,6 +53,8 @@ export function PharmacistInventory() {
           stock: row.stock ? Number(row.stock) : 0,
           expiryDate: row.expiry_date || '',
           product_id: row.product_id || '',
+          imageUrl: row.image_url || row.imageUrl || row.image || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
+          image_url: row.image_url || row.imageUrl || row.image || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
           category: row.ux_category_id || '',
           pharmacyId: row.pharmacy_id || null,
           createdAt: row.created_at || null,
@@ -92,6 +94,8 @@ export function PharmacistInventory() {
                dci: d.dci,
                dosage: d.dosage,
                form: d.forme || d.form,
+               imageUrl: d.image_url || d.imageUrl || d.image || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
+               image_url: d.image_url || d.imageUrl || d.image || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
                category: d.ux_category || d.categorie_ux || 'Uncategorized',
                ux_category_id: d.ux_category || d.categorie_ux,
                is_prescription_required: d.is_prescription_required !== undefined ? d.is_prescription_required : d.ordonnance_requise,
@@ -225,6 +229,7 @@ export function PharmacistInventory() {
 
       // Insert directly into Supabase table 'products'
       const productName = selectedProduct.commercial_name || selectedProduct.name || selectedProduct.nom_commercial || "Unnamed Product";
+      const productImg = selectedProduct.image_url || selectedProduct.imageUrl || selectedProduct.image || null;
       const { data, error } = await supabase.from('products').insert([
         {
           nom_commercial: productName,
@@ -232,6 +237,7 @@ export function PharmacistInventory() {
           dci: selectedProduct.dci || "",
           dosage: selectedProduct.dosage || '',
           form: selectedProduct.form || "",
+          image_url: productImg,
           is_prescription_required: selectedProduct.is_prescription_required || false,
           price: isNaN(priceNum) ? 0 : priceNum,
           stock: isNaN(stockNum) ? 0 : stockNum,
@@ -500,8 +506,19 @@ export function PharmacistInventory() {
                      <div key={item.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 p-5 flex flex-col justify-between hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-800 transition-all cursor-pointer" onClick={() => navigate(`/pharmacist/inventory/${item.id}`)}>
                         <div>
                            <div className="flex justify-between items-start mb-3">
-                              <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
-                                 <Package className="text-gray-400" size={18} />
+                              <div className="w-12 h-12 rounded-xl bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
+                                 {item.imageUrl || item.image_url ? (
+                                    <img 
+                                      src={item.imageUrl || item.image_url} 
+                                      alt={item.name} 
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                         (e.target as HTMLElement).style.display = 'none';
+                                      }}
+                                    />
+                                 ) : (
+                                    <Package className="text-gray-400" size={20} />
+                                 )}
                               </div>
                               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${item.stock < 10 ? 'bg-red-50 text-red-600 dark:bg-red-900/30' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30'}`}>
                                  {item.stock} in stock

@@ -62,10 +62,26 @@ await supabase.from('produits_patients').select('*');
 et ajouter/cocher les produits correspondants dans leur 'pharmacy_inventory'.
 */
 
+const DEFAULT_PRESET_CATEGORIES = [
+  { id: "douleurs-fievre", name: "Douleurs & Fièvre" },
+  { id: "rhume-toux", name: "Rhume & Toux" },
+  { id: "digestion-transit", name: "Digestion & Transit" },
+  { id: "vitamines-tonus", name: "Vitamines & Tonus" },
+  { id: "premiers-soins", name: "Premiers Soins" },
+  { id: "materiel-diagnostic", name: "Matériel & Diagnostic" },
+  { id: "bebe-enfant", name: "Maternité & Bébé" },
+  { id: "yeux-oreilles", name: "Yeux & Oreilles" },
+  { id: "dermatologie", name: "Dermatologie" },
+  { id: "hygiene-soins", name: "Hygiène & Soins" },
+  { id: "cardiologie", name: "Cardiologie & Tension" },
+  { id: "antibiotiques", name: "Antibiotiques" },
+  { id: "general", name: "Général" }
+];
+
 export function AdminProducts() {
   const { t } = useTranslation();
   const [products, setProducts] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>(DEFAULT_PRESET_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isSeeding, setIsSeeding] = useState(false);
@@ -107,17 +123,17 @@ export function AdminProducts() {
         if (data && !error) {
            const mappedOut = data.map((d: any) => ({
                id: d.id,
-               name: d.nom_commercial || d.commercial_name || '',
+               name: d.nom_commercial || d.commercial_name || d.name || '',
                description: d.dci || d.description || '',
-               dosage: d.dosage || d.forme || '',
-               category: d.ux_category || d.categorie_ux || '',
+               dosage: d.dosage || d.forme || d.form || '',
+               category: d.category || d.categorie || d.ux_category || d.categorie_ux || 'Uncategorized',
                brand: d.brand || d.marque || '',
                effects: d.effects || d.effets || '',
                directions: d.directions || d.mode_emploi || '',
-               requiresPrescription: d.is_prescription_required || d.ordonnance_requise,
-               price: d.price || 0,
-               stock: d.stock || 0,
-               imageUrl: d.image_url || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
+               requiresPrescription: d.is_prescription_required !== undefined ? d.is_prescription_required : (d.ordonnance_requise || false),
+               price: d.price ? Number(d.price) : 0,
+               stock: d.stock !== undefined ? Number(d.stock) : 0,
+               imageUrl: d.image_url || d.imageUrl || d.image || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
                isGlobal: true,
                pharmacyId: null
            }));
@@ -401,15 +417,39 @@ export function AdminProducts() {
 
     setIsSubmitting(true);
 
-    // Convert formData to Supabase payload matching database schema types
+    // Convert formData to clean payload matching database schema types
+    const currentImageUrl = data.imageUrl || watch('imageUrl') || null;
+    const brandVal = data.brand?.trim() || watch('brand')?.trim() || '';
+    const categoryVal = data.category?.trim() || watch('category')?.trim() || 'Uncategorized';
+    const priceVal = data.price !== undefined ? Number(data.price) : 0;
+    const stockVal = data.stock !== undefined ? Number(data.stock) : 0;
+    const effectsVal = data.effects?.trim() || watch('effects')?.trim() || '';
+    const directionsVal = data.directions?.trim() || watch('directions')?.trim() || '';
+
     const payload = {
         id: editingId || undefined,
         nom_commercial: commercialName,
+        commercial_name: commercialName,
+        name: commercialName,
         dci: dci,
+        description: dci,
         dosage: data.dosage?.trim() || null,
-        forme: data.dosage?.trim() || null, // mapping "format/dosage" to form as a fallback
+        forme: data.dosage?.trim() || null,
+        form: data.dosage?.trim() || null,
+        brand: brandVal,
+        marque: brandVal,
+        category: categoryVal,
+        categorie: categoryVal,
+        categorie_ux: categoryVal,
+        ux_category: categoryVal,
+        price: priceVal,
+        stock: stockVal,
+        effects: effectsVal,
+        directions: directionsVal,
         ordonnance_requise: Boolean(data.requiresPrescription),
-        categorie_ux: data.category?.trim() || 'Uncategorized'
+        is_prescription_required: Boolean(data.requiresPrescription),
+        image_url: currentImageUrl,
+        imageUrl: currentImageUrl
     };
 
     try {
@@ -423,12 +463,46 @@ export function AdminProducts() {
       if (!response.ok || !responseData.success) {
           throw new Error(responseData.error || "Failed to save product");
       }
+
+      // Optimistically update local React state immediately
+      const savedId = editingId || responseData.data?.id || (Array.isArray(responseData.data) && responseData.data[0]?.id) || Date.now().toString();
+      const updatedProduct = {
+        id: savedId,
+        name: commercialName,
+        description: dci,
+        dosage: data.dosage?.trim() || "",
+        category: categoryVal,
+        brand: brandVal,
+        price: priceVal,
+        stock: stockVal,
+        imageUrl: currentImageUrl || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
+        requiresPrescription: Boolean(data.requiresPrescription),
+        effects: effectsVal,
+        directions: directionsVal,
+        isGlobal: true,
+        pharmacyId: null
+      };
+
+      setProducts(prev => {
+        if (editingId) {
+          return prev.map(p => p.id === editingId ? { ...p, ...updatedProduct } : p);
+        }
+        return [updatedProduct, ...prev];
+      });
+
+      // Synchronize client storage
+      try {
+        await setDoc(doc(db, "products", savedId), updatedProduct, { merge: true });
+        await setDoc(doc(db, "produits_patients", savedId), updatedProduct, { merge: true });
+      } catch (fsErr) {
+        console.warn("Client store sync warning:", fsErr);
+      }
       
       toast.success(editingId ? "Produit mis à jour avec succès" : "Produit créé avec succès !");
       setShowModal(false);
       setEditingId(null);
       reset({ name: "", dosage: "", category: "", brand: "", price: 0, stock: 0, imageUrl: "", requiresPrescription: false, description: "", effects: "", directions: "" });
-      fetchGlobalProducts();
+      await fetchGlobalProducts();
     } catch (e: any) {
        toast.error(`Erreur: ${e.message}`);
        console.error("Upsert product error", e);
@@ -438,7 +512,7 @@ export function AdminProducts() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer définitivement ce produit ?")) return;
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer définitivement ce médicament du catalogue ?")) return;
     
     setDeletingId(id);
     // Optimistic deletion
@@ -446,6 +520,7 @@ export function AdminProducts() {
     setProducts(products.filter(p => p.id !== id));
     
     try {
+      // 1. Delete on server API (handles both tables and admin permissions)
       const response = await fetchApi('/api/admin/delete-product', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -454,10 +529,19 @@ export function AdminProducts() {
       
       const responseData = await response.json();
       if (!response.ok || !responseData.success) {
-          throw new Error(responseData.error || "Failed to delete product");
+          throw new Error(responseData.error || "Échec de la suppression");
+      }
+
+      // 2. Also cleanup from client database stores
+      try {
+        await deleteDoc(doc(db, "products", id));
+        await deleteDoc(doc(db, "produits_patients", id));
+      } catch (clientErr) {
+        console.warn("Client store cleanup notice:", clientErr);
       }
       
-      toast.success("Produit supprimé avec succès");
+      toast.success("Produit supprimé avec succès du catalogue !");
+      await fetchGlobalProducts();
     } catch (e: any) {
        // Rollback the optimistic update
        setProducts(previousProducts);

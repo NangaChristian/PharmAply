@@ -18,6 +18,7 @@ import { PatientPharmacyDetails } from './pages/patient/PharmacyDetails';
 import { PatientCheckout } from './pages/patient/Checkout';
 import { PatientTracking } from './pages/patient/Tracking';
 import { PatientPrescriptionUpload } from './pages/patient/PrescriptionUpload';
+import { SmartScanner } from './pages/patient/SmartScanner';
 import { Messages } from './pages/patient/Messages';
 import { PatientNotifications } from './pages/patient/Notifications';
 import { PatientReminders } from './pages/patient/Reminders';
@@ -127,7 +128,9 @@ export default function App() {
             <Route path="checkout" element={<PatientCheckout />} />
             <Route path="tracking/:id" element={<PatientTracking />} />
             <Route path="messages/:id" element={<Messages />} />
-            <Route path="prescription-upload" element={<PatientPrescriptionUpload />} />
+            <Route path="prescription-upload" element={<SmartScanner />} />
+            <Route path="smart-scanner" element={<SmartScanner />} />
+            <Route path="prescription-standard" element={<PatientPrescriptionUpload />} />
             <Route path="payment-methods" element={<PatientPaymentMethods />} />
             <Route path="wishlist" element={<PatientWishlist />} />
             <Route path="privacy" element={<PatientPrivacy />} />

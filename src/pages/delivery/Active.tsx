@@ -12,6 +12,7 @@ import {
   serverTimestamp, ref, uploadBytesResumable, getDownloadURL 
 } from '../../lib/firebase';
 import { db, storage, handleFirestoreError, OperationType } from '../../lib/firebase';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../components/AuthProvider';
 import { useTranslation } from "react-i18next";
 import { getRoadRoute } from '../../lib/routing';
@@ -191,6 +192,7 @@ export function DeliveryActive() {
             await updateDoc(doc(db, 'drivers', user.uid), {
               lat: latitude,
               lng: longitude,
+              isOnline: true,
               updatedAt: serverTimestamp()
             });
             await updateDoc(doc(db, 'users', user.uid), {
@@ -199,6 +201,19 @@ export function DeliveryActive() {
             });
           } catch (e) {
             console.warn("Could not update driver doc location:", e);
+          }
+
+          // Supabase driver_locations sync
+          try {
+            await supabase.from('driver_locations').upsert({
+              driver_id: user.uid,
+              latitude: latitude,
+              longitude: longitude,
+              is_online: true,
+              updated_at: new Date().toISOString()
+            });
+          } catch (e) {
+            // silent catch if table structure differs
           }
 
           if (order?.id) {
@@ -406,9 +421,24 @@ export function DeliveryActive() {
           status: newStatus,
           deliveryStage: nextStage,
           proofOfDeliveryUrl: photoUrl,
+          proof_of_delivery_url: photoUrl,
+          deliveryProofPhoto: photoUrl,
+          deliveryProofUrl: photoUrl,
+          proofUrl: photoUrl,
           deliveredAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
+
+        // Supabase orders update
+        try {
+          await supabase.from('orders').update({
+            status: 'delivered',
+            proof_of_delivery_url: photoUrl,
+            updated_at: new Date().toISOString()
+          }).eq('id', order.id);
+        } catch (e) {
+          // ignore if table doesn't have id
+        }
 
         toast.success("Livraison effectuée avec succès ! 🎉");
         setTimeout(() => navigate('/delivery'), 1200);

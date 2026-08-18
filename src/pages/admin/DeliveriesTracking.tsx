@@ -22,6 +22,7 @@ export function AdminDeliveriesTracking() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "all">("7d");
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [zoomedPhotoUrl, setZoomedPhotoUrl] = useState<string | null>(null);
 
   // Synchronisation en temps réel avec Firebase / Supabase
   useEffect(() => {
@@ -623,7 +624,21 @@ export function AdminDeliveriesTracking() {
 
                       {/* Statut */}
                       <td className="py-4 px-4">
-                        {getStatusBadge(order.status)}
+                        <div className="flex flex-col gap-1">
+                          {getStatusBadge(order.status)}
+                          {(order.proofOfDeliveryUrl || order.proof_of_delivery_url || order.deliveryProofPhoto || order.deliveryProofUrl || order.proofUrl) && (
+                            <span 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setZoomedPhotoUrl(order.proofOfDeliveryUrl || order.proof_of_delivery_url || order.deliveryProofPhoto || order.deliveryProofUrl || order.proofUrl);
+                              }}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/50 cursor-pointer hover:bg-emerald-100 transition w-fit"
+                              title="Cliquer pour inspecter la photo de preuve"
+                            >
+                              📸 Photo Preuve
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Action */}
@@ -697,11 +712,51 @@ export function AdminDeliveriesTracking() {
                   <span className="text-slate-500">Part Plateforme (20%)</span>
                   <span className="font-bold text-emerald-700">{formatCurrency(Number(selectedOrder.deliveryFee || 1500) * 0.2)}</span>
                 </div>
-                <div className="flex justify-between py-1.5">
+                <div className="flex justify-between py-1.5 border-b border-gray-100 dark:border-zinc-800">
                   <span className="text-slate-500">Part Livreur (80%)</span>
                   <span className="font-bold text-slate-800 dark:text-slate-200">{formatCurrency(Number(selectedOrder.deliveryFee || 1500) * 0.8)}</span>
                 </div>
               </div>
+
+              {/* Preuve Photo de Livraison */}
+              {(selectedOrder.proofOfDeliveryUrl || selectedOrder.proof_of_delivery_url || selectedOrder.deliveryProofPhoto || selectedOrder.deliveryProofUrl || selectedOrder.proofUrl) ? (
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 rounded-2xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                      <ShieldCheck size={16} className="text-emerald-600" />
+                      Preuve de livraison photographique vérifiée
+                    </span>
+                    <span className="text-[10px] text-emerald-600 font-mono">
+                      {parseDate(selectedOrder.deliveredAt)?.toLocaleString("fr-FR", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) || 'Confirmée'}
+                    </span>
+                  </div>
+
+                  <div 
+                    onClick={() => setZoomedPhotoUrl(selectedOrder.proofOfDeliveryUrl || selectedOrder.proof_of_delivery_url || selectedOrder.deliveryProofPhoto || selectedOrder.deliveryProofUrl || selectedOrder.proofUrl)}
+                    className="relative w-full h-48 rounded-xl overflow-hidden bg-black/5 dark:bg-black/40 border border-emerald-200/60 dark:border-emerald-800/60 cursor-pointer group shadow-inner"
+                  >
+                    <img 
+                      src={selectedOrder.proofOfDeliveryUrl || selectedOrder.proof_of_delivery_url || selectedOrder.deliveryProofPhoto || selectedOrder.deliveryProofUrl || selectedOrder.proofUrl} 
+                      alt="Preuve de livraison" 
+                      className="w-full h-full object-cover transition duration-200 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white font-bold text-xs gap-1.5">
+                      🔍 Agrandir l'image
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-emerald-700 dark:text-emerald-400 text-center">
+                    Cliquez sur la photo pour l'examiner en plein écran
+                  </p>
+                </div>
+              ) : selectedOrder.status === 'delivered' ? (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl text-center text-amber-700 dark:text-amber-300 text-xs">
+                  Livraison validée par code PIN (pas de photo attachée)
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-50 dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-xl text-center text-slate-500 text-xs">
+                  Photo de preuve en attente de la remise par le coursier
+                </div>
+              )}
             </div>
 
             <div className="pt-2">
@@ -711,6 +766,33 @@ export function AdminDeliveriesTracking() {
               >
                 Fermer
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full-Screen Zoom Photo Modal */}
+      {zoomedPhotoUrl && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4"
+          onClick={() => setZoomedPhotoUrl(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] bg-zinc-950 rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-800 bg-zinc-900/80 text-white text-xs font-bold">
+              <span>Preuve de Livraison Officielle</span>
+              <button 
+                onClick={() => setZoomedPhotoUrl(null)}
+                className="w-7 h-7 rounded-full bg-zinc-800 text-zinc-300 hover:text-white flex items-center justify-center transition"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-2 flex items-center justify-center max-h-[80vh] overflow-auto">
+              <img 
+                src={zoomedPhotoUrl} 
+                alt="Zoom Preuve de Livraison" 
+                className="max-h-[75vh] w-auto rounded-lg object-contain shadow-md"
+              />
             </div>
           </div>
         </div>

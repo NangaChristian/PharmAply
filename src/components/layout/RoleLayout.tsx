@@ -46,7 +46,9 @@ export function RoleLayout({ role }: RoleLayoutProps) {
             </motion.div>
           </AnimatePresence>
         </div>
-        <div className={role === 'pharmacist' ? "block md:hidden pb-[env(safe-area-inset-bottom)] shrink-0 bg-white" : "block pb-[env(safe-area-inset-bottom)] shrink-0"}>
+        
+        {/* Bottom Navigation always visible */}
+        <div className={role === 'pharmacist' ? "block md:hidden pb-[env(safe-area-inset-bottom)] shrink-0 bg-white dark:bg-slate-900 z-30" : "block pb-[env(safe-area-inset-bottom)] shrink-0 z-30"}>
           <BottomNav role={role} />
         </div>
       </div>

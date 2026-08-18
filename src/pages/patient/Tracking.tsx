@@ -2,16 +2,18 @@ import {
   ArrowLeft, CheckCircle, Package, Truck, Home, Phone, Star, 
   FileText, MapPin, Navigation, Store, MessageSquare, 
   ChevronRight, X, Bike, Key, PhoneCall, Check, Copy, Clock, 
-  AlertCircle, ShieldCheck, RefreshCw, ShoppingBag 
+  AlertCircle, ShieldCheck, RefreshCw, ShoppingBag, ThumbsUp, Heart, Send
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from 'react';
 import { useTranslation } from "react-i18next";
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { doc, onSnapshot, getDoc, db } from '../../lib/firebase';
+import { doc, onSnapshot, getDoc, updateDoc, serverTimestamp, db } from '../../lib/firebase';
+import { supabase } from '../../lib/supabase';
 import { formatCurrency, parseDate } from '../../lib/utils';
 import { InvoiceModal } from '../../components/InvoiceModal';
+import toast from 'react-hot-toast';
 
 // Custom Motorcycle Icon for Leaflet
 const driverMotoLeafletIcon = L.divIcon({
@@ -121,6 +123,15 @@ export function PatientTracking() {
   const [showDetailsDrawer, setShowDetailsDrawer] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [copiedOtp, setCopiedOtp] = useState(false);
+  
+  // Rating states
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingScore, setRatingScore] = useState(5);
+  const [ratingHover, setRatingHover] = useState<number | null>(null);
+  const [ratingComment, setRatingComment] = useState("");
+  const [selectedRatingTags, setSelectedRatingTags] = useState<string[]>(["Rapide ⚡", "Médicaments intacts 📦"]);
+  const [selectedTip, setSelectedTip] = useState<number>(0);
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
 
   // User Geolocation
   useEffect(() => {
@@ -279,6 +290,68 @@ export function PatientTracking() {
     navigator.clipboard.writeText(deliveryOtp);
     setCopiedOtp(true);
     setTimeout(() => setCopiedOtp(false), 2000);
+  };
+
+  const toggleRatingTag = (tag: string) => {
+    setSelectedRatingTags(prev => 
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const handleSubmitDriverRating = async () => {
+    if (!order?.id) return;
+    setIsSubmittingRating(true);
+
+    try {
+      // 1. Update Firestore Order
+      await updateDoc(doc(db, 'orders', order.id), {
+        patientConfirmedReceipt: true,
+        patientConfirmedAt: serverTimestamp(),
+        driverRating: ratingScore,
+        driverReview: ratingComment.trim(),
+        driverReviewTags: selectedRatingTags,
+        driverTip: selectedTip,
+        updatedAt: serverTimestamp()
+      });
+
+      // 2. Update Driver stats if driverId exists
+      const targetDriverId = order.driverId || driver?.id;
+      if (targetDriverId) {
+        try {
+          const currentTotalRatings = Number(driver?.totalRatings || driver?.ratingCount || 1);
+          const currentAvgRating = Number(driver?.rating || 4.8);
+          const newAvg = Number(((currentAvgRating * currentTotalRatings + ratingScore) / (currentTotalRatings + 1)).toFixed(2));
+
+          await updateDoc(doc(db, 'drivers', targetDriverId), {
+            rating: newAvg,
+            totalRatings: currentTotalRatings + 1,
+            lastRatedAt: serverTimestamp()
+          });
+        } catch (e) {
+          console.warn("Could not update driver rating aggregate:", e);
+        }
+
+        // 3. Supabase sync if table exists
+        try {
+          await supabase.from('orders').update({
+            patient_confirmed: true,
+            driver_rating: ratingScore,
+            driver_review: ratingComment.trim(),
+            updated_at: new Date().toISOString()
+          }).eq('id', order.id);
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      toast.success("Merci ! Votre avis a été enregistré avec succès ⭐");
+      setShowRatingModal(false);
+    } catch (error) {
+      console.error("Error saving rating:", error);
+      toast.error("Impossible d'enregistrer l'avis. Veuillez réessayer.");
+    } finally {
+      setIsSubmittingRating(false);
+    }
   };
 
   const statuses = isPickup ? [
@@ -619,20 +692,33 @@ export function PatientTracking() {
                 </span>
               </div>
 
-              {/* Bouton Contact Livreur */}
-              <div className="flex flex-col items-center">
-                <button
-                  id="btn-contact-driver"
-                  onClick={() => setShowContactModal(true)}
-                  className="w-14 h-14 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-800 dark:text-white flex items-center justify-center shadow-sm transition active:scale-95"
-                  title="Contacter le livreur"
-                >
-                  <Phone size={22} className="text-[#194B4B] dark:text-teal-300" />
-                </button>
-                <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 mt-1.5">
-                  Contact
-                </span>
-              </div>
+              {/* Bouton Noter le livreur ou Contact */}
+              {(order?.status === 'delivered' || order?.deliveryStage === 'completed') ? (
+                <div className="flex-1 px-3">
+                  <button
+                    onClick={() => setShowRatingModal(true)}
+                    className="w-full py-3 px-3 bg-[#FACC15] hover:bg-yellow-400 text-slate-900 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition"
+                  >
+                    <Star size={15} className="fill-slate-900" />
+                    {order?.driverRating ? `Note: ${order.driverRating}/5 ⭐` : 'Noter le livreur'}
+                  </button>
+                </div>
+              ) : (
+                /* Bouton Contact Livreur */
+                <div className="flex flex-col items-center">
+                  <button
+                    id="btn-contact-driver"
+                    onClick={() => setShowContactModal(true)}
+                    className="w-14 h-14 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-800 dark:text-white flex items-center justify-center shadow-sm transition active:scale-95"
+                    title="Contacter le livreur"
+                  >
+                    <Phone size={22} className="text-[#194B4B] dark:text-teal-300" />
+                  </button>
+                  <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 mt-1.5">
+                    Contact
+                  </span>
+                </div>
+              )}
 
               {/* Bouton Détails */}
               <div className="flex flex-col items-center">
@@ -835,6 +921,168 @@ export function PatientTracking() {
           onClose={() => setShowInvoiceModal(false)}
           order={order}
         />
+      )}
+
+      {/* MODAL DE NOTATION & CONFIRMATION DE LIVRAISON */}
+      {showRatingModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-5 border border-gray-100 dark:border-zinc-800 max-h-[92vh] overflow-y-auto">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-3.5">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 dark:bg-zinc-800 border-2 border-[#194B4B]/20 flex items-center justify-center font-black text-lg text-[#194B4B]">
+                  {driverPhoto ? (
+                    <img src={driverPhoto} alt={driverName} className="w-full h-full object-cover" />
+                  ) : (
+                    driverFirstName.charAt(0)
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-gray-900 dark:text-white text-base">
+                    Noter {driverFirstName}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Votre avis aide à récompenser nos meilleurs livreurs
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowRatingModal(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Étoiles interactives */}
+            <div className="text-center py-2 space-y-2">
+              <div className="flex justify-center items-center gap-2">
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const active = (ratingHover !== null ? ratingHover : ratingScore) >= star;
+                  return (
+                    <button
+                      key={star}
+                      type="button"
+                      onMouseEnter={() => setRatingHover(star)}
+                      onMouseLeave={() => setRatingHover(null)}
+                      onClick={() => setRatingScore(star)}
+                      className="p-1 text-3xl transition transform active:scale-125 hover:scale-110 focus:outline-none"
+                    >
+                      <Star 
+                        size={36} 
+                        className={active ? "fill-[#FACC15] text-[#FACC15]" : "text-gray-300 dark:text-zinc-700"} 
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="text-xs font-black text-[#194B4B] dark:text-teal-400 tracking-wide uppercase">
+                {ratingScore === 5 && "⭐ Service Exceptionnel & Parfait"}
+                {ratingScore === 4 && "⭐ Très bonne livraison"}
+                {ratingScore === 3 && "⭐ Service Correct"}
+                {ratingScore === 2 && "⭐ Décevant"}
+                {ratingScore === 1 && "⭐ Insatisfaisant"}
+              </div>
+            </div>
+
+            {/* Critères / Tags rapides */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
+                Qu'avez-vous particulièrement apprécié ?
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "Ponctuel ⏰",
+                  "Courtois & Souriant 😊",
+                  "Médicaments intacts 📦",
+                  "Communication fluide 💬",
+                  "Livraison ultra-rapide ⚡",
+                  "Respect des consignes 🛡️"
+                ].map((tag) => {
+                  const isSelected = selectedRatingTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => toggleRatingTag(tag)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition border ${
+                        isSelected 
+                          ? "bg-[#194B4B] text-white border-[#194B4B]" 
+                          : "bg-gray-50 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-zinc-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Commentaire optionnel */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
+                Laisser un commentaire (facultatif)
+              </label>
+              <textarea
+                rows={2}
+                value={ratingComment}
+                onChange={(e) => setRatingComment(e.target.value)}
+                placeholder="Ex: Livreur très professionnel et attentif..."
+                className="w-full bg-gray-50 dark:bg-zinc-800/80 border border-gray-200 dark:border-zinc-700 rounded-2xl p-3 text-xs text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#194B4B] transition resize-none"
+              />
+            </div>
+
+            {/* Pourboire optionnel */}
+            <div className="space-y-2 bg-amber-50/60 dark:bg-amber-950/20 p-3.5 rounded-2xl border border-amber-200/60 dark:border-amber-900/40">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                  <Heart size={14} className="text-amber-600 fill-amber-600" />
+                  Ajouter un pourboire au livreur ?
+                </span>
+                <span className="text-xs font-extrabold text-amber-900 dark:text-amber-300">
+                  {selectedTip > 0 ? `${selectedTip} FCFA` : '0 FCFA'}
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-2 pt-1">
+                {[0, 200, 500, 1000].map((tip) => (
+                  <button
+                    key={tip}
+                    type="button"
+                    onClick={() => setSelectedTip(tip)}
+                    className={`py-2 rounded-xl text-xs font-extrabold transition border ${
+                      selectedTip === tip
+                        ? "bg-amber-500 text-white border-amber-600 shadow-sm"
+                        : "bg-white dark:bg-zinc-900 text-gray-700 dark:text-gray-300 border-amber-200/80 dark:border-zinc-700 hover:bg-amber-50"
+                    }`}
+                  >
+                    {tip === 0 ? "Aucun" : `+${tip}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Bouton de validation */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handleSubmitDriverRating}
+                disabled={isSubmittingRating}
+                className="w-full py-3.5 bg-[#194B4B] hover:bg-[#143d3d] text-white rounded-2xl font-bold text-sm shadow-md transition active:scale-98 flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isSubmittingRating ? (
+                  <RefreshCw size={18} className="animate-spin" />
+                ) : (
+                  <>
+                    <Star size={16} className="fill-[#FACC15] text-[#FACC15]" />
+                    Confirmer & Enregistrer ma note
+                  </>
+                )}
+              </button>
+            </div>
+
+          </div>
+        </div>
       )}
 
     </div>

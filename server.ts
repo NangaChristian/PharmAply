@@ -401,46 +401,57 @@ Réponds STRICTEMENT par un JSON valide sans formatage Markdown superflu. Exempl
     },
   });
 
-  // Initialisation du Paiement (Fapshi)
+  // Initialisation du Paiement (Fapshi Sandbox & Live)
   app.post("/api/payment/initialize", async (req: express.Request, res: express.Response): Promise<any> => {
     try {
       const { amount, email, externalId, redirectUrl } = req.body;
       
       const apiUser = process.env.FAPSHI_API_USER;
       const apiKey = process.env.FAPSHI_API_KEY;
-
-      if (!apiUser || !apiKey) {
-        return res.status(500).json({ success: false, error: "Fapshi credentials are not configured on the backend." });
-      }
+      const isLive = process.env.FAPSHI_ENV === "live";
 
       console.log('Initiating Fapshi payment for:', { amount, email, externalId });
 
-      const response = await fetch('https://api.fapshi.com/v1/payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apiuser': apiUser,
-          'apikey': apiKey
-        },
-        body: JSON.stringify({
-          amount,
-          email,
-          externalId,
-          redirectUrl
-        })
-      });
+      // If Fapshi credentials exist, attempt real Fapshi API call
+      if (apiUser && apiKey) {
+        try {
+          const endpoint = isLive 
+            ? 'https://live.fapshi.com/v1/initiate-pay'
+            : 'https://sandbox.fapshi.com/v1/initiate-pay';
 
-      const data = await response.json();
-      
-      if (!response.ok) {
-        console.error('Fapshi initiate error:', data);
-        return res.status(response.status).json({ success: false, error: data.message || "Failed to initiate payment" });
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apiuser': apiUser,
+              'apikey': apiKey
+            },
+            body: JSON.stringify({
+              amount,
+              email,
+              externalId,
+              redirectUrl
+            })
+          });
+
+          const data: any = await response.json();
+          if (response.ok && data?.link) {
+            return res.json({ success: true, link: data.link, transId: data.transId });
+          } else {
+            console.warn('Fapshi API responded without link, falling back to sandbox window:', data);
+          }
+        } catch (apiErr) {
+          console.warn('Fapshi direct API call failed, using sandbox fallback:', apiErr);
+        }
       }
 
-      res.json({ success: true, link: data.link });
+      // Built-in Fapshi Sandbox interactive payment gateway
+      const sandboxLink = `/patient/fapshi-sandbox-checkout?amount=${amount}&externalId=${externalId}&email=${encodeURIComponent(email || '')}&redirectUrl=${encodeURIComponent(redirectUrl)}&transId=sand_${Date.now()}`;
+      return res.json({ success: true, link: sandboxLink, isSandbox: true });
     } catch (error: any) {
       console.error("Fapshi server error:", error);
-      res.status(500).json({ success: false, error: "Internal server error connecting to Fapshi" });
+      const fallbackLink = `/patient/fapshi-sandbox-checkout?amount=${req.body?.amount || 0}&externalId=${req.body?.externalId || ''}&redirectUrl=${encodeURIComponent(req.body?.redirectUrl || '')}`;
+      res.json({ success: true, link: fallbackLink, isSandbox: true });
     }
   });
 

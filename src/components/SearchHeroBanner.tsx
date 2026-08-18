@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Search, FileText, ChevronRight, Sparkles, ShieldCheck, 
-  Clock, Plus, ArrowRight
+  Clock, Plus
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getCategoryIcon } from "../lib/icons";
+import { useTheme } from "./ThemeProvider";
 
 export interface CategoryItem {
   id: string;
@@ -46,6 +47,9 @@ export function SearchHeroBanner({
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
+  const theme = useTheme();
+  const primaryColor = theme.primaryColor || '#194B4B';
+  const secondaryColor = theme.secondaryColor || '#F59E0B';
 
   const handleProductSelect = (product: GeneralProductItem) => {
     if (onProductClick) {
@@ -81,10 +85,14 @@ export function SearchHeroBanner({
       {/* 1. PROMOTIONAL HERO BANNER */}
       <div 
         id="search-promo-banner" 
-        className="bg-[#194B4B] rounded-3xl p-6 text-white shadow-md relative overflow-hidden"
+        className="rounded-3xl p-6 text-white shadow-md relative overflow-hidden"
+        style={{ backgroundColor: primaryColor }}
       >
         <div className="relative z-10 flex flex-col gap-3">
-          <div className="inline-flex items-center gap-1.5 bg-[#F59E0B] text-slate-950 px-3 py-1 rounded-full text-xs font-black self-start uppercase tracking-wider">
+          <div 
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black self-start uppercase tracking-wider text-slate-950"
+            style={{ backgroundColor: secondaryColor }}
+          >
             <Sparkles size={13} className="text-slate-950" />
             <span>Livraison Express Santé</span>
           </div>
@@ -102,7 +110,8 @@ export function SearchHeroBanner({
             <button 
               id="banner-btn-upload-prescription"
               onClick={() => navigate('/patient/prescription-upload')}
-              className="bg-[#F59E0B] hover:bg-[#d97706] text-slate-950 text-xs font-bold py-2.5 px-4 rounded-xl shadow-sm transition flex items-center gap-2"
+              className="text-slate-950 text-xs font-bold py-2.5 px-4 rounded-xl shadow-sm transition flex items-center gap-2 hover:opacity-90 active:scale-95"
+              style={{ backgroundColor: secondaryColor }}
             >
               <FileText size={15} />
               <span>Envoyer une ordonnance</span>
@@ -111,7 +120,7 @@ export function SearchHeroBanner({
             <button 
               id="banner-btn-search-catalog"
               onClick={() => navigate('/patient/search')}
-              className="bg-white/15 hover:bg-white/25 text-white text-xs font-bold py-2.5 px-4 rounded-xl border border-white/20 transition flex items-center gap-1.5"
+              className="bg-white/15 hover:bg-white/25 text-white text-xs font-bold py-2.5 px-4 rounded-xl border border-white/20 transition flex items-center gap-1.5 active:scale-95"
             >
               <span>Rechercher un produit</span>
               <ChevronRight size={14} />
@@ -120,10 +129,10 @@ export function SearchHeroBanner({
 
           <div className="flex items-center gap-4 pt-1 text-[11px] text-white/75 font-medium">
             <span className="flex items-center gap-1">
-              <ShieldCheck size={13} className="text-[#F59E0B]" /> Produits certifiés
+              <ShieldCheck size={13} style={{ color: secondaryColor }} /> Produits certifiés
             </span>
             <span className="flex items-center gap-1">
-              <Clock size={13} className="text-[#F59E0B]" /> Suivi GPS en direct
+              <Clock size={13} style={{ color: secondaryColor }} /> Suivi GPS en direct
             </span>
           </div>
         </div>
@@ -144,7 +153,8 @@ export function SearchHeroBanner({
             <button 
               id="btn-see-all-categories"
               onClick={() => navigate('/patient/search')} 
-              className="text-xs font-bold text-[#194B4B] dark:text-teal-400 hover:underline flex items-center gap-0.5"
+              className="text-xs font-bold hover:underline flex items-center gap-0.5"
+              style={{ color: primaryColor }}
             >
               <span>{t('see_all', 'Tout voir')}</span>
               <ChevronRight size={14} />
@@ -160,9 +170,12 @@ export function SearchHeroBanner({
                 key={cat.id || cat.name} 
                 id={`cat-card-${cat.id || cat.name.replace(/\s+/g, '-').toLowerCase()}`}
                 onClick={() => handleCategorySelect(cat)}
-                className="flex flex-col flex-none w-[145px] sm:w-[160px] cursor-pointer group bg-gray-50 dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 p-4 rounded-2xl items-start snap-start hover:border-[#194B4B]/40 dark:hover:border-teal-500/40 hover:shadow-sm transition-all duration-200"
+                className="flex flex-col flex-none w-[145px] sm:w-[160px] cursor-pointer group bg-gray-50 dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 p-4 rounded-2xl items-start snap-start hover:shadow-sm transition-all duration-200"
               >
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[#194B4B] dark:text-teal-400 mb-3 bg-white dark:bg-zinc-800 shadow-sm border border-gray-100 dark:border-zinc-700 group-hover:scale-105 transition-transform">
+                <div 
+                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 bg-white dark:bg-zinc-800 shadow-sm border border-gray-100 dark:border-zinc-700 group-hover:scale-105 transition-transform"
+                  style={{ color: primaryColor }}
+                >
                   {cat.imageUrl ? (
                     <img src={cat.imageUrl} alt={cat.name} className="w-8 h-8 object-contain rounded-lg" />
                   ) : (
@@ -189,13 +202,14 @@ export function SearchHeroBanner({
               Médicaments & Produits Essentiels
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Uniquement les produits disponibles en pharmacie
+              Produits certifiés du catalogue
             </p>
           </div>
           <button 
             id="btn-see-all-products"
             onClick={() => navigate('/patient/search')} 
-            className="text-xs font-bold text-[#194B4B] dark:text-teal-400 hover:underline flex items-center gap-0.5"
+            className="text-xs font-bold hover:underline flex items-center gap-0.5"
+            style={{ color: primaryColor }}
           >
             <span>{t('see_all', 'Catalogue')}</span>
             <ChevronRight size={14} />
@@ -211,20 +225,26 @@ export function SearchHeroBanner({
                 { id: "douleur", label: "Douleur & Fièvre" },
                 { id: "matériel", label: "Matériel & Diagnostic" },
                 { id: "premiers soins", label: "Premiers Soins" }
-              ].map(f => (
-                <button
-                  key={f.id}
-                  id={`filter-pill-${f.id}`}
-                  onClick={() => setSelectedFilter(f.id)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${
-                    selectedFilter === f.id
-                      ? "bg-[#194B4B] text-white shadow-sm"
-                      : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
+              ].map(f => {
+                const isActive = selectedFilter === f.id;
+                return (
+                  <button
+                    key={f.id}
+                    id={`filter-pill-${f.id}`}
+                    onClick={() => setSelectedFilter(f.id)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${
+                      isActive
+                        ? "text-white shadow-sm"
+                        : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
+                    }`}
+                    style={{
+                      backgroundColor: isActive ? primaryColor : undefined
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* 2-Column Product Grid */}
@@ -234,7 +254,7 @@ export function SearchHeroBanner({
                   key={product.id}
                   id={`product-card-${product.id}`}
                   onClick={() => handleProductSelect(product)}
-                  className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-2xl p-3.5 flex flex-col justify-between cursor-pointer hover:shadow-md hover:border-[#194B4B]/30 dark:hover:border-teal-500/30 transition-all group"
+                  className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-2xl p-3.5 flex flex-col justify-between cursor-pointer hover:shadow-md transition-all group"
                 >
                   <div>
                     <div className="w-full aspect-square bg-gray-50 dark:bg-zinc-800/80 rounded-xl mb-2.5 overflow-hidden flex items-center justify-center p-2 relative">
@@ -246,15 +266,18 @@ export function SearchHeroBanner({
                           src={product.image_url || product.imageUrl || product.image} 
                           alt={product.commercial_name || product.name} 
                           className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                          referrerPolicy="no-referrer"
                         />
                       ) : (
-                        <div className="text-[#194B4B]/40 dark:text-teal-400/40">
+                        <div style={{ color: primaryColor }}>
                           {getCategoryIcon(product.category, 36)}
                         </div>
                       )}
                     </div>
 
-                    <h4 className="font-bold text-gray-900 dark:text-white text-xs sm:text-sm line-clamp-1 group-hover:text-[#194B4B] dark:group-hover:text-teal-400 transition-colors">
+                    <h4 
+                      className="font-bold text-gray-900 dark:text-white text-xs sm:text-sm line-clamp-1 transition-colors"
+                    >
                       {product.commercial_name || product.name}
                     </h4>
                     <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
@@ -265,11 +288,14 @@ export function SearchHeroBanner({
                   <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-zinc-800 flex items-center justify-between">
                     <div>
                       <span className="text-[10px] text-gray-400 block font-medium">Prix</span>
-                      <span className="font-extrabold text-sm text-[#194B4B] dark:text-teal-400">
+                      <span className="font-extrabold text-sm" style={{ color: primaryColor }}>
                         {product.price ? `${Number(product.price).toLocaleString()} XAF` : "Disponible"}
                       </span>
                     </div>
-                    <div className="w-7 h-7 rounded-lg bg-[#194B4B] group-hover:bg-[#F59E0B] text-white group-hover:text-slate-950 flex items-center justify-center transition-colors">
+                    <div 
+                      className="w-7 h-7 rounded-lg text-white flex items-center justify-center transition-transform group-hover:scale-105 shadow-sm"
+                      style={{ backgroundColor: primaryColor }}
+                    >
                       <Plus size={15} />
                     </div>
                   </div>
@@ -280,10 +306,10 @@ export function SearchHeroBanner({
         ) : (
           <div className="p-6 bg-gray-50 dark:bg-zinc-900 border border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl text-center space-y-2">
             <p className="text-sm font-bold text-gray-800 dark:text-gray-200">
-              Aucun produit actuellement en stock
+              Aucun produit actuellement dans cette catégorie
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs mx-auto">
-              Utilisez la recherche ou transmettez votre ordonnance pour trouver vos médicaments dans les officines partenaires.
+              Utilisez la recherche ou transmettez votre ordonnance pour commander vos médicaments.
             </p>
           </div>
         )}
@@ -294,7 +320,7 @@ export function SearchHeroBanner({
             onClick={() => navigate('/patient/search')}
             className="w-full py-3.5 bg-gray-50 dark:bg-zinc-900 hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-900 dark:text-white border border-gray-200 dark:border-zinc-800 rounded-2xl font-bold text-xs transition flex items-center justify-center gap-2"
           >
-            <Search size={15} className="text-[#194B4B] dark:text-teal-400" />
+            <Search size={15} style={{ color: primaryColor }} />
             <span>Explorer tout le catalogue de médicaments</span>
           </button>
         </div>

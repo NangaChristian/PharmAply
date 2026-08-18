@@ -130,8 +130,8 @@ export function PatientSearch() {
         const patientLng = userLocation?.lng || 9.7679;
 
         rawProducts.forEach((p: any) => {
-          // Ne conserver que si stock disponible
-          const stock = Number(p.stock ?? 1);
+          // Ne conserver que si stock disponible en pharmacie
+          const stock = Number(p.stock ?? 0);
           if (stock <= 0) return;
 
           const groupKey = (p.productId || p.global_product_id || p.commercial_name || p.name || p.id).trim().toLowerCase();

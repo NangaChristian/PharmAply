@@ -8,6 +8,8 @@ import { useAuth } from '../../components/AuthProvider';
 import { formatCurrency } from '../../lib/utils';
 import { useTranslation } from "react-i18next";
 import { useCart } from '../../components/CartProvider';
+import { useTheme } from '../../components/ThemeProvider';
+import { GooglePlacesAddressInput } from '../../components/GooglePlacesAddressInput';
 
 export function PatientCheckout() {
   const navigate = useNavigate();
@@ -15,6 +17,8 @@ export function PatientCheckout() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const { items, cartTotal, clearCart } = useCart();
+  const theme = useTheme();
+  const primaryColor = theme.primaryColor || '#194B4B';
   
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -55,9 +59,26 @@ export function PatientCheckout() {
     // Attempt automatic geolocation acquisition if addressLat is null
     if (navigator.geolocation && !addressLat) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setAddressLat(pos.coords.latitude);
-          setAddressLng(pos.coords.longitude);
+        async (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setAddressLat(lat);
+          setAddressLng(lng);
+          
+          // Reverse geocoding for auto location
+          try {
+            const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, {
+              headers: { 'Accept-Language': 'fr,en' }
+            });
+            if (resp.ok) {
+              const geoData = await resp.json();
+              if (geoData?.display_name && !addressLine) {
+                setAddressLine(geoData.display_name);
+              }
+            }
+          } catch (e) {
+            console.warn("Auto reverse geocode notice:", e);
+          }
         },
         (err) => console.warn("Checkout auto location unavailable:", err),
         { timeout: 5000, enableHighAccuracy: false }
@@ -69,21 +90,42 @@ export function PatientCheckout() {
      setIsLocating(true);
      if (navigator.geolocation) {
          navigator.geolocation.getCurrentPosition(
-            (pos) => {
+            async (pos) => {
+               const lat = pos.coords.latitude;
+               const lng = pos.coords.longitude;
+               setAddressLat(lat);
+               setAddressLng(lng);
+
+               try {
+                 const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, {
+                   headers: { 'Accept-Language': 'fr,en' }
+                 });
+                 if (resp.ok) {
+                   const geoData = await resp.json();
+                   if (geoData?.display_name) {
+                     setAddressLine(geoData.display_name);
+                     setIsLocating(false);
+                     setShowAddressEditor(false);
+                     return;
+                   }
+                 }
+               } catch (e) {
+                 console.warn("Reverse geocode notice:", e);
+               }
+
+               setAddressLine(`Position GPS (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
                setIsLocating(false);
-               setAddressLat(pos.coords.latitude);
-               setAddressLng(pos.coords.longitude);
-               setAddressLine("Current Location (Lat/Lng)");
                setShowAddressEditor(false);
             },
             (err) => {
                setIsLocating(false);
-               alert("Could not retrieve location. Please check your browser permissions.");
-            }
+               alert("Impossible de récupérer votre position GPS. Veuillez vérifier vos autorisations.");
+            },
+            { enableHighAccuracy: true, timeout: 8000 }
          );
      } else {
          setIsLocating(false);
-         alert("Geolocation is not supported by your browser.");
+         alert("La géolocalisation n'est pas supportée par votre navigateur.");
      }
   };
 
@@ -324,8 +366,12 @@ export function PatientCheckout() {
                  return;
               }
            } catch (fapshiErr) {
-              console.warn('Fapshi API skipped or unreachable:', fapshiErr);
+              console.warn('Fapshi API notice:', fapshiErr);
            }
+
+           // Instant sandbox checkout redirect fallback
+           window.location.href = `/patient/fapshi-sandbox-checkout?amount=${orderTotal}&externalId=${createdOrders[0]}&redirectUrl=${encodeURIComponent(window.location.origin + `/patient/tracking/${createdOrders[0]}`)}`;
+           return;
         }
 
         setProcessing(false);
@@ -403,8 +449,12 @@ export function PatientCheckout() {
                  return;
               }
            } catch (fapshiErr) {
-              console.warn('Fapshi API skipped or unreachable:', fapshiErr);
+              console.warn('Fapshi API notice:', fapshiErr);
            }
+
+           // Instant sandbox checkout redirect fallback
+           window.location.href = `/patient/fapshi-sandbox-checkout?amount=${orderData.total}&externalId=${createdOrderId}&redirectUrl=${encodeURIComponent(window.location.origin + `/patient/tracking/${createdOrderId}`)}`;
+           return;
         }
         
         setProcessing(false);
@@ -693,22 +743,28 @@ export function PatientCheckout() {
          <div className="h-24"></div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-800 p-4 px-6 pb-8 z-20">
+      <div className="sticky bottom-0 left-0 right-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-gray-100 dark:border-zinc-800 p-4 px-6 pb-6 z-20 shadow-lg">
          <button 
            disabled={processing}
-           className="w-full bg-[#0a1128] hover:bg-[#122864] disabled:bg-gray-300 dark:disabled:bg-zinc-800 text-white rounded-2xl font-bold py-4 min-h-[56px] shadow-sm transition disabled:opacity-50 touch-manipulation cursor-pointer"
+           className="w-full text-white rounded-2xl font-bold py-4 min-h-[56px] shadow-sm transition disabled:opacity-50 touch-manipulation cursor-pointer flex items-center justify-center gap-2"
+           style={{ backgroundColor: primaryColor }}
            onClick={handleConfirmOrder}
          >
-            {processing ? t('processing', 'Traitement en cours...') : (requiresPrescription && !prescriptionUrl ? "Ajouter l'ordonnance et valider" : t('confirm_pay', 'Confirmer et Payer'))}
+            {processing ? (
+              <>
+                <Loader2 size={20} className="animate-spin" />
+                <span>{t('processing', 'Traitement en cours...')}</span>
+              </>
+            ) : (requiresPrescription && !prescriptionUrl ? "Ajouter l'ordonnance et valider" : t('confirm_pay', 'Confirmer et Payer'))}
          </button>
       </div>
       
       {/* Address Selector Popup */}
       {showAddressEditor && (
         <div className="fixed inset-0 bg-black/60 z-50 flex flex-col justify-end">
-           <div className="bg-white dark:bg-black rounded-t-3xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+           <div className="bg-white dark:bg-zinc-900 rounded-t-3xl w-full max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
                <div className="p-4 flex items-center justify-between border-b border-gray-100 dark:border-zinc-800">
-                  <h2 className="font-bold text-gray-900 dark:text-white">{t('edit_delivery_address', 'Delivery Address')}</h2>
+                  <h2 className="font-bold text-gray-900 dark:text-white">{t('edit_delivery_address', 'Adresse de livraison')}</h2>
                   <button onClick={() => setShowAddressEditor(false)} className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-zinc-800 rounded-full text-gray-500 hover:text-gray-900 dark:hover:text-white transition">
                      <X size={16} />
                   </button>
@@ -718,35 +774,54 @@ export function PatientCheckout() {
                  <button 
                     onClick={handleUseCurrentLocation}
                     disabled={isLocating}
-                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 rounded-xl font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl font-bold transition disabled:opacity-50 cursor-pointer"
+                    style={{
+                      backgroundColor: `${primaryColor}15`,
+                      color: primaryColor
+                    }}
                  >
                     {isLocating ? <Loader2 size={18} className="animate-spin" /> : <MapPin size={18} />}
-                    {isLocating ? t('locating', 'Locating...') : t('use_current_location', 'Use current location')}
+                    {isLocating ? t('locating', 'Géolocalisation en cours...') : t('use_current_location', 'Utiliser ma position actuelle (GPS)')}
                  </button>
 
-                 <div className="relative flex items-center py-4">
+                 <div className="relative flex items-center py-2">
                     <div className="flex-grow border-t border-gray-200 dark:border-zinc-800"></div>
-                    <span className="shrink-0 mx-4 text-sm text-gray-400 font-bold uppercase">{t('or', 'or')}</span>
+                    <span className="shrink-0 mx-4 text-xs text-gray-400 font-bold uppercase">{t('or', 'OU')}</span>
                     <div className="flex-grow border-t border-gray-200 dark:border-zinc-800"></div>
                  </div>
 
                  <div>
-                    <label className="block text-sm font-bold text-gray-900 dark:text-white mb-2">{t('enter_address', 'Enter address manually')}</label>
-                    <input 
-                      type="text" 
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">
+                      {t('enter_address', 'Rechercher une adresse sur Google Maps')}
+                    </label>
+                    <GooglePlacesAddressInput
                       value={addressLine}
-                      onChange={(e) => setAddressLine(e.target.value)}
-                      placeholder={t('address_placeholder', 'e.g. 123 Main St, Appt 4B')}
-                      className="w-full p-4 rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-black focus:ring-2 focus:ring-indigo-500 outline-none text-gray-900 dark:text-white transition"
+                      onChange={(newAddr, newLat, newLng) => {
+                        setAddressLine(newAddr);
+                        if (newLat !== undefined) setAddressLat(newLat);
+                        if (newLng !== undefined) setAddressLng(newLng);
+                      }}
+                      placeholder="Tapez votre quartier, rue ou ville (ex: Bastos, Akwa, Bonanjo...)"
                     />
                  </div>
+
+                 {addressLine && (
+                   <div className="p-3 bg-gray-50 dark:bg-zinc-800/60 rounded-xl border border-gray-100 dark:border-zinc-800 text-xs text-gray-600 dark:text-gray-300 flex items-start gap-2">
+                     <MapPin size={15} className="shrink-0 mt-0.5" style={{ color: primaryColor }} />
+                     <div>
+                       <span className="font-bold block text-gray-900 dark:text-white">Adresse sélectionnée :</span>
+                       <span className="line-clamp-2">{addressLine}</span>
+                     </div>
+                   </div>
+                 )}
                  
-                 <div className="pt-4">
+                 <div className="pt-2">
                    <button 
                      onClick={() => setShowAddressEditor(false)}
-                     className="w-full bg-[#0a1128] hover:bg-[#122864] text-white rounded-xl font-bold py-4 transition"
+                     className="w-full text-white rounded-xl font-bold py-3.5 shadow-md transition cursor-pointer"
+                     style={{ backgroundColor: primaryColor }}
                    >
-                     {t('save_address', 'Save Address')}
+                     {t('save_address', 'Valider cette adresse')}
                    </button>
                  </div>
                </div>

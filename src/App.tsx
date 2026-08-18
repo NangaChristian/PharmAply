@@ -29,6 +29,7 @@ import { PatientProfile } from './pages/patient/Profile';
 import { PatientPaymentMethods } from './pages/patient/PaymentMethods';
 import { PatientWishlist } from './pages/patient/Wishlist';
 import { PatientPrivacy } from './pages/patient/Privacy';
+import { FapshiSandboxCheckout } from './pages/patient/FapshiSandboxCheckout';
 
 import { PharmacistHome } from './pages/pharmacist/Home';
 import { PharmacistOrderDetails } from './pages/pharmacist/OrderDetails';
@@ -126,6 +127,8 @@ export default function App() {
             <Route path="pharmacy/:id" element={<PatientPharmacyDetails />} />
             <Route path="checkout/:id" element={<PatientCheckout />} />
             <Route path="checkout" element={<PatientCheckout />} />
+            <Route path="fapshi-sandbox-checkout" element={<FapshiSandboxCheckout />} />
+            <Route path="fapshi-checkout" element={<FapshiSandboxCheckout />} />
             <Route path="tracking/:id" element={<PatientTracking />} />
             <Route path="messages/:id" element={<Messages />} />
             <Route path="prescription-upload" element={<SmartScanner />} />
@@ -135,6 +138,8 @@ export default function App() {
             <Route path="wishlist" element={<PatientWishlist />} />
             <Route path="privacy" element={<PatientPrivacy />} />
           </Route>
+          
+          <Route path="/fapshi/checkout" element={<FapshiSandboxCheckout />} />
 
           {/* Pharmacist Routes */}
           <Route path="/pharmacist" element={<RoleLayout role="pharmacist" />}>

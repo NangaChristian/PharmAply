@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { doc, getDoc } from '../lib/firebase';
 import { db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 
 interface ThemeSettings {
   primaryColor: string;
+  secondaryColor?: string;
   logoUrl: string;
   defaultPharmacyLogo?: string;
   dashboardWelcomeText: string;
@@ -11,11 +13,12 @@ interface ThemeSettings {
 }
 
 const defaultTheme: ThemeSettings = {
-  primaryColor: '#4f46e5', // indigo-600
+  primaryColor: '#194B4B',
+  secondaryColor: '#F59E0B',
   logoUrl: '',
   defaultPharmacyLogo: '',
-  dashboardWelcomeText: 'Welcome to our application',
-  dashboardSubtitleText: "Here's what is happening today."
+  dashboardWelcomeText: 'Bienvenue sur votre espace santé',
+  dashboardSubtitleText: 'Retrouvez vos médicaments et services de santé en un clic.'
 };
 
 const ThemeContext = createContext<ThemeSettings>(defaultTheme);
@@ -26,20 +29,29 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const fetchTheme = async () => {
       try {
+        // Try Firestore first
         const docRef = doc(db, 'settings', 'theme');
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           setTheme({ ...defaultTheme, ...docSnap.data() });
+          return;
+        }
+
+        // Try Supabase settings if present
+        const { data: supaSettings } = await supabase.from('settings').select('*').eq('key', 'theme').maybeSingle();
+        if (supaSettings?.value) {
+          const parsed = typeof supaSettings.value === 'string' ? JSON.parse(supaSettings.value) : supaSettings.value;
+          setTheme({ ...defaultTheme, ...parsed });
         }
       } catch (error) {
-        console.error('Failed to fetch theme', error);
+        console.warn('Theme fetch notice (using defaults):', error);
       }
     };
     fetchTheme();
   }, []);
 
   useEffect(() => {
-    // Inject dynamic styles to override tailwind indigo variables as primary app color
+    const primary = theme.primaryColor || '#194B4B';
     const styleId = 'dynamic-theme-styles';
     let styleEl = document.getElementById(styleId) as HTMLStyleElement;
     if (!styleEl) {
@@ -50,17 +62,40 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     styleEl.innerHTML = `
       :root {
-        --app-primary-color: ${theme.primaryColor};
-        /* Override commonly used standard colors to apply the primary brand color globally */
+        --app-primary-color: ${primary};
         --color-indigo-600: var(--app-primary-color);
         --color-indigo-500: var(--app-primary-color);
+        --color-primary: var(--app-primary-color);
       }
-      .bg-indigo-600 { background-color: var(--app-primary-color) !important; }
-      .text-indigo-600 { color: var(--app-primary-color) !important; }
-      .border-indigo-600 { border-color: var(--app-primary-color) !important; }
-      .fill-indigo-600 { fill: var(--app-primary-color) !important; }
-      .from-indigo-600 { --tw-gradient-from: var(--app-primary-color) !important; }
-      .ring-indigo-600 { --tw-ring-color: var(--app-primary-color) !important; }
+      .bg-primary-app, 
+      .bg-[#194B4B], 
+      .bg-[#1a3b8d], 
+      .bg-indigo-600 { 
+        background-color: var(--app-primary-color) !important; 
+      }
+      .text-primary-app, 
+      .text-[#194B4B], 
+      .text-[#1a3b8d], 
+      .text-indigo-600 { 
+        color: var(--app-primary-color) !important; 
+      }
+      .border-primary-app, 
+      .border-[#194B4B], 
+      .border-indigo-600 { 
+        border-color: var(--app-primary-color) !important; 
+      }
+      .fill-primary-app, 
+      .fill-[#194B4B], 
+      .fill-indigo-600 { 
+        fill: var(--app-primary-color) !important; 
+      }
+      .ring-primary-app, 
+      .ring-indigo-600 { 
+        --tw-ring-color: var(--app-primary-color) !important; 
+      }
+      .accent-primary-app {
+        accent-color: var(--app-primary-color) !important;
+      }
     `;
   }, [theme.primaryColor]);
 

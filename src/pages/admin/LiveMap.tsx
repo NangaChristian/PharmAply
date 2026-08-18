@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
+import { collection, onSnapshot, query, db } from '../../lib/firebase';
 import { MapContainer, TileLayer, Marker, Polyline, useMap as useLeafletMap, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import { 
   ExternalLink, ShieldAlert, Navigation, Clock, Truck, CheckCircle2, 
   ChevronRight, AlertTriangle, Monitor, Bike, Store, User, MapPin, 
-  Activity, Radio, RefreshCw, AlertOctagon, Phone, Layers
+  Activity, Radio, RefreshCw, AlertOctagon, Phone, Layers, ShieldCheck
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency } from '../../lib/utils';
@@ -40,6 +41,9 @@ interface Order {
   destLng?: number;
   patientName?: string;
   deliveryAddress?: string;
+  proofOfDeliveryUrl?: string;
+  deliveryProofPhoto?: string;
+  proof_of_delivery_url?: string;
   total?: number;
   createdAt?: any;
 }
@@ -332,10 +336,80 @@ export function AdminLiveMap() {
       })
       .subscribe();
 
+    // 3. Real-time Firestore Listeners for Instant Cross-Platform Synchronization
+    const unsubDrivers = onSnapshot(collection(db, 'drivers'), (snapshot) => {
+      setDrivers(prev => {
+        const next = [...prev];
+        snapshot.docs.forEach(docSnap => {
+          const d = docSnap.data();
+          const mapped: Driver = {
+            id: docSnap.id,
+            user_id: d.userId || docSnap.id,
+            name: d.name || d.fullName || d.nom || 'Livreur',
+            phone: d.phone || d.phoneNumber || '',
+            avatar_url: d.photoURL || d.photoUrl || d.avatarUrl,
+            lat: d.lat || d.latitude || d.location?.lat,
+            lng: d.lng || d.longitude || d.location?.lng,
+            vehicle_type: d.vehicleType || 'Moto',
+            vehicle_plate: d.vehiclePlate || 'LT ---',
+            vehicle_model: d.vehicleModel || 'Moto Express',
+            isOnline: d.isOnline !== undefined ? Boolean(d.isOnline) : true,
+          };
+          const idx = next.findIndex(item => item.id === mapped.id || item.user_id === mapped.id);
+          if (idx !== -1) {
+            next[idx] = { ...next[idx], ...mapped };
+          } else {
+            next.push(mapped);
+          }
+        });
+        return next;
+      });
+    }, (err) => console.warn("Firestore drivers sync error:", err));
+
+    const unsubOrders = onSnapshot(collection(db, 'orders'), (snapshot) => {
+      setOrders(prev => {
+        const next = [...prev];
+        snapshot.docs.forEach(docSnap => {
+          const o = docSnap.data();
+          if (['delivered', 'cancelled'].includes(o.status)) {
+            const idx = next.findIndex(item => item.id === docSnap.id);
+            if (idx !== -1) next.splice(idx, 1);
+            return;
+          }
+          const mapped: Order = {
+            id: docSnap.id,
+            driverId: o.driverId || o.driver_id,
+            driver_id: o.driverId || o.driver_id,
+            driverName: o.driverName || o.driver_name,
+            status: o.status,
+            pharmacyLat: o.pharmacyLat || o.pharmacy_lat,
+            pharmacyLng: o.pharmacyLng || o.pharmacy_lng,
+            pharmacyName: o.pharmacyName || o.pharmacy_name,
+            destLat: o.destLat || o.dest_lat || o.deliveryLocation?.lat,
+            destLng: o.destLng || o.dest_lng || o.deliveryLocation?.lng,
+            patientName: o.patientName || o.patient_name || o.customerName,
+            deliveryAddress: o.deliveryAddress || o.delivery_address || o.address,
+            proofOfDeliveryUrl: o.proofOfDeliveryUrl || o.proof_of_delivery_url || o.deliveryProofPhoto || o.proofUrl,
+            total: o.total,
+            createdAt: o.createdAt || o.created_at,
+          };
+          const idx = next.findIndex(item => item.id === mapped.id);
+          if (idx !== -1) {
+            next[idx] = { ...next[idx], ...mapped };
+          } else {
+            next.push(mapped);
+          }
+        });
+        return next;
+      });
+    }, (err) => console.warn("Firestore orders sync error:", err));
+
     return () => {
       supabase.removeChannel(driverLocSub);
       supabase.removeChannel(drvSub);
       supabase.removeChannel(ordSub);
+      unsubDrivers();
+      unsubOrders();
     };
   }, []);
 
@@ -629,6 +703,26 @@ export function AdminLiveMap() {
                       <span className="text-gray-500">Total:</span>
                       <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(selectedDriver.order.total || 0)}</span>
                     </div>
+
+                    {(selectedDriver.order.proofOfDeliveryUrl || selectedDriver.order.proof_of_delivery_url || selectedDriver.order.deliveryProofPhoto) && (
+                      <div className="pt-2 mt-2 border-t border-gray-200 dark:border-zinc-700">
+                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 mb-1">
+                          <ShieldCheck size={13} /> Preuve photo de remise enregistrée
+                        </span>
+                        <a 
+                          href={selectedDriver.order.proofOfDeliveryUrl || selectedDriver.order.proof_of_delivery_url || selectedDriver.order.deliveryProofPhoto}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block rounded-lg overflow-hidden h-24 w-full border border-emerald-300"
+                        >
+                          <img 
+                            src={selectedDriver.order.proofOfDeliveryUrl || selectedDriver.order.proof_of_delivery_url || selectedDriver.order.deliveryProofPhoto} 
+                            alt="Preuve" 
+                            className="w-full h-full object-cover hover:scale-105 transition duration-150"
+                          />
+                        </a>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <p className="text-xs text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-2.5 rounded-xl text-center">

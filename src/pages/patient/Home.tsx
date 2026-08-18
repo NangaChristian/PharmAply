@@ -74,18 +74,27 @@ export function PatientHome() {
       }
     };
 
-    // 2. Fetch real products available in approved pharmacies or master catalog
+    // 2. Fetch real products available in approved pharmacies with stock > 0
     const fetchAvailablePharmacyProducts = async () => {
       try {
-        const [pSnap, ppSnap] = await Promise.all([
+        const [pSnap, pharmSnap] = await Promise.all([
           getDocs(query(collection(db, 'products'), limit(300))),
-          getDocs(query(collection(db, 'produits_patients'), limit(300)))
+          getDocs(query(collection(db, 'pharmacies'), where('status', '==', 'approved'), limit(200)))
         ]);
 
-        const rawProducts = [
-          ...pSnap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as any) })),
-          ...ppSnap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as any) }))
-        ];
+        const approvedPharmacyIds = new Set(pharmSnap.docs.map(d => d.id));
+
+        // Only keep products that belong to approved pharmacies and have stock > 0
+        const rawProducts = pSnap.docs
+          .map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as any) }))
+          .filter(p => {
+            const stock = Number(p.stock ?? 0);
+            if (stock <= 0) return false;
+            if (p.pharmacyId && approvedPharmacyIds.size > 0 && !approvedPharmacyIds.has(p.pharmacyId)) {
+              return false;
+            }
+            return true;
+          });
 
         // Deduplicate and group real valid products
         const availableGroups = new Map<string, GeneralProductItem>();
@@ -96,7 +105,7 @@ export function PatientHome() {
             return;
           }
 
-          const groupKey = rawName.toLowerCase();
+          const groupKey = (p.productId || p.global_product_id || rawName).toLowerCase();
           const price = parseFloat(p.price) || 2500;
           const cat = (p.category && p.category !== 'Uncategorized')
             ? p.category

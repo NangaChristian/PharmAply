@@ -968,6 +968,68 @@ Products: ` + JSON.stringify(products.map((p: any) => ({
     }
   });
 
+  // UPLOAD image endpoint for product images
+  app.post("/api/admin/upload-product-image", async (req: express.Request, res: express.Response): Promise<any> => {
+    try {
+      const { dataUrl, fileName, contentType } = req.body;
+      if (!dataUrl) {
+        return res.status(400).json({ success: false, error: "dataUrl is required" });
+      }
+
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+      if (!supabaseUrl) return res.status(500).json({ success: false, error: "Supabase URL not configured." });
+
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(supabaseUrl, serviceKey || anonKey || '');
+
+      let mimeType = contentType || 'image/jpeg';
+      let base64Data = dataUrl;
+
+      if (dataUrl.includes(';base64,')) {
+        const parts = dataUrl.split(';base64,');
+        mimeType = parts[0].replace('data:', '');
+        base64Data = parts[1];
+      }
+
+      const ext = mimeType.split('/')[1] || 'jpg';
+      const cleanFileName = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      let bucketName = 'products';
+      let uploadResult = await supabase.storage.from(bucketName).upload(cleanFileName, buffer, {
+        contentType: mimeType,
+        upsert: true
+      });
+
+      if (uploadResult.error) {
+        // Fallback to 'images' bucket
+        bucketName = 'images';
+        uploadResult = await supabase.storage.from(bucketName).upload(`products/${cleanFileName}`, buffer, {
+          contentType: mimeType,
+          upsert: true
+        });
+      }
+
+      if (uploadResult.error) {
+        throw uploadResult.error;
+      }
+
+      const path = uploadResult.data.path;
+      const { data: pubData } = supabase.storage.from(bucketName).getPublicUrl(path);
+
+      res.json({
+        success: true,
+        url: pubData.publicUrl,
+        path: path
+      });
+    } catch (error: any) {
+      console.error("Image upload error:", error);
+      res.status(500).json({ success: false, error: error.message || "Upload failed" });
+    }
+  });
+
   // UPSERT route for single product Create or Update
   app.post("/api/admin/upsert-product", async (req: express.Request, res: express.Response): Promise<any> => {
     try {
@@ -992,231 +1054,113 @@ Products: ` + JSON.stringify(products.map((p: any) => ({
         return res.status(500).json({ success: false, error: "No Supabase keys configured." });
       }
 
+      const commName = (req.body.nom_commercial || req.body.commercial_name || req.body.name || '').trim();
+      if (!commName) {
+        return res.status(400).json({ success: false, error: "Le nom commercial est requis" });
+      }
+
       const img = image_url || imageUrl || image || null;
-      const commName = req.body.nom_commercial || req.body.commercial_name || req.body.name || '';
-      const dciVal = req.body.dci || req.body.description || '';
-      const dosageVal = req.body.dosage || '';
-      const formVal = req.body.forme || req.body.form || req.body.dosage || '';
-      const brandVal = req.body.brand || req.body.marque || '';
-      const catVal = req.body.category || req.body.categorie || req.body.categorie_ux || req.body.ux_category || 'Général';
-      const priceVal = req.body.price !== undefined ? Number(req.body.price) : 0;
-      const stockVal = req.body.stock !== undefined ? Number(req.body.stock) : 0;
-      const effectsVal = req.body.effects || req.body.effets || '';
-      const directionsVal = req.body.directions || req.body.mode_emploi || '';
+      const dciVal = (req.body.dci || req.body.description || commName).trim();
+      const dosageVal = (req.body.dosage || '').trim();
+      const formVal = (req.body.forme || req.body.form || '').trim();
+      const brandVal = (req.body.brand || req.body.marque || 'Generic').trim();
+      const catVal = (req.body.category || req.body.categorie || req.body.categorie_ux || req.body.ux_category || 'Douleurs & Fièvre').trim();
       const ordonnanceVal = req.body.ordonnance_requise !== undefined 
         ? (req.body.ordonnance_requise === true || req.body.ordonnance_requise === 'true') 
         : (req.body.is_prescription_required === true || req.body.is_prescription_required === 'true');
 
-      let resolvedCatId = req.body.category_id || req.body.ux_category_id || null;
-      if (!resolvedCatId && catVal && catVal !== 'Uncategorized' && catVal !== 'Général') {
-        try {
-          const { data: catData } = await supabase.from('ux_categories').select('id').ilike('name', catVal).limit(1);
-          if (catData && catData.length > 0) {
-            resolvedCatId = catData[0].id;
-          } else {
-            const { data: catData2 } = await supabase.from('categories').select('id').ilike('name', catVal).limit(1);
-            if (catData2 && catData2.length > 0) {
-              resolvedCatId = catData2[0].id;
-            }
-          }
-        } catch (e) {
-          // ignore lookup errors
-        }
-      }
-
-      // Candidate 1: Full payload with brand, category_id, category, and image
-      const fullFrenchPayload: any = {
+      // 1. Build master payload for produits_patients
+      const payload: any = {
         nom_commercial: commName,
+        commercial_name: commName,
         dci: dciVal,
         dosage: dosageVal,
         forme: formVal,
-        ordonnance_requise: ordonnanceVal,
-        categorie_ux: catVal,
-        category: catVal,
+        form: formVal,
         brand: brandVal,
         marque: brandVal,
-        price: priceVal,
-        stock: stockVal,
-        effects: effectsVal,
-        directions: directionsVal
-      };
-      if (img) fullFrenchPayload.image_url = img;
-      if (resolvedCatId) {
-        fullFrenchPayload.category_id = resolvedCatId;
-        fullFrenchPayload.ux_category_id = resolvedCatId;
-      }
-
-      // Candidate 2: Full English schema with category_id, brand, and image
-      const fullEnglishPayload: any = {
-        commercial_name: commName,
-        dci: dciVal,
-        dosage: dosageVal,
-        form: formVal,
-        is_prescription_required: ordonnanceVal,
-        ux_category: catVal,
         category: catVal,
-        brand: brandVal,
-        marque: brandVal,
-        price: priceVal,
-        stock: stockVal,
-        effects: effectsVal,
-        directions: directionsVal
-      };
-      if (img) fullEnglishPayload.image_url = img;
-      if (resolvedCatId) {
-        fullEnglishPayload.category_id = resolvedCatId;
-        fullEnglishPayload.ux_category_id = resolvedCatId;
-      }
-
-      // Candidate 3: French schema with brand & categorie_ux
-      const frenchBrandWithImg: any = {
-        nom_commercial: commName,
-        dci: dciVal,
-        dosage: dosageVal,
-        forme: formVal,
-        ordonnance_requise: ordonnanceVal,
         categorie_ux: catVal,
-        brand: brandVal
-      };
-      if (img) frenchBrandWithImg.image_url = img;
-
-      // Candidate 4: English schema with brand & ux_category
-      const englishBrandWithImg: any = {
-        commercial_name: commName,
-        dci: dciVal,
-        dosage: dosageVal,
-        form: formVal,
-        is_prescription_required: ordonnanceVal,
         ux_category: catVal,
-        brand: brandVal
-      };
-      if (img) englishBrandWithImg.image_url = img;
-
-      // Candidate 5: Standard French schema with image
-      const frenchWithImg: any = {
-        nom_commercial: commName,
-        dci: dciVal,
-        dosage: dosageVal,
-        forme: formVal,
         ordonnance_requise: ordonnanceVal,
-        categorie_ux: catVal
-      };
-      if (img) frenchWithImg.image_url = img;
-
-      // Candidate 6: Standard English schema no image
-      const englishNoImg: any = {
-        commercial_name: commName,
-        dci: dciVal,
-        dosage: dosageVal,
-        form: formVal,
         is_prescription_required: ordonnanceVal,
-        ux_category: catVal
+        is_active: true
       };
-
-      const candidatePayloads = [
-        fullFrenchPayload,
-        fullEnglishPayload,
-        frenchBrandWithImg,
-        englishBrandWithImg,
-        frenchWithImg,
-        englishNoImg
-      ];
+      if (img) payload.image_url = img;
 
       let data = null;
       let error = null;
 
-      for (const payload of candidatePayloads) {
-        try {
-          let query;
-          if (id) {
-            query = supabase.from('produits_patients').update(payload).eq('id', id).select();
-          } else {
-            query = supabase.from('produits_patients').insert([payload]).select();
-          }
-          const res = await query;
-          if (!res.error) {
-            data = res.data;
-            error = null;
-            break;
-          } else {
-            error = res.error;
-            if (res.error.message && res.error.message.includes('row-level security policy')) {
-              break;
-            }
-          }
-        } catch (err: any) {
-          error = err;
-        }
+      if (id) {
+        const updateRes = await supabase.from('produits_patients').update(payload).eq('id', id).select();
+        data = updateRes.data;
+        error = updateRes.error;
+      } else {
+        const insertRes = await supabase.from('produits_patients').insert([payload]).select();
+        data = insertRes.data;
+        error = insertRes.error;
       }
-      
+
       if (error) {
-         if (error.message && error.message.includes('row-level security policy')) {
-            throw new Error("Erreur RLS : L'opération a été bloquée. Veuillez ajouter la clé 'SUPABASE_SERVICE_ROLE_KEY' dans vos Secrets AI Studio, ou exécutez le script SQL 'phase8_produits_patients.sql' dans votre base.");
-         }
-         throw error;
+        console.error("Produits_patients save error:", error);
+        // Retry with basic schema if extra columns failed
+        const fallbackPayload: any = {
+          nom_commercial: commName,
+          commercial_name: commName,
+          dci: dciVal,
+          dosage: dosageVal,
+          forme: formVal,
+          form: formVal,
+          categorie_ux: catVal,
+          ux_category: catVal,
+          category: catVal,
+          brand: brandVal,
+          ordonnance_requise: ordonnanceVal,
+          is_prescription_required: ordonnanceVal
+        };
+        if (img) fallbackPayload.image_url = img;
+        
+        const retryRes = id 
+          ? await supabase.from('produits_patients').update(fallbackPayload).eq('id', id).select()
+          : await supabase.from('produits_patients').insert([fallbackPayload]).select();
+          
+        if (retryRes.error) {
+          throw retryRes.error;
+        }
+        data = retryRes.data;
       }
 
-      // Safe targeted updates to ensure brand and category columns persist even if partial candidate matched
       const targetId = id || (Array.isArray(data) ? data[0]?.id : data?.id);
-      if (targetId) {
-        if (brandVal) {
-          await supabase.from('produits_patients').update({ brand: brandVal }).eq('id', targetId).catch(() => {});
-          await supabase.from('produits_patients').update({ marque: brandVal }).eq('id', targetId).catch(() => {});
-        }
-        if (catVal) {
-          await supabase.from('produits_patients').update({ categorie_ux: catVal }).eq('id', targetId).catch(() => {});
-          await supabase.from('produits_patients').update({ category: catVal }).eq('id', targetId).catch(() => {});
-          await supabase.from('produits_patients').update({ ux_category: catVal }).eq('id', targetId).catch(() => {});
-        }
-        if (resolvedCatId) {
-          await supabase.from('produits_patients').update({ category_id: resolvedCatId }).eq('id', targetId).catch(() => {});
-          await supabase.from('produits_patients').update({ ux_category_id: resolvedCatId }).eq('id', targetId).catch(() => {});
-        }
-        if (priceVal > 0) {
-          await supabase.from('produits_patients').update({ price: priceVal }).eq('id', targetId).catch(() => {});
-        }
-        if (stockVal >= 0) {
-          await supabase.from('produits_patients').update({ stock: stockVal }).eq('id', targetId).catch(() => {});
-        }
-        if (img) {
-          await supabase.from('produits_patients').update({ image_url: img }).eq('id', targetId).catch(() => {});
-        }
 
-        // Also propagate complete updates to 'products' table
+      // 2. Propagate updates to any linked rows in 'products' table
+      if (targetId || commName) {
         try {
-          const productPayload: any = {
-            id: targetId,
-            commercial_name: commName,
+          const productUpdatePayload: any = {
             nom_commercial: commName,
-            name: commName,
+            commercial_name: commName,
             dci: dciVal,
-            description: dciVal,
             dosage: dosageVal,
             form: formVal,
-            forme: formVal,
             brand: brandVal,
             marque: brandVal,
             category: catVal,
-            categorie: catVal,
             categorie_ux: catVal,
             ux_category: catVal,
-            category_id: resolvedCatId || null,
-            ux_category_id: resolvedCatId || null,
-            price: priceVal,
-            stock: stockVal,
-            effects: effectsVal,
-            directions: directionsVal,
             is_prescription_required: ordonnanceVal
           };
-          if (img) productPayload.image_url = img;
+          if (img) productUpdatePayload.image_url = img;
 
-          await supabase.from('products').upsert(productPayload, { onConflict: 'id' }).catch(() => {});
+          // Update by product_id or commercial_name
+          if (targetId) {
+            await supabase.from('products').update(productUpdatePayload).eq('product_id', targetId);
+          }
+          await supabase.from('products').update(productUpdatePayload).ilike('commercial_name', commName);
         } catch (syncErr) {
-          console.warn("Product sync to products table warning:", syncErr);
+          console.warn("Product sync warning:", syncErr);
         }
       }
       
-      res.json({ success: true, data });
+      res.json({ success: true, data: data || { id: targetId, ...payload } });
     } catch (error: any) {
       console.error("Backend upsert error:", error);
       res.status(500).json({ success: false, error: error.message || "Upsert failed" });

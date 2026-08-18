@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { collection, query, getDocs, doc, updateDoc, deleteDoc, onSnapshot, addDoc } from '../../lib/firebase';
+import { collection, query, getDocs, doc, setDoc, updateDoc, deleteDoc, onSnapshot, addDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType, supabase } from "../../lib/firebase";
 import { Search, Plus, Edit2, Trash2, Tag, AlertCircle, Database, Upload, ArrowUpDown, Image as ImageIcon, Package, Loader2, X, Download, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
@@ -126,8 +126,11 @@ export function AdminProducts() {
                name: d.nom_commercial || d.commercial_name || d.name || '',
                description: d.dci || d.description || '',
                dosage: d.dosage || d.forme || d.form || '',
-               category: d.category || d.categorie || d.ux_category || d.categorie_ux || 'Uncategorized',
-               brand: d.brand || d.marque || '',
+               category: (d.category && d.category !== 'Uncategorized') ? d.category : (d.categorie || d.ux_category || d.categorie_ux || d.category_name || 'Général'),
+               category_id: d.category_id || d.ux_category_id || null,
+               ux_category_id: d.ux_category_id || d.category_id || null,
+               brand: d.brand || d.marque || d.manufacturer || d.fabricant || 'Generic',
+               marque: d.brand || d.marque || d.manufacturer || d.fabricant || 'Generic',
                effects: d.effects || d.effets || '',
                directions: d.directions || d.mode_emploi || '',
                requiresPrescription: d.is_prescription_required !== undefined ? d.is_prescription_required : (d.ordonnance_requise || false),
@@ -364,15 +367,40 @@ export function AdminProducts() {
      });
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // We mock image upload by reading as base64 data URI
+    // Read as base64 data URI
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
        if (event.target?.result) {
-          setValue("imageUrl", event.target.result as string);
+          const dataUrl = event.target.result as string;
+          // Set preview immediately
+          setValue("imageUrl", dataUrl);
+          
+          // Upload to Supabase Storage via backend endpoint for permanent URL
+          try {
+            const toastId = toast.loading("Téléversement de l'image en cours...");
+            const res = await fetchApi('/api/admin/upload-product-image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                dataUrl: dataUrl,
+                fileName: file.name,
+                contentType: file.type
+              })
+            });
+            const resData = await res.json();
+            if (res.ok && resData.success && resData.url) {
+              setValue("imageUrl", resData.url);
+              toast.success("Image enregistrée dans le stockage !", { id: toastId });
+            } else {
+              toast.dismiss(toastId);
+            }
+          } catch (uploadErr) {
+            console.warn("Storage upload notice:", uploadErr);
+          }
        }
     };
     reader.readAsDataURL(file);
@@ -380,24 +408,29 @@ export function AdminProducts() {
 
   const openAddModal = () => {
     setEditingId(null);
-    reset({ name: "", dosage: "", category: "", brand: "", price: 0, stock: 0, imageUrl: "", requiresPrescription: false });
+    reset({ name: "", dosage: "", category: "Douleurs & Fièvre", brand: "", price: 0, stock: 0, imageUrl: "", requiresPrescription: false, description: "", effects: "", directions: "" });
     setShowModal(true);
   };
 
   const openEditModal = (product: any) => {
     setEditingId(product.id);
+    const resolvedCat = (product.category && product.category !== 'Uncategorized')
+      ? product.category
+      : (product.categorie || product.ux_category || product.categorie_ux || (product.category_id && categories.find(c => c.id === product.category_id)?.name) || "Général");
+    const resolvedBrand = product.brand || product.marque || product.manufacturer || product.fabricant || "";
+
     reset({
-       name: product.name || "",
-       dosage: product.dosage || "",
-       category: product.category || "",
-       brand: product.brand || "",
+       name: product.name || product.commercial_name || product.nom_commercial || "",
+       dosage: product.dosage || product.forme || product.form || "",
+       category: resolvedCat,
+       brand: resolvedBrand,
        price: product.price ? Number(product.price) : 0,
-       stock: product.stock ? Number(product.stock) : 0,
-       imageUrl: product.imageUrl || "",
+       stock: product.stock !== undefined ? Number(product.stock) : 0,
+       imageUrl: product.imageUrl || product.image_url || product.image || "",
        requiresPrescription: !!product.requiresPrescription,
-       description: product.description || "",
-       effects: product.effects || "",
-       directions: product.directions || ""
+       description: product.description || product.dci || "",
+       effects: product.effects || product.effets || "",
+       directions: product.directions || product.mode_emploi || ""
     });
     setShowModal(true);
   };
@@ -419,12 +452,15 @@ export function AdminProducts() {
 
     // Convert formData to clean payload matching database schema types
     const currentImageUrl = data.imageUrl || watch('imageUrl') || null;
-    const brandVal = data.brand?.trim() || watch('brand')?.trim() || '';
-    const categoryVal = data.category?.trim() || watch('category')?.trim() || 'Uncategorized';
+    const brandVal = (data.brand || watch('brand') || '').trim();
+    const categoryVal = (data.category || watch('category') || '').trim() || 'Général';
     const priceVal = data.price !== undefined ? Number(data.price) : 0;
     const stockVal = data.stock !== undefined ? Number(data.stock) : 0;
-    const effectsVal = data.effects?.trim() || watch('effects')?.trim() || '';
-    const directionsVal = data.directions?.trim() || watch('directions')?.trim() || '';
+    const effectsVal = (data.effects || watch('effects') || '').trim();
+    const directionsVal = (data.directions || watch('directions') || '').trim();
+
+    const matchedCategory = categories.find(c => c.name?.toLowerCase() === categoryVal.toLowerCase() || c.id === categoryVal || c.slug === categoryVal);
+    const categoryId = matchedCategory ? matchedCategory.id : null;
 
     const payload = {
         id: editingId || undefined,
@@ -439,6 +475,8 @@ export function AdminProducts() {
         brand: brandVal,
         marque: brandVal,
         category: categoryVal,
+        category_id: categoryId,
+        ux_category_id: categoryId,
         categorie: categoryVal,
         categorie_ux: categoryVal,
         ux_category: categoryVal,
@@ -469,14 +507,27 @@ export function AdminProducts() {
       const updatedProduct = {
         id: savedId,
         name: commercialName,
+        commercial_name: commercialName,
+        nom_commercial: commercialName,
         description: dci,
+        dci: dci,
         dosage: data.dosage?.trim() || "",
+        form: data.dosage?.trim() || "",
+        forme: data.dosage?.trim() || "",
         category: categoryVal,
+        category_id: categoryId,
+        ux_category_id: categoryId,
+        categorie_ux: categoryVal,
+        ux_category: categoryVal,
         brand: brandVal,
+        marque: brandVal,
         price: priceVal,
         stock: stockVal,
         imageUrl: currentImageUrl || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
+        image_url: currentImageUrl || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
         requiresPrescription: Boolean(data.requiresPrescription),
+        is_prescription_required: Boolean(data.requiresPrescription),
+        ordonnance_requise: Boolean(data.requiresPrescription),
         effects: effectsVal,
         directions: directionsVal,
         isGlobal: true,
@@ -501,7 +552,7 @@ export function AdminProducts() {
       toast.success(editingId ? "Produit mis à jour avec succès" : "Produit créé avec succès !");
       setShowModal(false);
       setEditingId(null);
-      reset({ name: "", dosage: "", category: "", brand: "", price: 0, stock: 0, imageUrl: "", requiresPrescription: false, description: "", effects: "", directions: "" });
+      reset({ name: "", dosage: "", category: "Douleurs & Fièvre", brand: "", price: 0, stock: 0, imageUrl: "", requiresPrescription: false, description: "", effects: "", directions: "" });
       await fetchGlobalProducts();
     } catch (e: any) {
        toast.error(`Erreur: ${e.message}`);
@@ -569,10 +620,15 @@ export function AdminProducts() {
   };
 
   const filteredProducts = products.filter(p => {
+    const rawName = (p.name || p.commercial_name || p.nom_commercial || "").trim();
+    if (!rawName || rawName.toLowerCase() === "unnamed product" || rawName.toLowerCase() === "null") {
+      return false;
+    }
     const term = search.toLowerCase();
-    const matchesSearch = (p.name?.toLowerCase() || "").includes(term) ||
+    const matchesSearch = rawName.toLowerCase().includes(term) ||
                           (p.brand?.toLowerCase() || "").includes(term) ||
-                          (p.category?.toLowerCase() || "").includes(term);
+                          (p.category?.toLowerCase() || "").includes(term) ||
+                          (p.description?.toLowerCase() || "").includes(term);
                           
     let matchesRx = true;
     if (rxFilter === "rx") matchesRx = p.requiresPrescription === true;
@@ -786,12 +842,12 @@ export function AdminProducts() {
                                  </div>
                               </td>
                               <td className="py-4 px-6">
-                                 <span className="text-slate-700">{p.brand || 'Generic'}</span>
+                                 <span className="text-slate-700 font-medium">{p.brand || p.marque || 'Generic'}</span>
                               </td>
                               <td className="py-4 px-6">
                                  <span className="flex w-fit items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium">
-                                   <span className="opacity-70">{getCategoryIcon(p.category, 14)}</span>
-                                   {p.category || 'Uncategorized'}
+                                   <span className="opacity-70">{getCategoryIcon(p.category || p.categorie_ux || p.ux_category, 14)}</span>
+                                   {p.category && p.category !== 'Uncategorized' ? p.category : (p.categorie_ux || p.ux_category || (p.category_id && categories.find(c => c.id === p.category_id)?.name) || 'Général')}
                                  </span>
                               </td>
                               <td className="py-4 px-6 font-bold text-slate-700">
@@ -932,8 +988,11 @@ export function AdminProducts() {
                              >
                                <option value="">{t('select_category', 'Select Category...')}</option>
                                {categories.map(cat => (
-                                 <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                 <option key={cat.id || cat.name} value={cat.name}>{cat.name}</option>
                                ))}
+                               {watch("category") && !categories.some(c => c.name?.toLowerCase() === watch("category")?.toLowerCase()) && (
+                                 <option value={watch("category")}>{watch("category")}</option>
+                               )}
                              </select>
                           </div>
                           <div className="col-span-1 md:col-span-2">

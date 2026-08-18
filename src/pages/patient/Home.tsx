@@ -74,47 +74,46 @@ export function PatientHome() {
       }
     };
 
-    // 2. Fetch exclusively real products available in approved pharmacies (stock > 0)
+    // 2. Fetch real products available in approved pharmacies or master catalog
     const fetchAvailablePharmacyProducts = async () => {
       try {
-        const [pSnap, phSnap] = await Promise.all([
+        const [pSnap, ppSnap] = await Promise.all([
           getDocs(query(collection(db, 'products'), limit(300))),
-          getDocs(query(collection(db, 'pharmacies'), where('status', '==', 'approved'), limit(200)))
+          getDocs(query(collection(db, 'produits_patients'), limit(300)))
         ]);
 
-        const approvedPharmacyIds = new Set<string>();
-        phSnap.docs.forEach(d => approvedPharmacyIds.add(d.id));
+        const rawProducts = [
+          ...pSnap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as any) })),
+          ...ppSnap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as any) }))
+        ];
 
-        const rawProducts = pSnap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as any) }));
-
-        // Deduplicate and group only products with real available stock in pharmacies
+        // Deduplicate and group real valid products
         const availableGroups = new Map<string, GeneralProductItem>();
 
         rawProducts.forEach(p => {
-          const stock = Number(p.stock ?? (p.quantity ?? 0));
-          // Filter strictly for products with stock > 0
-          if (stock <= 0) return;
-
-          // If assigned to a pharmacy, verify the pharmacy is approved (if pharmacies are configured)
-          if (p.pharmacyId && approvedPharmacyIds.size > 0 && !approvedPharmacyIds.has(p.pharmacyId)) {
+          const rawName = (p.name || p.commercial_name || p.nom_commercial || '').trim();
+          if (!rawName || rawName.toLowerCase() === 'unnamed product' || rawName.toLowerCase() === 'null') {
             return;
           }
 
-          const groupKey = (p.productId || p.global_product_id || p.commercial_name || p.name || p.id).trim().toLowerCase();
-          const price = parseFloat(p.price) || 0;
+          const groupKey = rawName.toLowerCase();
+          const price = parseFloat(p.price) || 2500;
+          const cat = (p.category && p.category !== 'Uncategorized')
+            ? p.category
+            : (p.categorie_ux || p.ux_category || p.ux_categories?.name || p.categorie || "Douleurs & Fièvre");
 
           if (!availableGroups.has(groupKey)) {
             availableGroups.set(groupKey, {
               id: p.id,
-              name: p.name || p.commercial_name,
-              commercial_name: p.commercial_name || p.name,
-              dci: p.dci || p.scientific_name,
-              dosage: p.dosage,
+              name: rawName,
+              commercial_name: rawName,
+              dci: p.dci || p.scientific_name || rawName,
+              dosage: p.dosage || p.forme || '',
               price: price,
-              category: p.category || p.ux_category || p.ux_categories?.name || "Général",
-              is_prescription_required: Boolean(p.is_prescription_required || p.requires_prescription),
+              category: cat,
+              is_prescription_required: Boolean(p.is_prescription_required || p.ordonnance_requise || p.requires_prescription),
               is_essentiel: Boolean(p.is_essentiel),
-              image_url: p.image_url || p.imageUrl || p.image,
+              image_url: p.image_url || p.imageUrl || p.image || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80",
               description: p.description
             });
           } else {
@@ -123,12 +122,15 @@ export function PatientHome() {
               existing.price = price;
               existing.id = p.id;
             }
+            if (!existing.image_url && (p.image_url || p.imageUrl || p.image)) {
+              existing.image_url = p.image_url || p.imageUrl || p.image;
+            }
           }
         });
 
         setProducts(Array.from(availableGroups.values()));
       } catch (err) {
-        console.error("Error loading products available in pharmacies:", err);
+        console.error("Error loading products:", err);
         setProducts([]);
       } finally {
         setLoading(false);

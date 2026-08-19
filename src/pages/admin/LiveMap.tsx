@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency } from '../../lib/utils';
+import { getRoadRoute } from '../../lib/routing';
 
 // --- TYPES ---
 interface Driver {
@@ -509,6 +510,41 @@ export function AdminLiveMap() {
     ? [Number(selectedDriver.driver.lat), Number(selectedDriver.driver.lng)]
     : defaultCenter;
 
+  // Real-time Road Network Routing for Active Missions
+  const [routesMap, setRoutesMap] = useState<Record<string, { coordinates: [number, number][]; distanceMeters: number; durationSeconds: number }>>({});
+
+  useEffect(() => {
+    driverStatuses.forEach(async (st) => {
+      const pos: [number, number] | null = (st.driver.lat && st.driver.lng && !isNaN(Number(st.driver.lat)))
+        ? [Number(st.driver.lat), Number(st.driver.lng)]
+        : null;
+
+      const pharmaPos: [number, number] | null = (st.order?.pharmacyLat && st.order?.pharmacyLng)
+        ? [Number(st.order.pharmacyLat), Number(st.order.pharmacyLng)]
+        : null;
+
+      const patientPos: [number, number] | null = (st.order?.destLat && st.order?.destLng)
+        ? [Number(st.order.destLat), Number(st.order.destLng)]
+        : null;
+
+      if (!pos) return;
+
+      // 1. Route Driver -> Pharmacy (Amber)
+      if (pharmaPos && (st.state === 'en_route_to_pharmacy' || selectedDriverId === st.driver.id)) {
+        const key = `${st.driver.id}_pharma`;
+        const res = await getRoadRoute(pos, pharmaPos);
+        setRoutesMap(prev => ({ ...prev, [key]: res }));
+      }
+
+      // 2. Route Driver / Pharmacy -> Patient (Emerald / Indigo)
+      if (patientPos && (st.state === 'delivering' || selectedDriverId === st.driver.id)) {
+        const key = `${st.driver.id}_patient`;
+        const res = await getRoadRoute(pos, patientPos);
+        setRoutesMap(prev => ({ ...prev, [key]: res }));
+      }
+    });
+  }, [driverStatuses, selectedDriverId]);
+
   // Action: Révoquer et réassigner une mission
   const handleRevokeMission = async (orderId: string) => {
     try {
@@ -637,18 +673,31 @@ export function AdminLiveMap() {
                     </Tooltip>
                   </Marker>
 
-                  {/* Polyline Route if mission selected */}
-                  {selectedDriverId === st.driver.id && pharmaPos && (
+                  {/* Road Network Route: Driver to Pharmacy */}
+                  {pharmaPos && (st.state === 'en_route_to_pharmacy' || selectedDriverId === st.driver.id) && (
                     <>
                       <Marker position={pharmaPos} icon={pharmacyIcon} />
-                      <Polyline positions={[pos, pharmaPos]} color="#f59e0b" weight={4} dashArray="6, 8" opacity={0.8} />
+                      <Polyline 
+                        positions={routesMap[`${st.driver.id}_pharma`]?.coordinates || [pos, pharmaPos]} 
+                        color="#f59e0b" 
+                        weight={selectedDriverId === st.driver.id ? 5 : 4} 
+                        opacity={0.85} 
+                        dashArray="6, 8"
+                      />
                     </>
                   )}
 
-                  {selectedDriverId === st.driver.id && patientPos && (
+                  {/* Road Network Route: Driver to Patient */}
+                  {patientPos && (st.state === 'delivering' || selectedDriverId === st.driver.id) && (
                     <>
                       <Marker position={patientPos} icon={patientIcon} />
-                      <Polyline positions={[pos, patientPos]} color="#6366f1" weight={4} dashArray="6, 8" opacity={0.8} />
+                      <Polyline 
+                        positions={routesMap[`${st.driver.id}_patient`]?.coordinates || [pos, patientPos]} 
+                        color="#10b981" 
+                        weight={selectedDriverId === st.driver.id ? 5 : 4} 
+                        opacity={0.85} 
+                        dashArray="6, 8"
+                      />
                     </>
                   )}
                 </React.Fragment>

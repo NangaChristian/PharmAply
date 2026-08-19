@@ -170,10 +170,10 @@ export function SearchHeroBanner({
                 key={cat.id || cat.name} 
                 id={`cat-card-${cat.id || cat.name.replace(/\s+/g, '-').toLowerCase()}`}
                 onClick={() => handleCategorySelect(cat)}
-                className="flex flex-col flex-none w-[145px] sm:w-[160px] cursor-pointer group bg-gray-50 dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 p-4 rounded-2xl items-start snap-start hover:shadow-sm transition-all duration-200"
+                className="flex flex-col flex-none w-[145px] sm:w-[160px] cursor-pointer group bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 p-4 rounded-2xl items-start snap-start hover:shadow-sm transition-all duration-200"
               >
                 <div 
-                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 bg-white dark:bg-zinc-800 shadow-sm border border-gray-100 dark:border-zinc-700 group-hover:scale-105 transition-transform"
+                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 bg-gray-50 dark:bg-zinc-800 shadow-sm border border-gray-100 dark:border-zinc-700 group-hover:scale-105 transition-transform"
                   style={{ color: primaryColor }}
                 >
                   {cat.imageUrl ? (
@@ -257,7 +257,7 @@ export function SearchHeroBanner({
                   className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-2xl p-3.5 flex flex-col justify-between cursor-pointer hover:shadow-md transition-all group"
                 >
                   <div>
-                    <div className="w-full aspect-square bg-gray-50 dark:bg-zinc-800/80 rounded-xl mb-2.5 overflow-hidden flex items-center justify-center p-2 relative">
+                    <div className="w-full aspect-square bg-white dark:bg-zinc-800/80 border border-gray-100 dark:border-zinc-700/60 rounded-xl mb-2.5 overflow-hidden flex items-center justify-center p-2 relative shadow-xs">
                       <span className="absolute top-1.5 left-1.5 bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full z-10">
                         En stock
                       </span>

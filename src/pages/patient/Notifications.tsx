@@ -23,6 +23,19 @@ export function PatientNotifications() {
 
   const filteredItems = getFilteredItems();
 
+  const handleItemClick = (item: any) => {
+    markAsRead(item.id);
+    if (item.type === 'rating' || item.type === 'order_status') {
+      navigate(`/patient/tracking/${item.relatedId || item.id}`);
+    } else if (item.type === 'payment_required') {
+      navigate('/patient/orders');
+    } else if (item.type === 'reminder') {
+      navigate('/patient/reminders');
+    } else if (item.relatedId) {
+      navigate(`/patient/tracking/${item.relatedId}`);
+    }
+  };
+
   const handleTabClick = (tabKey: string) => {
     setActiveTab(tabKey as TabType);
   };
@@ -74,7 +87,7 @@ export function PatientNotifications() {
                </div>
             ) : (
                filteredItems.map(item => (
-                  <div key={item.id} onClick={() => markAsRead(item.id)} className={`bg-white dark:bg-black p-4 rounded-3xl border ${readIds.includes(item.id) ? 'border-gray-50 dark:border-zinc-900' : 'border-indigo-100 dark:border-indigo-900/50'} shadow-sm relative cursor-pointer transition`}>
+                  <div key={item.id} onClick={() => handleItemClick(item)} className={`bg-white dark:bg-black p-4 rounded-3xl border ${readIds.includes(item.id) ? 'border-gray-50 dark:border-zinc-900' : 'border-indigo-100 dark:border-indigo-900/50'} shadow-sm relative cursor-pointer transition`}>
                      {!readIds.includes(item.id) && <div className="absolute top-4 right-4 w-2 h-2 bg-red-500 rounded-full"></div>}
 
                      {item.type === 'rating' && (

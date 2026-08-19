@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Search, ChevronDown, Lock, Grid, Activity, Users, Settings, MoreHorizontal, CheckCircle, Package, ShieldAlert, AlertTriangle, Clock, TrendingUp, DollarSign, Pill, Moon, Sun, ArrowUpRight } from "lucide-react";
+import { Search, ChevronDown, Lock, Grid, Activity, Users, Settings, MoreHorizontal, CheckCircle, Package, ShieldAlert, AlertTriangle, Clock, TrendingUp, DollarSign, Pill, Moon, Sun, ArrowUpRight, MessageSquare } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from 'recharts';
 
 import { useState, useEffect } from "react";
@@ -133,20 +133,31 @@ export function PharmacistHome() {
              </div>
           </div>
           
-          <div className="flex items-center gap-6">
-             <div className="flex items-center gap-2 bg-[#FAFBFA] dark:bg-slate-800 px-4 py-2 rounded-full shadow-sm cursor-pointer">
-                <span className="text-sm font-bold text-gray-700 dark:text-gray-200">EN</span>
+          <div className="flex items-center gap-3 sm:gap-4">
+             <div className="flex items-center gap-2 bg-[#FAFBFA] dark:bg-slate-800 px-3.5 py-2 rounded-full shadow-sm cursor-pointer border border-gray-100 dark:border-zinc-700">
+                <span className="text-sm font-bold text-gray-700 dark:text-gray-200">FR</span>
                 <ChevronDown size={14} className="text-gray-400" />
              </div>
              
              <button 
                 onClick={toggleDarkMode}
-                className="w-10 h-10 flex items-center justify-center bg-[#FAFBFA] dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors rounded-full text-gray-600 dark:text-gray-300 shadow-sm"
+                className="w-10 h-10 flex items-center justify-center bg-[#FAFBFA] dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors rounded-full text-gray-600 dark:text-gray-300 shadow-sm border border-gray-100 dark:border-zinc-700"
+                title="Mode sombre"
              >
                 {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
              </button>
 
-             <div className="flex items-center gap-3 cursor-pointer">
+             <button 
+                onClick={() => navigate('/pharmacist/support')}
+                className="w-10 h-10 flex items-center justify-center bg-[#FAFBFA] dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors rounded-full text-gray-600 dark:text-gray-300 shadow-sm border border-gray-100 dark:border-zinc-700"
+                title="Messagerie & Support"
+             >
+                <MessageSquare size={18} />
+             </button>
+
+             <NotificationBell />
+
+             <div className="flex items-center gap-3 cursor-pointer pl-2">
                 <img 
                   src={user?.photoURL || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"} 
                   alt="Profile" 

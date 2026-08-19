@@ -4,6 +4,7 @@ import { ArrowLeft, User, Phone, MapPin, FileText, Check, Loader2, Hospital } fr
 import { useTranslation } from 'react-i18next';
 import { auth, db } from '../../lib/firebase';
 import { doc, getDoc, updateDoc } from '../../lib/firebase';
+import { GooglePlacesAddressInput } from '../../components/GooglePlacesAddressInput';
 
 export function PatientProfileDetails() {
   const navigate = useNavigate();
@@ -17,6 +18,8 @@ export function PatientProfileDetails() {
     fullName: '',
     phoneNumber: '',
     deliveryAddress: '',
+    deliveryLat: undefined as number | undefined,
+    deliveryLng: undefined as number | undefined,
     isHealthcareProvider: false,
     professionalLicense: '',
     npiNumber: '',
@@ -115,16 +118,23 @@ export function PatientProfileDetails() {
 
           <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm overflow-hidden p-6 space-y-4">
              <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <MapPin size={18} className="text-indigo-500" /> Delivery Address
+                <MapPin size={18} className="text-[#194B4B] dark:text-teal-400" /> Adresse de Livraison
              </h2>
              <div>
-                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Primary Address</label>
-                <textarea 
-                   name="deliveryAddress"
-                   value={formData.deliveryAddress}
-                   onChange={handleChange}
-                   className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white h-24 resize-none"
-                   placeholder="Enter your full delivery address"
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">
+                  Adresse Principale (Google Maps / Géolocalisée)
+                </label>
+                <GooglePlacesAddressInput
+                  value={formData.deliveryAddress}
+                  onChange={(address, lat, lng) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      deliveryAddress: address,
+                      deliveryLat: lat,
+                      deliveryLng: lng
+                    }));
+                  }}
+                  placeholder="Ex: Bastos, Rue 1788, Yaoundé ou Akwa, Douala"
                 />
              </div>
           </div>

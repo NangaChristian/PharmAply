@@ -1,0 +1,69 @@
+{
+  "app_name": "PharmAply",
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading...",
+    "confirm": "Confirm",
+    "search": "Search...",
+    "actions": "Actions",
+    "status": "Status",
+    "language": "Language",
+    "online": "Online",
+    "offline": "Offline",
+    "close": "Close",
+    "update": "Update",
+    "edit": "Edit",
+    "delete": "Delete",
+    "back": "Back",
+    "now": "Now",
+    "today": "Today"
+  },
+  "auth": {
+    "login": "Log in",
+    "logout": "Log out",
+    "email": "Email",
+    "password": "Password",
+    "forgot_password": "Forgot password?",
+    "authenticating": "Authenticating...",
+    "verifying": "Verifying...",
+    "terms": "Terms of service",
+    "privacy": "Privacy policy",
+    "select_user_type": "Select User Type:",
+    "patient": "Patient",
+    "pharmacist": "Pharmacist",
+    "delivery": "Delivery",
+    "admin": "Admin"
+  },
+  "orders": {
+    "title": "Your Orders",
+    "active": "Active",
+    "past": "Past",
+    "total": "Total",
+    "track": "Track Order",
+    "search": "Search orders...",
+    "empty": "No active orders",
+    "cancel": "Cancel Order",
+    "reason_for_cancellation": "Reason for cancellation"
+  },
+  "cart": {
+    "title": "Cart",
+    "empty": "Your cart is empty",
+    "start_shopping": "Start Shopping",
+    "subtotal": "Subtotal",
+    "delivery_fee": "Delivery Fee",
+    "checkout": "Checkout"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "all": "All",
+    "mark_all_read": "Mark all as read",
+    "empty": "No notifications yet"
+  },
+  "errors": {
+    "generic": "An unexpected error occurred. Please try again.",
+    "network_timeout": "Network request timed out.",
+    "unauthorized": "Unauthorized access or session expired.",
+    "not_found": "Resource not found."
+  }
+}

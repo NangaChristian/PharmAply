@@ -3,18 +3,20 @@ import { ArrowLeft, Send, Phone, User, Store, Bike, Package } from "lucide-react
 import { useNavigate, useParams } from "react-router-dom";
 import { 
   collection, query, where, onSnapshot, addDoc, 
-  serverTimestamp, getDoc, doc 
+  serverTimestamp, getDoc, doc, getDocs 
 } from '../../lib/firebase';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { useTranslation } from "react-i18next";
 import { parseDate } from "../../lib/utils";
 import { useTheme } from "../../components/ThemeProvider";
+import { DarkModeToggle } from "../../components/DarkModeToggle";
 import toast from "react-hot-toast";
 
 export function Messages() {
   const navigate = useNavigate();
-  const { id } = useParams(); // orderId or prescriptionId
+  const { id: routeId } = useParams(); // orderId or prescriptionId
+  const [id, setId] = useState<string>(routeId || "");
   const { user, role, userData } = useAuth();
   const { theme } = useTheme();
   const { t } = useTranslation();
@@ -39,13 +41,62 @@ export function Messages() {
     scrollToBottom();
   }, [messages]);
 
+  // If no routeId is supplied, find the latest active order for this user
+  useEffect(() => {
+    if (routeId) {
+      setId(routeId);
+      return;
+    }
+    if (!user) return;
+
+    const findLatestOrder = async () => {
+      try {
+        let q;
+        if (role === 'patient') {
+          q = query(collection(db, 'orders'), where('patientId', '==', user.uid));
+        } else if (role === 'driver') {
+          q = query(collection(db, 'orders'), where('driverId', '==', user.uid));
+        } else {
+          q = query(collection(db, 'orders'));
+        }
+
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const sorted = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a: any, b: any) => {
+            const dateA = parseDate(a.createdAt)?.getTime() || 0;
+            const dateB = parseDate(b.createdAt)?.getTime() || 0;
+            return dateB - dateA;
+          });
+          setId(sorted[0].id);
+        } else {
+          setId(`support_${user.uid}`);
+        }
+      } catch (e) {
+        setId(`support_${user.uid}`);
+      }
+    };
+    findLatestOrder();
+  }, [routeId, user, role]);
+
   // 1. Fetch Order/Prescription context & partner details (name, role, phone, and photo)
   useEffect(() => {
-    if (!id || !user) return;
+    if (!id || !user) {
+      setLoadingContext(false);
+      return;
+    }
     setLoadingContext(true);
 
     const fetchContext = async () => {
       try {
+        if (id.startsWith('support_')) {
+          setContextItem({ type: 'Support', id });
+          setPartnerName("Support PharmaExpress");
+          setPartnerRole("Assistance Client");
+          setPartnerPhone("+237 600 000 000");
+          setLoadingContext(false);
+          return;
+        }
+
         // Try fetching order first
         const orderSnap = await getDoc(doc(db, 'orders', id));
         if (orderSnap.exists()) {
@@ -345,16 +396,20 @@ export function Messages() {
           </div>
         </div>
 
-        {partnerPhone && (
-          <a 
-            href={`tel:${partnerPhone}`}
-            className="w-10 h-10 rounded-full flex items-center justify-center transition shadow-sm"
-            style={{ backgroundColor: `${theme.primaryColor || '#194B4B'}15`, color: theme.primaryColor || '#194B4B' }}
-            title="Appeler"
-          >
-            <Phone size={18} />
-          </a>
-        )}
+        <div className="flex items-center gap-2">
+          <DarkModeToggle className="w-10 h-10 bg-gray-50 dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800" />
+          
+          {partnerPhone && (
+            <a 
+              href={`tel:${partnerPhone}`}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition shadow-sm"
+              style={{ backgroundColor: `${theme.primaryColor || '#194B4B'}15`, color: theme.primaryColor || '#194B4B' }}
+              title="Appeler"
+            >
+              <Phone size={18} />
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Message List */}

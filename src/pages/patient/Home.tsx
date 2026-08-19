@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin } from "lucide-react";
+import { MapPin, MessageSquare } from "lucide-react";
 
 import { collection, query, limit, getDocs, where } from '../../lib/firebase';
 import { db } from '../../lib/firebase';
@@ -8,6 +8,7 @@ import { useAuth } from '../../components/AuthProvider';
 import { useTheme } from '../../components/ThemeProvider';
 import { useTranslation } from "react-i18next";
 import { NotificationBell } from "../../components/NotificationBell";
+import { DarkModeToggle } from "../../components/DarkModeToggle";
 import { PatientSearchBar } from '../../components/PatientSearchBar';
 import { SearchHeroBanner, CategoryItem, GeneralProductItem } from '../../components/SearchHeroBanner';
 
@@ -200,7 +201,20 @@ export function PatientHome() {
             </div>
           </div>
 
-          <NotificationBell />
+          <div className="flex items-center gap-2">
+            <DarkModeToggle className="w-10 h-10 bg-white dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 shadow-sm" />
+            
+            <button 
+              onClick={() => navigate('/patient/messages')}
+              className="w-10 h-10 bg-white dark:bg-zinc-800 rounded-full flex items-center justify-center border border-gray-100 dark:border-zinc-700 shadow-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+              title="Messagerie"
+              aria-label="Messagerie"
+            >
+              <MessageSquare size={18} />
+            </button>
+
+            <NotificationBell />
+          </div>
         </div>
 
         {/* Search Bar with instant autocomplete */}

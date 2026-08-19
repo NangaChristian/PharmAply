@@ -1,0 +1,69 @@
+{
+  "app_name": "PharmAply",
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "loading": "Chargement...",
+    "confirm": "Confirmer",
+    "search": "Rechercher...",
+    "actions": "Actions",
+    "status": "Statut",
+    "language": "Langue",
+    "online": "En ligne",
+    "offline": "Hors ligne",
+    "close": "Fermer",
+    "update": "Mettre à jour",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "back": "Retour",
+    "now": "Maintenant",
+    "today": "Aujourd'hui"
+  },
+  "auth": {
+    "login": "Se connecter",
+    "logout": "Se déconnecter",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "forgot_password": "Mot de passe oublié ?",
+    "authenticating": "Authentification...",
+    "verifying": "Vérification...",
+    "terms": "Conditions d'utilisation",
+    "privacy": "Politique de confidentialité",
+    "select_user_type": "Sélectionnez le type d'utilisateur:",
+    "patient": "Patient",
+    "pharmacist": "Pharmacien",
+    "delivery": "Livreur",
+    "admin": "Administrateur"
+  },
+  "orders": {
+    "title": "Vos commandes",
+    "active": "En cours",
+    "past": "Historique",
+    "total": "Total",
+    "track": "Suivre la commande",
+    "search": "Rechercher des commandes...",
+    "empty": "Aucune commande active",
+    "cancel": "Annuler la commande",
+    "reason_for_cancellation": "Raison de l'annulation"
+  },
+  "cart": {
+    "title": "Panier",
+    "empty": "Votre panier est vide",
+    "start_shopping": "Commencer vos achats",
+    "subtotal": "Sous-total",
+    "delivery_fee": "Frais de livraison",
+    "checkout": "Passer la commande"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "all": "Toutes",
+    "mark_all_read": "Tout marquer comme lu",
+    "empty": "Aucune notification pour l'instant"
+  },
+  "errors": {
+    "generic": "Une erreur est survenue. Veuillez réessayer.",
+    "network_timeout": "Délai d'attente réseau dépassé.",
+    "unauthorized": "Accès non autorisé ou session expirée.",
+    "not_found": "Ressource introuvable."
+  }
+}

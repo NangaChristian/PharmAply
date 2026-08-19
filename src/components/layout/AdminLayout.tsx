@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { collection, query, where, onSnapshot } from "../../lib/firebase";
 
 import { DarkModeToggle } from '../DarkModeToggle';
+import { NotificationBell } from '../NotificationBell';
 
 export function AdminLayout() {
   const navigate = useNavigate();
@@ -220,15 +221,16 @@ export function AdminLayout() {
                  </div>
               </div>
               
-              <div className="flex items-center gap-4 text-slate-500">
+              <div className="flex items-center gap-3 text-slate-500">
                  <DarkModeToggle className="shadow-sm bg-white dark:bg-slate-800 dark:text-slate-200" />
-                 <button onClick={() => navigate('/admin/support')} className="relative p-2 bg-white dark:bg-slate-800 dark:text-slate-200 rounded-full shadow-sm hover:text-slate-900 dark:text-white transition">
+                 <button 
+                   onClick={() => navigate('/admin/support')} 
+                   className="w-10 h-10 bg-white dark:bg-slate-800 dark:text-slate-200 rounded-full flex items-center justify-center border border-gray-100 dark:border-zinc-700 shadow-sm hover:bg-gray-50 dark:hover:bg-zinc-700 transition"
+                   title="Messages & Support"
+                 >
                     <MessageSquare size={18} />
                  </button>
-                 <button onClick={() => navigate('/admin/changelog')} className="relative p-2 bg-white dark:bg-slate-800 dark:text-slate-200 rounded-full shadow-sm hover:text-slate-900 dark:text-white transition">
-                    <Bell size={18} />
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-                 </button>
+                 <NotificationBell />
               </div>
 
               <div className="relative flex items-center gap-2 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full shadow-sm text-xs font-medium text-slate-600 dark:text-slate-300 border border-transparent hover:border-slate-200 transition">

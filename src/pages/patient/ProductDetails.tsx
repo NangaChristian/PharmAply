@@ -227,7 +227,7 @@ export function PatientProductDetails() {
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto pb-8">
          {/* Product Visual Banner */}
-         <div className="bg-gray-50 dark:bg-zinc-900 flex items-center justify-center p-8 mx-6 rounded-2xl mb-6 mt-4 relative overflow-hidden border border-gray-100 dark:border-zinc-800 shadow-sm min-h-[220px]">
+         <div className="bg-white dark:bg-zinc-900 flex items-center justify-center p-8 mx-6 rounded-2xl mb-6 mt-4 relative overflow-hidden border border-gray-100 dark:border-zinc-800 shadow-sm min-h-[220px]">
             {product.imageUrl ? (
                <img
                   src={product.imageUrl}

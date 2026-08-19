@@ -7,6 +7,7 @@ import { signOut, updateProfile } from '../../lib/firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { useTranslation } from "react-i18next";
+import { GooglePlacesAddressInput } from '../../components/GooglePlacesAddressInput';
 
 interface PharmacyData {
   id?: string;
@@ -226,11 +227,19 @@ export function PharmacistProfile() {
                           </div>
                       </div>
                       <div>
-                          <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2"> Address </label>
-                          <div className="relative">
-                            <MapPin size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input type="text" value={formData.address || ''} onChange={e => setFormData({...formData, address: e.target.value})} className="w-full pl-10 pr-4 py-3 bg-[#FAFBFA] dark:bg-slate-900 border border-transparent focus:border-gray-200 rounded-xl text-sm outline-none transition-colors" placeholder="e.g. 123 Main St, City" />
-                          </div>
+                          <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2"> Adresse de la Pharmacie (Google Maps / Géolocalisée) </label>
+                          <GooglePlacesAddressInput
+                            value={formData.address || ''}
+                            onChange={(addr, lat, lng) => {
+                              setFormData({
+                                ...formData,
+                                address: addr,
+                                latitude: lat || formData.latitude,
+                                longitude: lng || formData.longitude
+                              });
+                            }}
+                            placeholder="Ex: Akwa, Face Salle des Fêtes, Douala"
+                          />
                       </div>
                       <div>
                           <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2"> Phone Number </label>

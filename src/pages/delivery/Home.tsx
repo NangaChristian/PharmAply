@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Bell, MapPin, Clock, DollarSign, CheckCircle, Navigation, Menu, Power, X, Moon, Sun, Layers, Star, AlertTriangle, Loader2 } from "lucide-react";
+import { User, Bell, MapPin, Clock, DollarSign, CheckCircle, Navigation, Menu, Power, X, Moon, Sun, Layers, Star, AlertTriangle, Loader2, MessageSquare } from "lucide-react";
 import toast from "react-hot-toast";
 import { collection, query, where, getDocs, onSnapshot, updateDoc, doc, setDoc, addDoc, serverTimestamp, getDoc } from '../../lib/firebase';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
 import { supabase } from '../../lib/supabase';
 import { useDarkMode } from "../../components/DarkModeProvider";
+import { DarkModeToggle } from "../../components/DarkModeToggle";
 import { formatCurrency, sortByDateDesc } from '../../lib/utils';
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../components/ThemeProvider";
@@ -341,11 +342,23 @@ export function DeliveryHome() {
             </div>
          </div>
          
-         <div className="flex flex-row gap-2 pointer-events-auto">
-            <div className="bg-white dark:bg-black/90 backdrop-blur rounded-2xl shadow-sm px-3 flex flex-col items-center justify-center text-gray-900 dark:text-white relative font-bold text-sm">
-               <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase uppercase">Aujourd'hui</span>
-               {formatCurrency(todaysEarnings)}
+         <div className="flex flex-row items-center gap-2 pointer-events-auto">
+            <div className="hidden sm:flex bg-white dark:bg-black/90 backdrop-blur rounded-2xl shadow-sm px-3 py-1 flex-col items-center justify-center text-gray-900 dark:text-white relative font-bold text-sm">
+               <span className="text-[9px] text-gray-400 font-medium tracking-wide uppercase">Aujourd'hui</span>
+               <span className="text-xs">{formatCurrency(todaysEarnings)}</span>
             </div>
+            
+            <DarkModeToggle className="w-10 h-10 bg-white dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 shadow-sm" />
+            
+            <button 
+              onClick={() => navigate('/delivery/messages')}
+              className="w-10 h-10 bg-white dark:bg-zinc-800 rounded-full flex items-center justify-center border border-gray-100 dark:border-zinc-700 shadow-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+              title="Messages"
+              aria-label="Messages"
+            >
+              <MessageSquare size={18} />
+            </button>
+
             <NotificationBell />
          </div>
       </div>

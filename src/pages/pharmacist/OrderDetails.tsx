@@ -619,24 +619,45 @@ export function PharmacistOrderDetails() {
               <button disabled={processing} onClick={handlePrintInvoice} className="px-5 py-3.5 bg-white border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 rounded-full font-bold shadow-sm transition-all focus:outline-none flex items-center gap-2">
                 <Download size={18} /> Imprimer
               </button>
-              <button disabled={processing} onClick={() => setIsRejecting(true)} className="px-8 py-3.5 bg-white border border-red-100 text-red-600 hover:bg-red-50 rounded-full font-bold shadow-sm transition-all focus:outline-none">
+              <button disabled={processing} onClick={() => setIsRejecting(true)} className="px-6 py-3.5 bg-white border border-red-100 text-red-600 hover:bg-red-50 rounded-full font-bold shadow-sm transition-all focus:outline-none">
                 Refuser
               </button>
               <button 
                 disabled={processing} 
+                onClick={() => handleUpdateStatus('validated_awaiting_payment')} 
+                className="px-6 py-3.5 bg-amber-500 hover:bg-amber-600 text-zinc-950 rounded-full font-black shadow-md transition-all focus:outline-none flex items-center justify-center gap-2 disabled:opacity-75"
+              >
+                {processing && actionLoading === 'validated_awaiting_payment' ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    <span>Validation stock...</span>
+                  </>
+                ) : (
+                  <span>Valider Disponibilité & Demander Paiement</span>
+                )}
+              </button>
+              <button 
+                disabled={processing} 
                 onClick={() => handleUpdateStatus('preparing')} 
-                className="px-8 py-3.5 bg-[#0B3B3C] hover:bg-[#082a2b] text-white rounded-full font-bold shadow-md transition-all focus:outline-none flex items-center justify-center gap-2 disabled:opacity-75"
+                className="px-6 py-3.5 bg-[#0B3B3C] hover:bg-[#082a2b] text-white rounded-full font-bold shadow-md transition-all focus:outline-none flex items-center justify-center gap-2 disabled:opacity-75"
               >
                 {processing && actionLoading === 'preparing' ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    <span>Acceptation...</span>
+                    <span>Préparation...</span>
                   </>
                 ) : (
-                  <span>Accepter la commande</span>
+                  <span>Préparer Directement</span>
                 )}
               </button>
             </>
+          )}
+
+          {order.status === 'validated_awaiting_payment' && (
+            <div className="bg-amber-500/15 border border-amber-400 text-amber-900 dark:text-amber-300 px-6 py-3.5 rounded-full text-xs font-bold flex items-center gap-2 shadow-sm">
+              <Clock size={16} className="text-amber-500 animate-spin" />
+              <span>Disponibilité confirmée — En attente du règlement Fapshi par le patient</span>
+            </div>
           )}
           
           {order.status !== 'pending' && (

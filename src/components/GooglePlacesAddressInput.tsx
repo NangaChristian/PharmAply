@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, MapPin, Loader2, X, Check, Navigation } from "lucide-react";
+import { Search, MapPin, Loader2, X, Check, Navigation, Crosshair } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
+import toast from "react-hot-toast";
 
 export interface AddressSuggestion {
   description: string;
@@ -16,6 +17,7 @@ interface GooglePlacesAddressInputProps {
   placeholder?: string;
   className?: string;
   onSelectSuggestion?: (suggestion: AddressSuggestion) => void;
+  showCurrentLocationBtn?: boolean;
 }
 
 export function GooglePlacesAddressInput({
@@ -23,16 +25,40 @@ export function GooglePlacesAddressInput({
   onChange,
   placeholder = "Ex: Bastos, Rue 1788, Yaoundé ou Akwa, Douala",
   className = "",
-  onSelectSuggestion
+  onSelectSuggestion,
+  showCurrentLocationBtn = true
 }: GooglePlacesAddressInputProps) {
   const [query, setQuery] = useState(value || "");
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceTimerRef = useRef<any>(null);
   const theme = useTheme();
   const primaryColor = theme.primaryColor || "#194B4B";
+
+  // Request user's rough geolocation on mount to prioritize local suggestions
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserCoords({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          });
+        },
+        (err) => {
+          // Default to Cameroon urban centers if denied
+          setUserCoords({ lat: 4.0511, lng: 9.7679 });
+        },
+        { timeout: 8000, maximumAge: 60000 }
+      );
+    } else {
+      setUserCoords({ lat: 4.0511, lng: 9.7679 });
+    }
+  }, []);
 
   useEffect(() => {
     setQuery(value || "");
@@ -57,14 +83,22 @@ export function GooglePlacesAddressInput({
 
     setLoading(true);
     const results: AddressSuggestion[] = [];
+    const lat = userCoords?.lat || 4.0511;
+    const lng = userCoords?.lng || 9.7679;
 
-    // 1. Try Google Places Autocomplete if available on window
+    // 1. Try Google Places Autocomplete with Local Location Bias if loaded
     try {
       const g = (window as any).google;
       if (g && g.maps && g.maps.places && g.maps.places.AutocompleteService) {
         const service = new g.maps.places.AutocompleteService();
+        const center = new g.maps.LatLng(lat, lng);
         service.getPlacePredictions(
-          { input: searchQuery },
+          {
+            input: searchQuery,
+            location: center,
+            radius: 50000, // 50km radius bias around user
+            componentRestrictions: { country: ['cm', 'ci', 'sn', 'fr'] }
+          },
           (predictions: any[], status: any) => {
             if (status === g.maps.places.PlacesServiceStatus.OK && predictions) {
               predictions.forEach((p) => {
@@ -72,8 +106,8 @@ export function GooglePlacesAddressInput({
                   description: p.description,
                   mainText: p.structured_formatting?.main_text || p.description,
                   secondaryText: p.structured_formatting?.secondary_text || "",
-                  lat: 4.0511, // fallback default
-                  lng: 9.7679
+                  lat: lat,
+                  lng: lng
                 });
               });
             }
@@ -81,15 +115,18 @@ export function GooglePlacesAddressInput({
         );
       }
     } catch (e) {
-      console.warn("Google Maps Places service notice:", e);
+      // Continue to OpenStreetMap / Nominatim
     }
 
-    // 2. Query Live OpenStreetMap & Nominatim Geocoding API for high accuracy suggestions
+    // 2. Query Live OpenStreetMap & Nominatim Geocoding API with local bounding box bias
     try {
+      const delta = 0.8; // ~80km bounding box around user's current city
+      const viewBoxParam = `&viewbox=${lng - delta},${lat + delta},${lng + delta},${lat - delta}`;
+      
       const resp = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
           searchQuery
-        )}&addressdetails=1&limit=6&countrycodes=cm,ci,sn,fr,be,ca,us`,
+        )}&addressdetails=1&limit=8${viewBoxParam}&countrycodes=cm,ci,sn,fr,be,ca`,
         {
           headers: {
             "Accept-Language": "fr,en"
@@ -105,7 +142,6 @@ export function GooglePlacesAddressInput({
             const country = item.address?.country || "";
             const secondary = [city, country].filter(Boolean).join(", ");
 
-            // Avoid duplicate text in list
             if (!results.some(r => r.description === item.display_name)) {
               results.push({
                 description: item.display_name,
@@ -138,7 +174,7 @@ export function GooglePlacesAddressInput({
 
     debounceTimerRef.current = setTimeout(() => {
       fetchAddressPredictions(text);
-    }, 280);
+    }, 250);
   };
 
   const handleSelect = (item: AddressSuggestion) => {
@@ -150,8 +186,67 @@ export function GooglePlacesAddressInput({
     }
   };
 
+  // 1-Click GPS Current Location Auto-detection & Reverse Geocoding
+  const handleUseCurrentLocation = () => {
+    if (!("geolocation" in navigator)) {
+      toast.error("La géolocalisation n'est pas supportée par votre appareil.");
+      return;
+    }
+
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const currentLat = position.coords.latitude;
+        const currentLng = position.coords.longitude;
+        setUserCoords({ lat: currentLat, lng: currentLng });
+
+        try {
+          // Reverse geocode with Nominatim
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLat}&lon=${currentLng}&zoom=18&addressdetails=1`,
+            {
+              headers: { "Accept-Language": "fr" }
+            }
+          );
+          if (response.ok) {
+            const data = await response.json();
+            const formatted = data.display_name || `${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`;
+            setQuery(formatted);
+            onChange(formatted, currentLat, currentLng);
+            if (onSelectSuggestion) {
+              onSelectSuggestion({
+                description: formatted,
+                mainText: data.address?.road || data.address?.suburb || "Position actuelle",
+                secondaryText: [data.address?.city || data.address?.town, data.address?.country].filter(Boolean).join(", "),
+                lat: currentLat,
+                lng: currentLng
+              });
+            }
+            toast.success("Position GPS détectée avec succès !");
+          } else {
+            const fallback = `Position GPS (${currentLat.toFixed(4)}, ${currentLng.toFixed(4)})`;
+            setQuery(fallback);
+            onChange(fallback, currentLat, currentLng);
+          }
+        } catch (e) {
+          const fallback = `Position GPS (${currentLat.toFixed(4)}, ${currentLng.toFixed(4)})`;
+          setQuery(fallback);
+          onChange(fallback, currentLat, currentLng);
+        } finally {
+          setLocating(false);
+          setShowDropdown(false);
+        }
+      },
+      (error) => {
+        setLocating(false);
+        toast.error("Impossible d'accéder à votre position GPS. Veuillez vérifier les permissions de votre navigateur.");
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   return (
-    <div className={`relative w-full ${className}`} ref={dropdownRef}>
+    <div className={`relative w-full space-y-1.5 ${className}`} ref={dropdownRef}>
       <div className="relative flex items-center">
         <MapPin 
           size={18} 
@@ -166,12 +261,12 @@ export function GooglePlacesAddressInput({
             if (suggestions.length > 0) setShowDropdown(true);
           }}
           placeholder={placeholder}
-          className="w-full pl-10 pr-10 py-3.5 rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-900 dark:text-white text-sm outline-none transition focus:border-opacity-100 shadow-sm"
+          className="w-full pl-10 pr-20 py-3.5 rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-gray-900 dark:text-white text-xs sm:text-sm outline-none transition focus:border-opacity-100 shadow-xs"
           style={{
             borderColor: showDropdown ? primaryColor : undefined
           }}
         />
-        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
           {loading && <Loader2 size={16} className="animate-spin text-gray-400" />}
           {query.length > 0 && !loading && (
             <button
@@ -187,18 +282,35 @@ export function GooglePlacesAddressInput({
               <X size={15} />
             </button>
           )}
+          {showCurrentLocationBtn && (
+            <button
+              type="button"
+              onClick={handleUseCurrentLocation}
+              disabled={locating}
+              className="p-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-[#194B4B] dark:text-teal-400 rounded-lg transition"
+              title="Utiliser ma position GPS actuelle"
+            >
+              {locating ? <Loader2 size={14} className="animate-spin" /> : <Crosshair size={14} />}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Suggestions Dropdown */}
+      {/* Suggestions Dropdown with Location Bias */}
       {showDropdown && suggestions.length > 0 && (
         <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-xl z-50 overflow-hidden max-h-60 overflow-y-auto">
           <div className="px-3 py-2 bg-gray-50 dark:bg-zinc-800/60 border-b border-gray-100 dark:border-zinc-800 flex items-center justify-between text-[11px] font-bold text-gray-500 uppercase tracking-wider">
             <span className="flex items-center gap-1">
               <Search size={12} style={{ color: primaryColor }} />
-              Suggestions d'adresses Google Maps
+              Suggestions géolocalisées ({userCoords ? "Zone locale" : "Cameroun"})
             </span>
-            <span className="text-[10px] lowercase text-gray-400 font-normal">GPS actif</span>
+            <button
+              type="button"
+              onClick={handleUseCurrentLocation}
+              className="text-[10px] text-[#194B4B] dark:text-teal-400 hover:underline flex items-center gap-1 normal-case font-bold"
+            >
+              <Navigation size={10} /> Ma position GPS
+            </button>
           </div>
 
           <div className="divide-y divide-gray-100 dark:divide-zinc-800/60">

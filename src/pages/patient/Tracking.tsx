@@ -12,6 +12,7 @@ import L from 'leaflet';
 import { doc, onSnapshot, getDoc, updateDoc, serverTimestamp, db } from '../../lib/firebase';
 import { supabase } from '../../lib/supabase';
 import { formatCurrency, parseDate } from '../../lib/utils';
+import { getRoadRoute } from '../../lib/routing';
 import { InvoiceModal } from '../../components/InvoiceModal';
 import toast from 'react-hot-toast';
 
@@ -225,7 +226,9 @@ export function PatientTracking() {
       ? [order.deliveryLocation.lat, order.deliveryLocation.lng]
       : userLocation || [4.0511, 9.7679];
 
-  // ETA Calculation
+  const [roadCoordinates, setRoadCoordinates] = useState<[number, number][]>([]);
+
+  // ETA and Road Route Calculation
   useEffect(() => {
     if (driverPos && destPos) {
        const R = 6371; // Radius of earth in km
@@ -246,16 +249,26 @@ export function PatientTracking() {
        } else {
           setEta(estimatedTime);
        }
+
+       // Fetch turn-by-turn road polyline
+       getRoadRoute(driverPos, destPos).then((res) => {
+         if (res && res.coordinates && res.coordinates.length > 0) {
+           setRoadCoordinates(res.coordinates);
+           if (res.durationSeconds > 0 && order?.status !== 'delivered') {
+             setEta(Math.max(1, Math.ceil(res.durationSeconds / 60)));
+           }
+         }
+       }).catch(() => {});
     }
   }, [driverPos, order?.status, destPos]);
 
   // Order Approval & Driver Assignment Conditions (CHANTIER 1)
   const isApproved = Boolean(
     order && 
-    ['APPROVED', 'approved', 'preparing', 'ready', 'ready_for_pickup', 'driver_assigned', 'picked_up', 'out_for_delivery', 'en_route', 'delivered'].includes(order.status)
+    ['APPROVED', 'approved', 'paid', 'validated_awaiting_payment', 'preparing', 'ready', 'ready_for_pickup', 'driver_assigned', 'picked_up', 'out_for_delivery', 'on_the_way', 'en_route', 'delivered'].includes(order.status)
   );
 
-  const hasAssignedDriver = Boolean(assignedDriverId && driver);
+  const hasAssignedDriver = Boolean(assignedDriverId || (order && (order.driverId || order.driver_id || order.driverName)));
 
   // Status timeline dates
   const getTimelineDate = (type: string) => {
@@ -570,7 +583,13 @@ export function PatientTracking() {
 
               {/* Polyline Route */}
               {driverPos && (
-                <Polyline positions={[driverPos, destPos]} color="#194B4B" weight={5} opacity={0.85} dashArray="4, 8" />
+                <Polyline 
+                  positions={roadCoordinates.length > 0 ? roadCoordinates : [driverPos, destPos]} 
+                  color="#194B4B" 
+                  weight={5} 
+                  opacity={0.9} 
+                  dashArray="4, 8" 
+                />
               )}
             </MapContainer>
           </div>

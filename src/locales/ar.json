@@ -1,0 +1,69 @@
+{
+  "app_name": "فارم أبلي",
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "loading": "جاري التحميل...",
+    "confirm": "تأكيد",
+    "search": "بحث...",
+    "actions": "إجراءات",
+    "status": "الحالة",
+    "language": "اللغة",
+    "online": "متصل",
+    "offline": "غير متصل",
+    "close": "إغلاق",
+    "update": "تحديث",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "back": "رجوع",
+    "now": "الآن",
+    "today": "اليوم"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "logout": "تسجيل الخروج",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "forgot_password": "نسيت كلمة المرور؟",
+    "authenticating": "جاري المصادقة...",
+    "verifying": "جاري التحقق...",
+    "terms": "شروط الخدمة",
+    "privacy": "سياسة الخصوصية",
+    "select_user_type": "حدد نوع المستخدم:",
+    "patient": "مريض",
+    "pharmacist": "صيدلي",
+    "delivery": "توصيل",
+    "admin": "مدير"
+  },
+  "orders": {
+    "title": "طلباتك",
+    "active": "نشطة",
+    "past": "سابقة",
+    "total": "المجموع",
+    "track": "تتبع الطلب",
+    "search": "ابحث في الطلبات...",
+    "empty": "لا توجد طلبات نشطة",
+    "cancel": "إلغاء الطلب",
+    "reason_for_cancellation": "سبب الإلغاء"
+  },
+  "cart": {
+    "title": "عربة التسوق",
+    "empty": "عربة التسوق فارغة",
+    "start_shopping": "ابدأ التسوق",
+    "subtotal": "المجموع الفرعي",
+    "delivery_fee": "رسوم التوصيل",
+    "checkout": "الدفع"
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "all": "الكل",
+    "mark_all_read": "تحديد الكل كمقروء",
+    "empty": "لا توجد إشعارات حتى الآن"
+  },
+  "errors": {
+    "generic": "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.",
+    "network_timeout": "انتهت مهلة الطلب الشبكي.",
+    "unauthorized": "وصول غير مصرح به أو انتهت الجلسة.",
+    "not_found": "المورد غير موجود."
+  }
+}

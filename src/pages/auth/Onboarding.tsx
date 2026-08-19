@@ -30,6 +30,7 @@ const ONBOARDING_SLIDES = [
 ];
 
 import { sendEmail } from '../../lib/email';
+import { DarkModeToggle } from "../../components/DarkModeToggle";
 
 export function Onboarding() {
   const navigate = useNavigate();
@@ -180,6 +181,11 @@ export function Onboarding() {
 
   return (
     <div className="flex-1 relative bg-[#6a7bc0] overflow-hidden flex flex-col h-full"> 
+       {/* Dark Mode Toggle in Onboarding */}
+       <div className="absolute top-4 right-4 z-50">
+          <DarkModeToggle className="bg-white/85 dark:bg-zinc-900/90 backdrop-blur-md shadow-lg border border-white/20 dark:border-zinc-700/50" />
+       </div>
+
        <AnimatePresence>
          {/* Splash Screen */}
          {step === 0 && (

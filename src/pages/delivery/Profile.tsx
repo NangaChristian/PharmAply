@@ -16,6 +16,8 @@ import {
 import { useTheme } from "../../components/ThemeProvider";
 import { formatCurrency } from "../../lib/utils";
 import toast from "react-hot-toast";
+import { GooglePlacesAddressInput } from "../../components/GooglePlacesAddressInput";
+import { DarkModeToggle } from "../../components/DarkModeToggle";
 
 interface DriverProfileData {
   id?: string;
@@ -880,18 +882,21 @@ export function DeliveryProfile() {
           <h1 className="font-bold text-slate-900 text-xl">{t('my_driver_profile', 'Profil Livreur')}</h1>
         </div>
         
-        <button 
-          onClick={() => setIsEditingBasic(true)}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition border"
-          style={{ 
-            backgroundColor: `${brandPrimary}10`, 
-            color: brandPrimary, 
-            borderColor: `${brandPrimary}25` 
-          }}
-        >
-          <Edit2 size={14} />
-          <span>{t('edit', 'Modifier')}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <DarkModeToggle className="w-9 h-9 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700" />
+          <button 
+            onClick={() => setIsEditingBasic(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition border"
+            style={{ 
+              backgroundColor: `${brandPrimary}10`, 
+              color: brandPrimary, 
+              borderColor: `${brandPrimary}25` 
+            }}
+          >
+            <Edit2 size={14} />
+            <span>{t('edit', 'Modifier')}</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Profile Content */}
@@ -1322,32 +1327,23 @@ export function DeliveryProfile() {
                 />
               </div>
 
-              {/* Operating Zone / City */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    {t('city', 'Ville')}
-                  </label>
-                  <input 
-                    type="text" 
-                    value={formData.city || ''} 
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })} 
-                    placeholder="Douala"
-                    className="w-full border border-slate-200 rounded-2xl p-3.5 bg-slate-50 text-slate-900 font-medium text-sm outline-none focus:bg-white transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    {t('operating_zone', 'Secteur principal')}
-                  </label>
-                  <input 
-                    type="text" 
-                    value={formData.operatingZone || ''} 
-                    onChange={(e) => setFormData({ ...formData, operatingZone: e.target.value })} 
-                    placeholder="Akwa, Bonanjo"
-                    className="w-full border border-slate-200 rounded-2xl p-3.5 bg-slate-50 text-slate-900 font-medium text-sm outline-none focus:bg-white transition"
-                  />
-                </div>
+              {/* Operating Zone / Base Address */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  {t('operating_zone_or_base', 'Secteur principal & Adresse de base')} (Google Maps)
+                </label>
+                <GooglePlacesAddressInput
+                  value={formData.operatingZone || formData.address || formData.city || ''}
+                  onChange={(addr, lat, lng) => {
+                    setFormData({
+                      ...formData,
+                      operatingZone: addr,
+                      address: addr,
+                      city: addr.split(',')[0]
+                    });
+                  }}
+                  placeholder="Ex: Akwa, Douala ou Bastos, Yaoundé"
+                />
               </div>
 
               {/* Bio / Description */}

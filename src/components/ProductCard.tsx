@@ -38,7 +38,7 @@ export function ProductCard({ product, basePath, onClick, showSaleBadge = false,
       onClick={handleClick}
       className="flex flex-col cursor-pointer group"
     >
-      <div className="relative w-full aspect-[4/3] bg-slate-100/50 dark:bg-zinc-800/50 rounded-2xl mb-3 overflow-hidden flex items-center justify-center p-4 group-hover:bg-slate-100 dark:group-hover:bg-zinc-800 transition-colors">
+      <div className="relative w-full aspect-[4/3] bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-2xl mb-3 overflow-hidden flex items-center justify-center p-4 shadow-sm group-hover:border-gray-200 dark:group-hover:border-zinc-700 transition-colors">
         {showSaleBadge && (
           <div className="absolute top-2 left-2 bg-emerald-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10">
              {t('25_off', '25% Off')} </div>

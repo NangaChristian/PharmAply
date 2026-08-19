@@ -93,6 +93,7 @@ function Placeholder({ title }: { title: string }) {
 
 import { DarkModeProvider } from './components/DarkModeProvider';
 import { AppUpdater } from './components/AppUpdater';
+import { NotificationListener } from './components/NotificationListener';
 
 import { AdminLiveMap } from './pages/admin/LiveMap';
 import { AdminDPML } from './pages/admin/AdminDPML';
@@ -103,6 +104,7 @@ export default function App() {
       <ThemeProvider>
         <AppUpdater>
         <BrowserRouter>
+          <NotificationListener />
           <AppShell>
 
           <Routes>
@@ -130,6 +132,7 @@ export default function App() {
             <Route path="fapshi-sandbox-checkout" element={<FapshiSandboxCheckout />} />
             <Route path="fapshi-checkout" element={<FapshiSandboxCheckout />} />
             <Route path="tracking/:id" element={<PatientTracking />} />
+            <Route path="messages" element={<Messages />} />
             <Route path="messages/:id" element={<Messages />} />
             <Route path="prescription-upload" element={<SmartScanner />} />
             <Route path="smart-scanner" element={<SmartScanner />} />
@@ -157,6 +160,7 @@ export default function App() {
           </Route>
           
           <Route path="/pharmacist/order/:id" element={<PharmacistOrderDetails />} />
+          <Route path="/pharmacist/messages" element={<Messages />} />
           <Route path="/pharmacist/messages/:id" element={<Messages />} />
 
           {/* Delivery Routes */}
@@ -168,6 +172,7 @@ export default function App() {
           </Route>
           
           <Route path="/delivery/order/:id" element={<DeliveryOrderDetails />} />
+          <Route path="/delivery/messages" element={<Messages />} />
           <Route path="/delivery/messages/:id" element={<Messages />} />
 
           {/* Admin Routes */}

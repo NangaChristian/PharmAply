@@ -142,25 +142,51 @@ export function SmartScanner() {
   // 3. Gestion de la Caméra avec Viseur & Torche
   const startCamera = async (mode: "environment" | "user" = facingMode) => {
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.warn("L'API MediaDevices n'est pas supportée dans ce navigateur.");
+        setIsCameraActive(false);
+        return;
+      }
+
       if (mediaStream) {
         mediaStream.getTracks().forEach((track) => track.stop());
       }
       setIsCameraActive(true);
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: mode, 
-          width: { ideal: 1920 }, 
-          height: { ideal: 1080 } 
-        },
-        audio: false
-      });
-      setMediaStream(stream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
+
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { 
+            facingMode: { ideal: mode }, 
+            width: { ideal: 1920 }, 
+            height: { ideal: 1080 } 
+          },
+          audio: false
+        });
+      } catch (constraintErr) {
+        console.warn("Tentative avec contrainte vidéo standard...", constraintErr);
+        // Fallback sans contraintes strictes
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+      }
+
+      if (stream) {
+        setMediaStream(stream);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.muted = true;
+          videoRef.current.playsInline = true;
+          try {
+            await videoRef.current.play();
+          } catch (playErr) {
+            console.warn("Lecture vidéo automatique en attente du stream:", playErr);
+          }
+        }
       }
     } catch (err: any) {
-      console.warn("Accès caméra non disponible :", err);
+      console.warn("Accès caméra non disponible ou refusé :", err);
       setIsCameraActive(false);
     }
   };
@@ -458,69 +484,58 @@ export function SmartScanner() {
     <div className="flex-1 bg-black text-white flex flex-col h-full overflow-hidden relative font-sans">
       
       {/* ========================================================================= */}
-      {/* TOP HEADER */}
+      {/* TOP HEADER (Affiché uniquement pour l'Historique ou la Revue des Résultats) */}
       {/* ========================================================================= */}
-      <header className="bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800 px-4 py-3 z-30 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              if (step === "review") {
+      {(activeTab === "history" || step === "review") && (
+        <header className="bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800 px-4 py-3 z-30 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                if (step === "review") {
+                  setStep("capture");
+                  setSelectedImage(null);
+                  setImageBase64(null);
+                } else if (activeTab === "history") {
+                  setActiveTab("scanner");
+                } else {
+                  navigate(-1);
+                }
+              }}
+              className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <h1 className="font-bold text-white text-base">
+              {activeTab === "history" ? "Historique des Ordonnances" : "Résultats de l'Analyse"}
+            </h1>
+          </div>
+
+          {activeTab === "history" ? (
+            <button
+              onClick={() => {
+                setActiveTab("scanner");
+                setStep("capture");
+              }}
+              className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#194B4B] text-white flex items-center gap-1.5 hover:bg-teal-700 transition"
+            >
+              <Camera size={14} />
+              Scanner
+            </button>
+          ) : (
+            <button
+              onClick={() => {
                 setStep("capture");
                 setSelectedImage(null);
                 setImageBase64(null);
-              } else {
-                navigate(-1);
-              }
-            }}
-            className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h1 className="font-bold text-white text-base flex items-center gap-2">
-              <Sparkles size={16} className="text-yellow-400" />
-              Scanner d'Ordonnance
-            </h1>
-            <p className="text-[11px] text-zinc-400">
-              Reconnaissance médicale & pharmacie
-            </p>
-          </div>
-        </div>
-
-        {/* Onglets Scanner / Historique */}
-        <div className="flex items-center bg-zinc-900 p-1 rounded-full border border-zinc-800">
-          <button
-            onClick={() => {
-              setActiveTab("scanner");
-              if (step === "review") setStep("capture");
-            }}
-            className={`px-3 py-1 rounded-full text-xs font-bold transition flex items-center gap-1.5 ${
-              activeTab === "scanner"
-                ? "bg-[#194B4B] text-white shadow-sm"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            <Camera size={13} />
-            Scanner
-          </button>
-          <button
-            onClick={() => setActiveTab("history")}
-            className={`px-3 py-1 rounded-full text-xs font-bold transition flex items-center gap-1.5 ${
-              activeTab === "history"
-                ? "bg-[#194B4B] text-white shadow-sm"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            <History size={13} />
-            Historique
-            {historyList.length > 0 && (
-              <span className="bg-yellow-400 text-zinc-900 text-[10px] font-black px-1.5 rounded-full ml-0.5">
-                {historyList.length}
-              </span>
-            )}
-          </button>
-        </div>
-      </header>
+              }}
+              className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-zinc-800 text-zinc-200 flex items-center gap-1.5 hover:bg-zinc-700 transition"
+            >
+              <RefreshCw size={13} />
+              Re-scanner
+            </button>
+          )}
+        </header>
+      )}
 
       {/* ========================================================================= */}
       {/* VUE 1 : HISTORIQUE DES SCANS */}
@@ -676,16 +691,21 @@ export function SmartScanner() {
                 ref={videoRef}
                 playsInline
                 autoPlay
+                muted
+                onLoadedMetadata={() => {
+                  videoRef.current?.play().catch((e) => console.warn("Video autoplay notice:", e));
+                }}
                 className="w-full h-full object-cover"
               />
             ) : (
               <div className="text-center p-8 text-zinc-500">
                 <Camera size={48} className="mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Caméra inactive</p>
+                <p className="text-sm">Caméra inactive ou en attente d'autorisation</p>
                 <button
                   onClick={() => startCamera(facingMode)}
-                  className="mt-3 px-4 py-2 bg-[#194B4B] text-white rounded-full text-xs font-bold"
+                  className="mt-3 px-5 py-2.5 bg-[#194B4B] hover:bg-teal-700 text-white rounded-full text-xs font-bold shadow-lg transition active:scale-95 flex items-center gap-2 mx-auto"
                 >
+                  <Camera size={15} />
                   Activer la caméra
                 </button>
               </div>
@@ -716,25 +736,34 @@ export function SmartScanner() {
             </div>
           </div>
 
-          {/* Commandes Flottantes du Haut (Flash, Switch Caméra) */}
-          <div className="relative z-20 px-6 pt-4 flex items-center justify-between">
+          {/* Commandes Flottantes du Haut (Retour, Flash, Switch Caméra) */}
+          <div className="relative z-20 px-5 pt-4 flex items-center justify-between pointer-events-auto">
             <button
-              onClick={toggleTorch}
-              className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md border transition ${
-                isTorchOn
-                  ? "bg-yellow-400 text-zinc-900 border-yellow-300 shadow-[0_0_12px_rgba(250,204,21,0.5)]"
-                  : "bg-black/40 text-white border-white/20 hover:bg-black/60"
-              }`}
+              onClick={() => navigate(-1)}
+              className="w-11 h-11 rounded-full bg-black/50 text-white border border-white/20 backdrop-blur-md flex items-center justify-center hover:bg-black/70 transition active:scale-95"
             >
-              {isTorchOn ? <Zap size={20} /> : <ZapOff size={20} />}
+              <ArrowLeft size={20} />
             </button>
 
-            <button
-              onClick={switchCamera}
-              className="w-11 h-11 rounded-full bg-black/40 text-white border border-white/20 backdrop-blur-md flex items-center justify-center hover:bg-black/60 transition"
-            >
-              <SwitchCamera size={20} />
-            </button>
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={toggleTorch}
+                className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-md border transition active:scale-95 ${
+                  isTorchOn
+                    ? "bg-yellow-400 text-zinc-900 border-yellow-300 shadow-[0_0_12px_rgba(250,204,21,0.5)]"
+                    : "bg-black/50 text-white border-white/20 hover:bg-black/70"
+                }`}
+              >
+                {isTorchOn ? <Zap size={20} /> : <ZapOff size={20} />}
+              </button>
+
+              <button
+                onClick={switchCamera}
+                className="w-11 h-11 rounded-full bg-black/50 text-white border border-white/20 backdrop-blur-md flex items-center justify-center hover:bg-black/70 transition active:scale-95"
+              >
+                <SwitchCamera size={20} />
+              </button>
+            </div>
           </div>
 
           {/* Commandes Flottantes du Bas (Upload, Déclencheur Photo, Historique) */}

@@ -169,9 +169,9 @@ export function FapshiSandboxCheckout() {
           </button>
           
           <div className="inline-flex items-center gap-2 bg-yellow-400 text-zinc-950 px-3 py-1 rounded-full text-xs font-black mb-2 shadow-sm">
-            <Lock size={12} /> Passerelle Fapshi (Sandbox Test)
+            <Lock size={12} /> Paiement Sécurisé (Mobile Money / Orange Money)
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Paiement Sécurisé</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Paiement en Ligne</h1>
           <p className="text-teal-200 text-xs mt-1">Réf. Commande : #{externalId.slice(0, 8).toUpperCase()}</p>
         </div>
 
@@ -255,7 +255,7 @@ export function FapshiSandboxCheckout() {
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1">
                   <ShieldCheck size={12} className="text-emerald-400" />
-                  Environnement Sandbox Fapshi — Aucun débit réel n'est effectué.
+                  Transaction sécurisée — Validation instantanée.
                 </p>
               </div>
 
@@ -268,7 +268,7 @@ export function FapshiSandboxCheckout() {
                 {loading ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    <span>Traitement Fapshi en cours...</span>
+                    <span>Validation du paiement en cours...</span>
                   </>
                 ) : (
                   <>
@@ -281,7 +281,7 @@ export function FapshiSandboxCheckout() {
           )}
 
           <div className="border-t border-slate-800 pt-4 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Propulsé par Fapshi Cameroun</span>
+            <span>Paiement Sécurisé Mobile Money</span>
             <span className="text-teal-400 font-semibold flex items-center gap-1">
               <ShieldCheck size={13} /> 100% Chiffré SSL
             </span>

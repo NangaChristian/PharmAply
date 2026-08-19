@@ -25,7 +25,7 @@ export function PatientCheckout() {
   const [uploading, setUploading] = useState(false);
   const [prescriptionUrl, setPrescriptionUrl] = useState<string | null>(null);
   const [prescriptionName, setPrescriptionName] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState("Fapshi");
+  const [paymentMethod, setPaymentMethod] = useState("Paiement en ligne");
   const [deliveryMethod, setDeliveryMethod] = useState<'delivery' | 'pickup'>('delivery');
   const [showPaymentSelector, setShowPaymentSelector] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -703,7 +703,7 @@ export function PatientCheckout() {
              {showPaymentSelector && (
               <div className="mt-3 bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 rounded-2xl p-2 space-y-1 shadow-sm">
                  {[
-                   { id: "Fapshi", name: t('fapshi_payment', 'Fapshi (Mobile Money & Card)'), color: "blue", icon: <CreditCard size={16}/> },
+                   { id: "Paiement en ligne", name: "Paiement en ligne (Mobile Money & Carte)", color: "blue", icon: <CreditCard size={16}/> },
                    { id: "Cash on Delivery", name: t('cash_on_delivery', 'Cash on Delivery'), color: "green", icon: <FileText size={16}/> }
                  ].map(method => (
                     <button key={method.id} onClick={() => { setPaymentMethod(method.id); setShowPaymentSelector(false); }} className={`w-full flex items-center justify-between p-4 min-h-[56px] rounded-xl border-2 transition touch-manipulation ${paymentMethod === method.id ? `border-${method.color}-400 bg-${method.color}-50/30 dark:bg-${method.color}-900/10` : 'border-transparent hover:bg-gray-50 dark:hover:bg-black'}`}>

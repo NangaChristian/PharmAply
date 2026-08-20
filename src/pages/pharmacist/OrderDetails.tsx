@@ -72,47 +72,21 @@ const pharmacyLeafletIcon = L.divIcon({
   iconAnchor: [20, 20]
 });
 
-const destPinLeafletIcon = L.divIcon({
-  className: 'custom-patient-dest-marker',
-  html: `
-    <div style="
-      width: 38px;
-      height: 38px;
-      background: #ea580c;
-      border: 3px solid #ffffff;
-      border-radius: 50%;
-      box-shadow: 0 6px 18px rgba(234, 88, 12, 0.45);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #ffffff;
-    ">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-        <circle cx="12" cy="10" r="3"/>
-      </svg>
-    </div>
-  `,
-  iconSize: [38, 38],
-  iconAnchor: [19, 19]
-});
-
-// Map View Controller to fit bounds
-function MapAutoBounds({ pharmacyPos, driverPos, destPos }: { pharmacyPos?: [number, number]; driverPos?: [number, number]; destPos?: [number, number] }) {
+// Map View Controller to fit bounds (Pharmacist only: Pharmacy <-> Driver)
+function MapAutoBounds({ pharmacyPos, driverPos }: { pharmacyPos?: [number, number]; driverPos?: [number, number] }) {
   const map = useMap();
   useEffect(() => {
     const points: [number, number][] = [];
     if (pharmacyPos) points.push(pharmacyPos);
     if (driverPos) points.push(driverPos);
-    if (destPos) points.push(destPos);
 
     if (points.length > 1) {
       const bounds = L.latLngBounds(points);
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
     } else if (points.length === 1) {
       map.setView(points[0], 14);
     }
-  }, [pharmacyPos, driverPos, destPos, map]);
+  }, [pharmacyPos, driverPos, map]);
 
   return null;
 }
@@ -250,27 +224,23 @@ export function PharmacistOrderDetails() {
   if (loading) return <div className="p-8 text-center text-sm text-gray-500 animate-pulse"> Chargement de la commande... </div>;
   if (!order) return <div className="p-8 text-center text-sm text-gray-500"> Commande introuvable </div>;
 
-  // Calcul des coordonnées GPS pour la carte
+  // Calcul des coordonnées GPS pour la carte (Strictement Officine <-> Livreur)
   const pharmacyLat = Number(order.pharmacyLat || order.pharmacyLatitude || 4.0511);
   const pharmacyLng = Number(order.pharmacyLng || order.pharmacyLongitude || 9.7679);
   const pharmacyPos: [number, number] = [pharmacyLat, pharmacyLng];
-
-  const destLat = Number(order.destLat || order.destinationLat || order.latitude || 4.0590);
-  const destLng = Number(order.destLng || order.destinationLng || order.longitude || 9.7750);
-  const destPos: [number, number] = [destLat, destLng];
 
   const driverLat = Number(driver?.lat || driver?.latitude || order.driverLat || (pharmacyLat + 0.005));
   const driverLng = Number(driver?.lng || driver?.longitude || order.driverLng || (pharmacyLng + 0.005));
   const driverPos: [number, number] = [driverLat, driverLng];
 
   const routePositions: [number, number][] = [
-    pharmacyPos,
     driverPos,
-    destPos
+    pharmacyPos
   ];
 
   const isDeliveryOrder = order.deliveryMethod !== 'pickup';
   const hasDriverAssigned = Boolean(order.driverId || order.driver_id || driver);
+  const isPickedUp = ['picked_up', 'out_for_delivery', 'on_the_way', 'to_customer', 'delivered'].includes(order.status);
 
   return (
     <div className="flex-1 bg-transparent flex flex-col h-full overflow-hidden relative">
@@ -310,151 +280,184 @@ export function PharmacistOrderDetails() {
       <div className="flex-1 overflow-y-auto px-8 pb-40 custom-scrollbar space-y-6">
         
         {/* ========================================================================= */}
-        {/* MODULE CARTE DU SUIVI DU LIVREUR EN TEMPS RÉEL (PHARMACIE -> LIVREUR -> PATIENT) */}
+        {/* MODULE SUIVI LIVREUR POUR L'OFFICINE (POSITION LIVREUR -> PHARMACIE UNIQUEMENT) */}
         {/* ========================================================================= */}
         {isDeliveryOrder && (
-          <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-full bg-teal-50 dark:bg-slate-700 flex items-center justify-center text-[#194B4B] dark:text-teal-400">
-                  <Navigation size={18} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 dark:text-white text-base">
-                    Suivi GPS du Livreur en Direct
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    Position exacte du coursier et itinéraire de livraison
-                  </p>
-                </div>
-              </div>
+          <>
+            {/* Phase 1: Avant ramassage du colis -> Carte d'approche du coursier vers la pharmacie */}
+            {!isPickedUp ? (
+              <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-full bg-teal-50 dark:bg-slate-700 flex items-center justify-center text-[#194B4B] dark:text-teal-400">
+                      <Navigation size={18} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900 dark:text-white text-base">
+                        Livreur en approche de l'officine
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        Suivi GPS en temps réel du coursier jusqu'à votre pharmacie
+                      </p>
+                    </div>
+                  </div>
 
-              <div className="flex items-center gap-2">
-                <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${
-                  hasDriverAssigned ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800'
-                }`}>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  {hasDriverAssigned ? (order.status === 'delivered' ? 'Livré' : 'Livreur en Course') : 'En attente d\'attribution'}
-                </span>
-              </div>
-            </div>
-
-            {/* Carte Leaflet interactive */}
-            <div className="w-full h-80 rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700 relative shadow-inner z-0">
-              <MapContainer
-                center={driverPos}
-                zoom={14}
-                scrollWheelZoom={false}
-                style={{ width: "100%", height: "100%" }}
-              >
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                />
-
-                {/* Pin Pharmacie */}
-                <Marker position={pharmacyPos} icon={pharmacyLeafletIcon}>
-                  <Tooltip permanent direction="top" offset={[0, -20]}>
-                    <span className="font-bold text-xs">{order.pharmacyName || "Votre Pharmacie"}</span>
-                  </Tooltip>
-                </Marker>
-
-                {/* Pin Livreur */}
-                {hasDriverAssigned && (
-                  <Marker position={driverPos} icon={driverMotoLeafletIcon}>
-                    <Tooltip permanent direction="top" offset={[0, -22]}>
-                      <span className="font-bold text-xs text-[#194B4B]">{driver?.name || order.driverName || "Coursier"}</span>
-                    </Tooltip>
-                  </Marker>
-                )}
-
-                {/* Pin Destination Patient */}
-                <Marker position={destPos} icon={destPinLeafletIcon}>
-                  <Tooltip permanent direction="top" offset={[0, -20]}>
-                    <span className="font-bold text-xs">{order.patientName || "Adresse Client"}</span>
-                  </Tooltip>
-                </Marker>
-
-                {/* Tracé Itinéraire */}
-                <Polyline
-                  positions={routePositions}
-                  color="#194B4B"
-                  weight={4}
-                  dashArray="6, 8"
-                  opacity={0.8}
-                />
-
-                <MapAutoBounds
-                  pharmacyPos={pharmacyPos}
-                  driverPos={hasDriverAssigned ? driverPos : undefined}
-                  destPos={destPos}
-                />
-              </MapContainer>
-            </div>
-
-            {/* Infos Livreur Carte */}
-            <div className="bg-gray-50 dark:bg-slate-900 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 border border-gray-100 dark:border-slate-700">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 shrink-0 border border-slate-300">
-                  {driver?.photoURL || driver?.avatar_url || order.driverPhoto ? (
-                    <img src={driver?.photoURL || driver?.avatar_url || order.driverPhoto} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <Bike size={22} className="text-[#194B4B] dark:text-teal-400" />
-                  )}
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900 dark:text-white text-sm">
-                    {driver?.name || order.driverName || (hasDriverAssigned ? "Livreur Assigné" : "Recherche d'un coursier...")}
-                  </p>
-                  <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
-                    <Bike size={13} />
-                    {driver?.vehicle_plate ? `Moto / ${driver.vehicle_plate}` : (driver?.vehicle_type || "Deux-roues motorisé")}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {driver?.phone && (
-                  <a
-                    href={`tel:${driver.phone}`}
-                    className="px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold hover:bg-gray-100 flex items-center gap-1.5 transition"
-                  >
-                    <Phone size={14} className="text-emerald-600" />
-                    {driver.phone}
-                  </a>
-                )}
-                <div className="text-right">
-                  <span className="text-xs text-gray-500 block">Adresse de livraison</span>
-                  <span className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate max-w-[200px] block">
-                    {order.deliveryAddress || "Douala, Cameroun"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Preuve de livraison si disponible */}
-            {(order.proofOfDeliveryUrl || order.deliveryProofPhoto || order.proof_of_delivery_url) && (
-              <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-2xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <ShieldCheck size={24} className="text-emerald-600 shrink-0" />
-                  <div>
-                    <p className="font-bold text-emerald-950 dark:text-emerald-300 text-xs">
-                      Preuve photo de livraison enregistrée
-                    </p>
-                    <p className="text-[11px] text-emerald-800 dark:text-emerald-400">
-                      Photo prise par le coursier à la remise
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${
+                      hasDriverAssigned ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      {hasDriverAssigned ? 'En route vers la pharmacie' : 'En attente d\'attribution'}
+                    </span>
                   </div>
                 </div>
-                <button
-                  onClick={() => window.open(order.proofOfDeliveryUrl || order.deliveryProofPhoto || order.proof_of_delivery_url, '_blank')}
-                  className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition"
-                >
-                  Voir la photo
-                </button>
+
+                {/* Carte Leaflet interactive (Strictement Livreur -> Pharmacie) */}
+                <div className="w-full h-80 rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700 relative shadow-inner z-0">
+                  <MapContainer
+                    center={driverPos}
+                    zoom={14}
+                    scrollWheelZoom={false}
+                    style={{ width: "100%", height: "100%" }}
+                  >
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    />
+
+                    {/* Pin Pharmacie */}
+                    <Marker position={pharmacyPos} icon={pharmacyLeafletIcon}>
+                      <Tooltip permanent direction="top" offset={[0, -20]}>
+                        <span className="font-bold text-xs">{order.pharmacyName || "Votre Pharmacie"}</span>
+                      </Tooltip>
+                    </Marker>
+
+                    {/* Pin Livreur */}
+                    {hasDriverAssigned && (
+                      <Marker position={driverPos} icon={driverMotoLeafletIcon}>
+                        <Tooltip permanent direction="top" offset={[0, -22]}>
+                          <span className="font-bold text-xs text-[#194B4B]">{driver?.name || order.driverName || "Coursier en approche"}</span>
+                        </Tooltip>
+                      </Marker>
+                    )}
+
+                    {/* Tracé Itinéraire Livreur -> Pharmacie */}
+                    {hasDriverAssigned && (
+                      <Polyline
+                        positions={routePositions}
+                        color="#194B4B"
+                        weight={4}
+                        dashArray="6, 8"
+                        opacity={0.8}
+                      />
+                    )}
+
+                    <MapAutoBounds
+                      pharmacyPos={pharmacyPos}
+                      driverPos={hasDriverAssigned ? driverPos : undefined}
+                    />
+                  </MapContainer>
+                </div>
+
+                {/* Infos Livreur */}
+                <div className="bg-gray-50 dark:bg-slate-900 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 border border-gray-100 dark:border-slate-700">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 shrink-0 border border-slate-300">
+                      {driver?.photoURL || driver?.avatar_url || order.driverPhoto ? (
+                        <img src={driver?.photoURL || driver?.avatar_url || order.driverPhoto} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <Bike size={22} className="text-[#194B4B] dark:text-teal-400" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-900 dark:text-white text-sm">
+                        {driver?.name || order.driverName || (hasDriverAssigned ? "Livreur Assigné" : "Recherche d'un coursier...")}
+                      </p>
+                      <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
+                        <Bike size={13} />
+                        {driver?.vehicle_plate ? `Moto / ${driver.vehicle_plate}` : (driver?.vehicle_type || "Deux-roues motorisé")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {driver?.phone && (
+                      <a
+                        href={`tel:${driver.phone}`}
+                        className="px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold hover:bg-gray-100 flex items-center gap-1.5 transition shadow-sm"
+                      >
+                        <Phone size={14} className="text-emerald-600" />
+                        {driver.phone}
+                      </a>
+                    )}
+                    <div className="text-right">
+                      <span className="text-xs text-gray-500 block">Mission</span>
+                      <span className="text-xs font-bold text-[#194B4B] dark:text-teal-400 block">
+                        Ramassage au comptoir
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Phase 2: Après ramassage du colis -> La course s'arrête pour l'officine */
+              <div className="bg-emerald-50/60 dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-emerald-100 dark:border-slate-700 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle size={22} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900 dark:text-white text-base">
+                        Colis récupéré par le coursier
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        Prise en charge à l'officine validée — Le coursier assure la livraison
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1.5">
+                    <CheckCircle size={14} />
+                    {order.status === 'delivered' ? 'Livraison effectuée' : 'Remis au livreur'}
+                  </span>
+                </div>
+
+                {hasDriverAssigned && (
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 border border-emerald-100/50 dark:border-slate-700">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden flex items-center justify-center font-bold text-slate-700 shrink-0">
+                        {driver?.photoURL || driver?.avatar_url || order.driverPhoto ? (
+                          <img src={driver?.photoURL || driver?.avatar_url || order.driverPhoto} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <Bike size={20} className="text-[#194B4B]" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900 dark:text-white text-sm">
+                          {driver?.name || order.driverName || "Livreur"}
+                        </p>
+                        <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
+                          <Bike size={13} />
+                          {driver?.vehicle_plate ? `Moto / ${driver.vehicle_plate}` : (driver?.vehicle_type || "Deux-roues motorisé")}
+                        </p>
+                      </div>
+                    </div>
+
+                    {driver?.phone && (
+                      <a
+                        href={`tel:${driver.phone}`}
+                        className="px-4 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold hover:bg-gray-100 flex items-center gap-1.5 transition"
+                      >
+                        <Phone size={14} className="text-emerald-600" />
+                        {driver.phone}
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             )}
-          </div>
+          </>
         )}
 
         {/* Détails Commande Card */}

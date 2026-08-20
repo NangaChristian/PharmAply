@@ -331,6 +331,8 @@ export function PatientCheckout() {
           try {
             await addDoc(collection(db, 'notifications'), {
               userId: pId,
+              targetRole: 'pharmacist',
+              targetUrl: `/pharmacist/order/${orderId}`,
               type: 'new_order',
               title: 'Nouvelle commande reçue',
               message: `Nouvelle commande d'un montant de ${formatCurrency(singleOrderData.total)}`,
@@ -417,6 +419,8 @@ export function PatientCheckout() {
         try {
           await addDoc(collection(db, 'notifications'), {
             userId: orderData.pharmacyId || 'pharmacy_default',
+            targetRole: 'pharmacist',
+            targetUrl: `/pharmacist/order/${createdOrderId}`,
             type: 'new_order',
             title: 'Nouvelle commande reçue',
             message: `Nouvelle commande d'un montant de ${formatCurrency(orderData.total)}`,

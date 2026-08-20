@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { parseDate } from '../lib/utils';
 
 export function NotificationListener() {
-  const { user, role } = useAuth();
+  const { user, role, userData } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const notifiedOrders = useRef<Set<string>>(new Set());
@@ -84,16 +84,21 @@ export function NotificationListener() {
 
     if (!user) return;
 
+    const rawRole = (role || userData?.role || '').toLowerCase();
+    const isPharmacist = ['pharmacist', 'pharmacy', 'vendor', 'team_member', 'team', 'staff', 'cashier'].some(r => rawRole.includes(r));
+    const isDriver = ['delivery', 'driver', 'courier', 'livreur'].some(r => rawRole.includes(r));
+    const isAdmin = ['admin', 'superadmin', 'manager'].some(r => rawRole.includes(r));
+
     const unsubscribers: (() => void)[] = [];
 
     // 1. Pharmacist Notifications
-    if (role === 'pharmacist' || role === 'vendor') {
+    if (isPharmacist) {
       const q = query(collection(db, 'orders'), where('pharmacyId', '==', user.uid));
       const unsub = onSnapshot(q, (snapshot) => {
         snapshot.docChanges().forEach((change) => {
           const order = change.doc.data();
           const orderId = change.doc.id;
-          const orderTargetUrl = `/pharmacist/orders`;
+          const orderTargetUrl = `/pharmacist/order/${orderId}`;
 
           if (change.type === 'added') {
             if (!notifiedOrders.current.has(orderId)) {
@@ -138,7 +143,7 @@ export function NotificationListener() {
     } 
     
     // 2. Driver Notifications
-    else if (role === 'driver') {
+    else if (isDriver) {
       const q = query(collection(db, 'orders'));
       const unsub = onSnapshot(q, (snapshot) => {
         snapshot.docChanges().forEach((change) => {
@@ -174,71 +179,8 @@ export function NotificationListener() {
       unsubscribers.push(unsub);
     } 
     
-    // 3. Patient Notifications
-    else if (role === 'patient') {
-      const q = query(collection(db, 'orders'), where('patientId', '==', user.uid));
-      const unsub = onSnapshot(q, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          const order = change.doc.data();
-          const orderId = change.doc.id;
-          const trackingUrl = `/patient/tracking/${orderId}`;
-          const ordersUrl = `/patient/orders`;
-
-          if (change.type === 'modified') {
-            const prevStatus = previousStatusMap.current.get(orderId);
-            if (prevStatus !== order.status) {
-              previousStatusMap.current.set(orderId, order.status);
-
-              let body = '';
-              let title = 'Mise à jour de commande';
-              let icon = '📦';
-              let destUrl = trackingUrl;
-
-              if (order.status === 'validated_awaiting_payment') {
-                title = 'Médicaments Disponibles';
-                body = `Vos médicaments pour la commande #${orderId.slice(0, 6).toUpperCase()} sont disponibles. Cliquez pour payer.`;
-                icon = '💳';
-                destUrl = ordersUrl;
-              } else if (order.status === 'preparing') {
-                title = 'Préparation en cours';
-                body = `Votre commande #${orderId.slice(0, 6).toUpperCase()} est en cours de préparation en pharmacie.`;
-                icon = '💊';
-              } else if (order.status === 'ready' || order.status === 'ready_for_pickup') {
-                title = 'Commande prête';
-                body = order.deliveryMethod === 'pickup' 
-                  ? `Votre commande #${orderId.slice(0, 6).toUpperCase()} est prête pour retrait au comptoir.`
-                  : `Votre commande #${orderId.slice(0, 6).toUpperCase()} est prête et assignée à un coursier.`;
-                icon = '📦';
-              } else if (order.status === 'out_for_delivery' || order.status === 'on_the_way' || order.status === 'to_customer') {
-                title = 'En cours de livraison';
-                body = `Le livreur est en route avec votre commande #${orderId.slice(0, 6).toUpperCase()} ! Suivez sa position en direct.`;
-                icon = '🚚';
-              } else if (order.status === 'delivered') {
-                title = 'Commande Livrée';
-                body = `Votre commande #${orderId.slice(0, 6).toUpperCase()} a été livrée avec succès !`;
-                icon = '✅';
-              } else if (order.status === 'cancelled' || order.status === 'rejected') {
-                title = 'Commande Annulée';
-                body = `La commande #${orderId.slice(0, 6).toUpperCase()} a été annulée. ${order.cancellationReason || ''}`;
-                icon = '❌';
-                destUrl = ordersUrl;
-              }
-
-              if (body) {
-                showClickableToast(body, destUrl, icon);
-                showSystemNotification(title, body, destUrl);
-              }
-            }
-          } else if (change.type === 'added') {
-            previousStatusMap.current.set(orderId, order.status);
-          }
-        });
-      });
-      unsubscribers.push(unsub);
-    }
-
-    // 4. Admin Real-time Supervision Notifications (Transactions, Orders, Deliveries, Users, KYC)
-    else if (role === 'admin') {
+    // 3. Admin Real-time Supervision Notifications (Transactions, Orders, Deliveries, Users, KYC)
+    else if (isAdmin) {
       // 4a. Orders & Deliveries & Transactions
       const q = query(collection(db, 'orders'));
       const unsubAdmin = onSnapshot(q, (snapshot) => {
@@ -394,6 +336,69 @@ export function NotificationListener() {
         });
       });
       unsubscribers.push(unsubKYCDrivers);
+    }
+
+    // 4. Patient Notifications (Only for actual patients)
+    else if (!isPharmacist && !isDriver && !isAdmin) {
+      const q = query(collection(db, 'orders'), where('patientId', '==', user.uid));
+      const unsub = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          const order = change.doc.data();
+          const orderId = change.doc.id;
+          const trackingUrl = `/patient/tracking/${orderId}`;
+          const ordersUrl = `/patient/orders`;
+
+          if (change.type === 'modified') {
+            const prevStatus = previousStatusMap.current.get(orderId);
+            if (prevStatus !== order.status) {
+              previousStatusMap.current.set(orderId, order.status);
+
+              let body = '';
+              let title = 'Mise à jour de commande';
+              let icon = '📦';
+              let destUrl = trackingUrl;
+
+              if (order.status === 'validated_awaiting_payment') {
+                title = 'Médicaments Disponibles';
+                body = `Vos médicaments pour la commande #${orderId.slice(0, 6).toUpperCase()} sont disponibles. Cliquez pour payer.`;
+                icon = '💳';
+                destUrl = ordersUrl;
+              } else if (order.status === 'preparing') {
+                title = 'Préparation en cours';
+                body = `Votre commande #${orderId.slice(0, 6).toUpperCase()} est en cours de préparation en pharmacie.`;
+                icon = '💊';
+              } else if (order.status === 'ready' || order.status === 'ready_for_pickup') {
+                title = 'Commande prête';
+                body = order.deliveryMethod === 'pickup' 
+                  ? `Votre commande #${orderId.slice(0, 6).toUpperCase()} est prête pour retrait au comptoir.`
+                  : `Votre commande #${orderId.slice(0, 6).toUpperCase()} est prête et assignée à un coursier.`;
+                icon = '📦';
+              } else if (order.status === 'out_for_delivery' || order.status === 'on_the_way' || order.status === 'to_customer') {
+                title = 'En cours de livraison';
+                body = `Le livreur est en route avec votre commande #${orderId.slice(0, 6).toUpperCase()} ! Suivez sa position en direct.`;
+                icon = '🚚';
+              } else if (order.status === 'delivered') {
+                title = 'Commande Livrée';
+                body = `Votre commande #${orderId.slice(0, 6).toUpperCase()} a été livrée avec succès !`;
+                icon = '✅';
+              } else if (order.status === 'cancelled' || order.status === 'rejected') {
+                title = 'Commande Annulée';
+                body = `La commande #${orderId.slice(0, 6).toUpperCase()} a été annulée. ${order.cancellationReason || ''}`;
+                icon = '❌';
+                destUrl = ordersUrl;
+              }
+
+              if (body) {
+                showClickableToast(body, destUrl, icon);
+                showSystemNotification(title, body, destUrl);
+              }
+            }
+          } else if (change.type === 'added') {
+            previousStatusMap.current.set(orderId, order.status);
+          }
+        });
+      });
+      unsubscribers.push(unsub);
     }
 
     // 5. Direct Message Notifications

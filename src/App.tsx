@@ -148,6 +148,7 @@ export default function App() {
           <Route path="/pharmacist" element={<RoleLayout role="pharmacist" />}>
             <Route index element={<PharmacistHome />} />
             <Route path="orders" element={<PharmacistOrders />} />
+            <Route path="order/:id" element={<PharmacistOrderDetails />} />
             <Route path="inventory" element={<PharmacistInventory />} />
             <Route path="inventory/:id" element={<PharmacistProductDetails />} />
             <Route path="sales" element={<PharmacistSales />} />
@@ -157,23 +158,20 @@ export default function App() {
             <Route path="prescriptions" element={<PharmacistPrescriptions />} />
             <Route path="profile" element={<PharmacistProfile />} />
             <Route path="support" element={<PharmacistSupport />} />
+            <Route path="messages" element={<Messages />} />
+            <Route path="messages/:id" element={<Messages />} />
           </Route>
-          
-          <Route path="/pharmacist/order/:id" element={<PharmacistOrderDetails />} />
-          <Route path="/pharmacist/messages" element={<Messages />} />
-          <Route path="/pharmacist/messages/:id" element={<Messages />} />
 
           {/* Delivery Routes */}
           <Route path="/delivery" element={<RoleLayout role="delivery" />}>
             <Route index element={<DeliveryHome />} />
             <Route path="history" element={<DeliveryHistory />} />
             <Route path="deliveries" element={<DeliveryActive />} />
+            <Route path="order/:id" element={<DeliveryOrderDetails />} />
             <Route path="profile" element={<DeliveryProfile />} />
+            <Route path="messages" element={<Messages />} />
+            <Route path="messages/:id" element={<Messages />} />
           </Route>
-          
-          <Route path="/delivery/order/:id" element={<DeliveryOrderDetails />} />
-          <Route path="/delivery/messages" element={<Messages />} />
-          <Route path="/delivery/messages/:id" element={<Messages />} />
 
           {/* Admin Routes */}
           <Route path="/admin-login" element={<AdminLogin />} />

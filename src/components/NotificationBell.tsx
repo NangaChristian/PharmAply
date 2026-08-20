@@ -10,7 +10,7 @@ import { parseDate } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
 
 export function NotificationBell({ className = '' }: { className?: string }) {
-  const { user, role } = useAuth();
+  const { user, role, userData } = useAuth();
   const { t } = useTranslation();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -121,15 +121,55 @@ export function NotificationBell({ className = '' }: { className?: string }) {
     
     setShowDropdown(false);
 
-    const userRole = role || 'patient';
+    // Direct URL target priority if explicitly specified
+    if (notification.targetUrl || notification.url) {
+      navigate(notification.targetUrl || notification.url);
+      return;
+    }
+
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    const rawRole = (role || userData?.role || '').toLowerCase();
+    
+    // Robust multi-criteria portal detection
+    const isPharmacist = 
+      currentPath.startsWith('/pharmacist') || 
+      ['pharmacist', 'pharmacy', 'vendor', 'team_member', 'team', 'staff', 'cashier'].some(r => rawRole.includes(r)) ||
+      notification.targetRole === 'pharmacist' ||
+      notification.targetRole === 'vendor' ||
+      notification.target === 'pharmacy';
+
+    const isAdmin = 
+      currentPath.startsWith('/admin') || 
+      ['admin', 'superadmin', 'manager'].some(r => rawRole.includes(r)) ||
+      notification.targetRole === 'admin';
+
+    const isDelivery = 
+      currentPath.startsWith('/delivery') || 
+      ['delivery', 'driver', 'courier', 'livreur'].some(r => rawRole.includes(r)) ||
+      notification.targetRole === 'driver' ||
+      notification.targetRole === 'delivery' ||
+      notification.target === 'driver';
+
     const relatedId = notification.relatedId || notification.orderId;
 
-    if (userRole === 'admin') {
-      if (notification.type === 'transaction' || notification.type === 'payment') {
+    if (isPharmacist) {
+      if (notification.type === 'message') {
+        navigate(relatedId ? `/pharmacist/messages/${relatedId}` : '/pharmacist/messages');
+      } else if (notification.type === 'inventory' || notification.type === 'stock') {
+        navigate(relatedId ? `/pharmacist/inventory/${relatedId}` : '/pharmacist/inventory');
+      } else if (notification.type === 'prescription') {
+        navigate('/pharmacist/prescriptions');
+      } else if (relatedId) {
+        navigate(`/pharmacist/order/${relatedId}`);
+      } else {
+        navigate('/pharmacist/orders');
+      }
+    } else if (isAdmin) {
+      if (notification.type === 'transaction' || notification.type === 'payment' || notification.type === 'financial') {
         navigate('/admin/finances');
-      } else if (notification.type === 'delivery') {
+      } else if (notification.type === 'delivery' || notification.type === 'driver_tracking') {
         navigate('/admin/live-map');
-      } else if (notification.type === 'kyc') {
+      } else if (notification.type === 'kyc' || notification.type === 'verification') {
         if (notification.target === 'driver') {
           navigate('/admin/drivers');
         } else {
@@ -137,37 +177,37 @@ export function NotificationBell({ className = '' }: { className?: string }) {
         }
       } else if (notification.type === 'registration' || notification.type === 'user_signup') {
         if (notification.target === 'driver') navigate('/admin/drivers');
-        else if (notification.target === 'pharmacist' || notification.target === 'pharmacy') navigate('/admin/vendors');
+        else if (notification.target === 'pharmacist' || notification.target === 'pharmacy' || notification.target === 'vendor') navigate('/admin/vendors');
         else navigate('/admin/clients');
-      } else if (notification.type === 'message') {
+      } else if (notification.type === 'message' || notification.type === 'support') {
         navigate('/admin/support');
+      } else if (notification.type === 'dpml') {
+        navigate('/admin/dpml');
+      } else if (relatedId) {
+        navigate(`/admin/orders`);
       } else {
         navigate('/admin/orders');
       }
-    } else if (userRole === 'pharmacist' || userRole === 'vendor') {
+    } else if (isDelivery) {
       if (notification.type === 'message') {
-        navigate(relatedId ? `/pharmacist/messages/${relatedId}` : '/pharmacist/support');
-      } else {
-        navigate('/pharmacist/orders');
-      }
-    } else if (userRole === 'driver') {
-      if (notification.type === 'message') {
-        navigate(relatedId ? `/delivery/messages/${relatedId}` : '/delivery/history');
+        navigate(relatedId ? `/delivery/messages/${relatedId}` : '/delivery/messages');
       } else if (relatedId) {
-        navigate('/delivery/deliveries');
+        navigate(`/delivery/order/${relatedId}`);
       } else {
         navigate('/delivery/deliveries');
       }
     } else {
-      // Patient
+      // Patient Portal
       if (notification.type === 'payment_required') {
         navigate('/patient/orders');
+      } else if (notification.type === 'reminder') {
+        navigate('/patient/calendar');
       } else if (notification.type === 'message') {
-        navigate(relatedId ? `/patient/messages/${relatedId}` : '/patient/messages/general');
+        navigate(relatedId ? `/patient/messages/${relatedId}` : '/patient/messages');
       } else if (relatedId) {
         navigate(`/patient/tracking/${relatedId}`);
       } else {
-        navigate('/patient/notifications');
+        navigate('/patient/orders');
       }
     }
   };

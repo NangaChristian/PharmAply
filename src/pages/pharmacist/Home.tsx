@@ -12,7 +12,6 @@ import { formatCurrency, parseDate, sortByDateDesc } from '../../lib/utils';
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
 import { NotificationBell } from "../../components/NotificationBell";
-import { PharmacyDriverMap } from "../../components/pharmacist/PharmacyDriverMap";
 
 export function PharmacistHome() {
   const { t } = useTranslation();
@@ -293,9 +292,6 @@ export function PharmacistHome() {
                </div>
             </div>
          </div>
-
-         {/* Live Driver Tracking Section for Pharmacist */}
-         <PharmacyDriverMap orders={orders} pharmacy={pharmacy} />
 
          {/* Charts Section */}
          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { 
   HeartPulse, LayoutDashboard, Package, Grid, 
   ShoppingCart, BarChart2, Users, CreditCard, 
-  Settings, LogOut, Truck 
+  Settings, LogOut, Truck, MessageCircle 
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useTranslation } from "react-i18next";
@@ -52,26 +52,27 @@ export function RoleSidebar({ role }: RoleSidebarProps) {
 
   const menuSections = [
     {
-      title: "MAIN MENU",
+      title: t('main_menu', 'MENU PRINCIPAL'),
       links: [
-        { to: "/pharmacist", icon: LayoutDashboard, label: t('dashboard', 'Dashboard'), exact: true },
-        { to: "/pharmacist/inventory", icon: Package, label: t('products', 'Products') },
+        { to: "/pharmacist", icon: LayoutDashboard, label: t('dashboard', 'Tableau de bord'), exact: true },
+        { to: "/pharmacist/inventory", icon: Package, label: t('products', 'Produits') },
       ]
     },
     {
-      title: "LEADS",
+      title: t('leads', 'GESTION & VENTES'),
       links: [
-        { to: "/pharmacist/orders", icon: ShoppingCart, label: t('orders', 'Orders') },
-        { to: "/pharmacist/sales", icon: BarChart2, label: t('sales', 'Sales') },
-        { to: "/pharmacist/customers", icon: Users, label: t('customers', 'Customers') },
+        { to: "/pharmacist/orders", icon: ShoppingCart, label: t('orders', 'Commandes') },
+        { to: "/pharmacist/sales", icon: BarChart2, label: t('sales', 'Ventes') },
+        { to: "/pharmacist/customers", icon: Users, label: t('customers', 'Clients') },
       ]
     },
     {
-      title: "COMMS",
+      title: t('comms', 'COMMUNICATIONS'),
       links: [
-        { to: "/pharmacist/payments", icon: CreditCard, label: t('payments', 'Payments') },
-        { to: "/pharmacist/reports", icon: BarChart2, label: t('reports', 'Reports') },
-        { to: "/pharmacist/profile", icon: Settings, label: t('settings', 'Settings') },
+        { to: "/pharmacist/messages", icon: MessageCircle, label: t('messages', 'Messagerie') },
+        { to: "/pharmacist/payments", icon: CreditCard, label: t('payments', 'Paiements') },
+        { to: "/pharmacist/reports", icon: BarChart2, label: t('reports', 'Rapports') },
+        { to: "/pharmacist/profile", icon: Settings, label: t('settings', 'Paramètres') },
       ]
     }
   ];

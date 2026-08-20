@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Search, Mic, TrendingUp, ShieldAlert, BarChart2 } from "lucide-react";
+import { ArrowLeft, Search, Mic, TrendingUp, ShieldAlert, BarChart2, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { formatCurrency, sortByDateDesc } from "../../lib/utils";
+import { formatCurrency, parseDate, sortByDateDesc } from "../../lib/utils";
 import { collection, query, where, getDocs, onSnapshot, orderBy, db } from "../../lib/firebase";
 import { useAuth } from "../../components/AuthProvider";
 import dayjs from "dayjs";
@@ -28,11 +28,7 @@ export function PharmacistReports() {
       try {
         const pQuery = query(collection(db, 'pharmacies'), where("ownerId", "==", user.uid));
         const pSnap = await getDocs(pQuery);
-        let pharmacyId = pSnap.docs[0]?.id;
-        if (!pharmacyId) {
-          setLoading(false);
-          return;
-        }
+        let pharmacyId = pSnap.docs[0]?.id || user.uid;
 
         const ordersQuery = query(collection(db, 'orders'), where('pharmacyId', '==', pharmacyId));
         unsubscribeOrders = onSnapshot(ordersQuery, (oSnap: any) => {
@@ -63,14 +59,17 @@ export function PharmacistReports() {
     const now = dayjs();
     
     if (insightTab === 'Today') {
-      filteredOrders = orders.filter(o => o.createdAt && dayjs(o.createdAt).isSame(now, 'day'));
+      filteredOrders = orders.filter(o => o.createdAt && dayjs(parseDate(o.createdAt) || o.createdAt).isSame(now, 'day'));
     } else if (insightTab === 'This Week') {
-      filteredOrders = orders.filter(o => o.createdAt && dayjs(o.createdAt).isSame(now, 'week'));
+      filteredOrders = orders.filter(o => o.createdAt && dayjs(parseDate(o.createdAt) || o.createdAt).isSame(now, 'week'));
     } else if (insightTab === 'This Month') {
-      filteredOrders = orders.filter(o => o.createdAt && dayjs(o.createdAt).isSame(now, 'month'));
+      filteredOrders = orders.filter(o => o.createdAt && dayjs(parseDate(o.createdAt) || o.createdAt).isSame(now, 'month'));
     }
 
-    const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    const totalRevenue = filteredOrders.reduce((sum, o) => {
+      const val = Number(o.totalAmount || o.totalPrice || o.total || 0);
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
     const numberOfOrders = filteredOrders.length;
 
     // We can also calculate top selling products by revenue
@@ -429,13 +428,5 @@ export function PharmacistReports() {
          </div>
       </div>
     </div>
-  );
-}
-
-function ChevronRight({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-       <path d="m9 18 6-6-6-6"/>
-    </svg>
   );
 }

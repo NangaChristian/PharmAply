@@ -16,33 +16,33 @@ export function BottomNav({ role }: BottomNavProps) {
   const primaryColor = theme.primaryColor || '#194B4B';
 
   const patientLinks = [
-    { to: "/patient", icon: Home, label: t('home', 'Accueil'), badge: 0 },
-    { to: "/patient/orders", icon: ClipboardList, label: t('orders', 'Commandes'), badge: 0 },
-    { to: "/patient/prescription-upload", icon: ScanLine, label: t('scan', 'Scanner'), badge: 0, isCenter: true },
-    { to: "/patient/cart", icon: ShoppingCart, label: t('cart', 'Panier'), badge: cartCount },
-    { to: "/patient/profile", icon: User, label: t('profile', 'Profil'), badge: 0 },
+    { to: "/patient", icon: Home, label: t('nav.home', 'Accueil'), badge: 0 },
+    { to: "/patient/orders", icon: ClipboardList, label: t('nav.orders', 'Commandes'), badge: 0 },
+    { to: "/patient/prescription-upload", icon: ScanLine, label: t('nav.scan', 'Scanner'), badge: 0, isCenter: true },
+    { to: "/patient/cart", icon: ShoppingCart, label: t('nav.cart', 'Panier'), badge: cartCount },
+    { to: "/patient/profile", icon: User, label: t('nav.profile', 'Profil'), badge: 0 },
   ];
 
   const pharmacistLinks = [
-    { to: "/pharmacist", icon: Home, label: t('home', 'Accueil') },
-    { to: "/pharmacist/orders", icon: ClipboardList, label: t('orders', 'Commandes') },
-    { to: "/pharmacist/inventory", icon: Package, label: t('inventory', 'Inventaire') },
-    { to: "/pharmacist/reports", icon: BarChart2, label: t('reports', 'Rapports') },
-    { to: "/pharmacist/profile", icon: User, label: t('profile', 'Profil') },
+    { to: "/pharmacist", icon: Home, label: t('nav.home', 'Accueil') },
+    { to: "/pharmacist/orders", icon: ClipboardList, label: t('nav.orders', 'Commandes') },
+    { to: "/pharmacist/inventory", icon: Package, label: t('nav.inventory', 'Inventaire') },
+    { to: "/pharmacist/reports", icon: BarChart2, label: t('nav.reports', 'Rapports') },
+    { to: "/pharmacist/profile", icon: User, label: t('nav.profile', 'Profil') },
   ];
 
   const deliveryLinks = [
-    { to: "/delivery", icon: Home, label: t('home', 'Accueil') },
-    { to: "/delivery/history", icon: History, label: t('history', 'Historique') },
-    { to: "/delivery/deliveries", icon: MapPin, label: t('deliveries', 'Livraisons') },
-    { to: "/delivery/profile", icon: User, label: t('profile', 'Profil') },
+    { to: "/delivery", icon: Home, label: t('nav.home', 'Accueil') },
+    { to: "/delivery/history", icon: History, label: t('nav.history', 'Historique') },
+    { to: "/delivery/deliveries", icon: MapPin, label: t('nav.deliveries', 'Livraisons') },
+    { to: "/delivery/profile", icon: User, label: t('nav.profile', 'Profil') },
   ];
 
   const adminLinks = [
-    { to: "/admin", icon: Home, label: t('admin_dashboard', "Tableau de bord") },
-    { to: "/admin/users", icon: User, label: t('admin_users', "Utilisateurs") },
-    { to: "/admin/finances", icon: BarChart2, label: t('admin_finances', "Finances") },
-    { to: "/admin/settings", icon: Settings, label: t('admin_settings_menu', "Paramètres") },
+    { to: "/admin", icon: Home, label: t('nav.home', "Tableau de bord") },
+    { to: "/admin/users", icon: User, label: t('nav.users', "Utilisateurs") },
+    { to: "/admin/finances", icon: BarChart2, label: t('nav.finances', "Finances") },
+    { to: "/admin/settings", icon: Settings, label: t('nav.settings', "Paramètres") },
   ];
 
   const links =

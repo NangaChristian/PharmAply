@@ -94,15 +94,15 @@ export function SearchHeroBanner({
             style={{ backgroundColor: secondaryColor }}
           >
             <Sparkles size={13} className="text-slate-950" />
-            <span>Livraison Express Santé</span>
+            <span>{t('search_hero.express_health_delivery', 'Livraison Express Santé')}</span>
           </div>
 
           <div>
             <h2 className="text-xl sm:text-2xl font-black text-white leading-tight tracking-tight">
-              Trouvez vos médicaments facilement
+              {t('search_hero.find_medicines_easily', 'Trouvez vos médicaments facilement')}
             </h2>
             <p className="text-white/90 text-xs sm:text-sm font-medium mt-1.5 leading-relaxed max-w-[340px]">
-              Commandez vos produits de santé essentiels ou transmettez votre ordonnance en photo pour une livraison rapide.
+              {t('search_hero.hero_desc', 'Commandez vos produits de santé essentiels ou transmettez votre ordonnance en photo pour une livraison rapide.')}
             </p>
           </div>
 
@@ -114,7 +114,7 @@ export function SearchHeroBanner({
               style={{ backgroundColor: secondaryColor }}
             >
               <FileText size={15} />
-              <span>Envoyer une ordonnance</span>
+              <span>{t('search_hero.upload_prescription', 'Envoyer une ordonnance')}</span>
             </button>
 
             <button 
@@ -122,17 +122,17 @@ export function SearchHeroBanner({
               onClick={() => navigate('/patient/search')}
               className="bg-white/15 hover:bg-white/25 text-white text-xs font-bold py-2.5 px-4 rounded-xl border border-white/20 transition flex items-center gap-1.5 active:scale-95"
             >
-              <span>Rechercher un produit</span>
+              <span>{t('search_hero.search_product', 'Rechercher un produit')}</span>
               <ChevronRight size={14} />
             </button>
           </div>
 
           <div className="flex items-center gap-4 pt-1 text-[11px] text-white/75 font-medium">
             <span className="flex items-center gap-1">
-              <ShieldCheck size={13} style={{ color: secondaryColor }} /> Produits certifiés
+              <ShieldCheck size={13} style={{ color: secondaryColor }} /> {t('search_hero.certified_products', 'Produits certifiés')}
             </span>
             <span className="flex items-center gap-1">
-              <Clock size={13} style={{ color: secondaryColor }} /> Suivi GPS en direct
+              <Clock size={13} style={{ color: secondaryColor }} /> {t('search_hero.live_gps_tracking', 'Suivi GPS en direct')}
             </span>
           </div>
         </div>
@@ -144,10 +144,10 @@ export function SearchHeroBanner({
           <div className="flex items-center justify-between mb-3 px-1">
             <div>
               <h3 className="font-extrabold text-gray-900 dark:text-white text-lg tracking-tight">
-                Catégories de produits
+                {t('search_hero.product_categories', 'Catégories de produits')}
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Faites défiler pour explorer par besoin de santé
+                {t('search_hero.scroll_health_needs', 'Faites défiler pour explorer par besoin de santé')}
               </p>
             </div>
             <button 
@@ -156,7 +156,7 @@ export function SearchHeroBanner({
               className="text-xs font-bold hover:underline flex items-center gap-0.5"
               style={{ color: primaryColor }}
             >
-              <span>{t('see_all', 'Tout voir')}</span>
+              <span>{t('search_hero.see_all', 'Tout voir')}</span>
               <ChevronRight size={14} />
             </button>
           </div>
@@ -199,10 +199,10 @@ export function SearchHeroBanner({
         <div className="flex items-center justify-between mb-3 px-1">
           <div>
             <h3 className="font-extrabold text-gray-900 dark:text-white text-lg tracking-tight">
-              Médicaments & Produits Essentiels
+              {t('search_hero.essential_products', 'Médicaments & Produits Essentiels')}
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Produits certifiés du catalogue
+              {t('search_hero.certified_catalog', 'Produits certifiés du catalogue')}
             </p>
           </div>
           <button 
@@ -211,7 +211,7 @@ export function SearchHeroBanner({
             className="text-xs font-bold hover:underline flex items-center gap-0.5"
             style={{ color: primaryColor }}
           >
-            <span>{t('see_all', 'Catalogue')}</span>
+            <span>{t('search_hero.catalog', 'Catalogue')}</span>
             <ChevronRight size={14} />
           </button>
         </div>
@@ -221,10 +221,10 @@ export function SearchHeroBanner({
             {/* Filter Pills */}
             <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-3 pt-1 -mx-1 px-1">
               {[
-                { id: "all", label: "Tous les produits" },
-                { id: "douleur", label: "Douleur & Fièvre" },
-                { id: "matériel", label: "Matériel & Diagnostic" },
-                { id: "premiers soins", label: "Premiers Soins" }
+                { id: "all", label: t('search_hero.all_products', 'Tous les produits') },
+                { id: "douleur", label: t('search_hero.pain_fever', 'Douleur & Fièvre') },
+                { id: "matériel", label: t('search_hero.diagnostic_equipment', 'Matériel & Diagnostic') },
+                { id: "premiers soins", label: t('search_hero.first_aid', 'Premiers Soins') }
               ].map(f => {
                 const isActive = selectedFilter === f.id;
                 return (
@@ -259,7 +259,7 @@ export function SearchHeroBanner({
                   <div>
                     <div className="w-full aspect-square bg-white dark:bg-zinc-800/80 border border-gray-100 dark:border-zinc-700/60 rounded-xl mb-2.5 overflow-hidden flex items-center justify-center p-2 relative shadow-xs">
                       <span className="absolute top-1.5 left-1.5 bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full z-10">
-                        En stock
+                        {t('search_hero.in_stock', 'En stock')}
                       </span>
                       {product.image_url || product.imageUrl || product.image ? (
                         <img 
@@ -287,9 +287,9 @@ export function SearchHeroBanner({
 
                   <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-zinc-800 flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] text-gray-400 block font-medium">Prix</span>
+                      <span className="text-[10px] text-gray-400 block font-medium">{t('search_hero.price', 'Prix')}</span>
                       <span className="font-extrabold text-sm" style={{ color: primaryColor }}>
-                        {product.price ? `${Number(product.price).toLocaleString()} XAF` : "Disponible"}
+                        {product.price ? `${Number(product.price).toLocaleString()} XAF` : t('search_hero.available', 'Disponible')}
                       </span>
                     </div>
                     <div 
@@ -306,10 +306,10 @@ export function SearchHeroBanner({
         ) : (
           <div className="p-6 bg-gray-50 dark:bg-zinc-900 border border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl text-center space-y-2">
             <p className="text-sm font-bold text-gray-800 dark:text-gray-200">
-              Aucun produit actuellement dans cette catégorie
+              {t('search_hero.no_products_category', 'Aucun produit actuellement dans cette catégorie')}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs mx-auto">
-              Utilisez la recherche ou transmettez votre ordonnance pour commander vos médicaments.
+              {t('search_hero.use_search_or_upload', 'Utilisez la recherche ou transmettez votre ordonnance pour commander vos médicaments.')}
             </p>
           </div>
         )}
@@ -321,7 +321,7 @@ export function SearchHeroBanner({
             className="w-full py-3.5 bg-gray-50 dark:bg-zinc-900 hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-900 dark:text-white border border-gray-200 dark:border-zinc-800 rounded-2xl font-bold text-xs transition flex items-center justify-center gap-2"
           >
             <Search size={15} style={{ color: primaryColor }} />
-            <span>Explorer tout le catalogue de médicaments</span>
+            <span>{t('search_hero.explore_full_catalog', 'Explorer tout le catalogue de médicaments')}</span>
           </button>
         </div>
       </div>

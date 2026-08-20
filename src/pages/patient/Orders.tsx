@@ -147,10 +147,10 @@ export function PatientOrders() {
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <ShoppingBag size={24} className="text-[#194B4B] dark:text-teal-400 shrink-0" />
-                Mes Commandes
+                {t('patient_orders.my_orders', 'Mes Commandes')}
               </h1>
               <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
-                Suivez vos commandes, vérifications de stock et effectuez vos paiements
+                {t('patient_orders.track_orders_desc', 'Suivez vos commandes, vérifications de stock et effectuez vos paiements')}
               </p>
             </div>
           </div>
@@ -160,7 +160,7 @@ export function PatientOrders() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               type="text"
-              placeholder="Rechercher une commande, un médicament ou une pharmacie..."
+              placeholder={t('patient_orders.search_placeholder', 'Rechercher une commande, un médicament ou une pharmacie...')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-gray-100 dark:bg-zinc-800 py-2.5 pl-10 pr-4 rounded-2xl text-xs sm:text-sm outline-none text-gray-900 dark:text-white placeholder-gray-400 border border-transparent focus:border-[#194B4B] transition"
@@ -188,15 +188,15 @@ export function PatientOrders() {
                 </div>
                 {unpaidOrders.length > 0 && (
                   <span className="text-[10px] font-black uppercase tracking-wider bg-black/15 text-slate-900 px-2 py-0.5 rounded-full">
-                    Action requise
+                    {t('patient_orders.action_required', 'Action requise')}
                   </span>
                 )}
               </div>
               <div className="relative z-10">
-                <p className="text-slate-800/75 text-xs sm:text-sm font-semibold mb-0.5">À Régler</p>
+                <p className="text-slate-800/75 text-xs sm:text-sm font-semibold mb-0.5">{t('patient_orders.to_pay', 'À Régler')}</p>
                 <h3 className="text-2xl sm:text-3xl font-black text-slate-950">{unpaidOrders.length}</h3>
                 <p className="text-[11px] sm:text-xs font-bold text-amber-900 mt-1 truncate">
-                  {unpaidTotalSum > 0 ? formatCurrency(unpaidTotalSum) : "Aucun impayé"}
+                  {unpaidTotalSum > 0 ? formatCurrency(unpaidTotalSum) : t('patient_orders.no_unpaid', 'Aucun impayé')}
                 </p>
               </div>
               {/* Barres décoratives */}
@@ -217,14 +217,14 @@ export function PatientOrders() {
                   <Truck size={16} className="text-black" />
                 </div>
                 <span className="text-[10px] font-bold text-teal-900 bg-black/10 px-2 py-0.5 rounded-full">
-                  Suivi direct
+                  {t('patient_orders.live_tracking', 'Suivi direct')}
                 </span>
               </div>
               <div className="relative z-10">
-                <p className="text-slate-800/75 text-xs sm:text-sm font-semibold mb-0.5">En Cours</p>
+                <p className="text-slate-800/75 text-xs sm:text-sm font-semibold mb-0.5">{t('patient_orders.in_progress', 'En Cours')}</p>
                 <h3 className="text-2xl sm:text-3xl font-black text-slate-950">{inProgressOrders.length}</h3>
                 <p className="text-[11px] sm:text-xs font-bold text-teal-950 mt-1 truncate">
-                  Préparation & Livraison
+                  {t('patient_orders.prep_delivery', 'Préparation & Livraison')}
                 </p>
               </div>
               {/* Barres décoratives */}
@@ -245,14 +245,14 @@ export function PatientOrders() {
                   <CheckCircle2 size={16} className="text-black" />
                 </div>
                 <span className="text-[10px] font-bold text-emerald-950 bg-black/10 px-2 py-0.5 rounded-full">
-                  Livrées
+                  {t('patient_orders.delivered', 'Livrées')}
                 </span>
               </div>
               <div className="relative z-10">
-                <p className="text-slate-800/75 text-xs sm:text-sm font-semibold mb-0.5">Terminées</p>
+                <p className="text-slate-800/75 text-xs sm:text-sm font-semibold mb-0.5">{t('patient_orders.completed', 'Terminées')}</p>
                 <h3 className="text-2xl sm:text-3xl font-black text-slate-950">{deliveredOrders.length}</h3>
                 <p className="text-[11px] sm:text-xs font-bold text-emerald-900 mt-1 truncate">
-                  Commandes reçues
+                  {t('patient_orders.orders_received', 'Commandes reçues')}
                 </p>
               </div>
               {/* Barres décoratives */}
@@ -270,14 +270,14 @@ export function PatientOrders() {
                   <ShieldCheck size={16} className="text-black" />
                 </div>
                 <span className="text-[10px] font-bold text-indigo-950 bg-black/10 px-2 py-0.5 rounded-full">
-                  Paiements
+                  {t('patient_orders.payments', 'Paiements')}
                 </span>
               </div>
               <div className="relative z-10">
-                <p className="text-slate-800/75 text-xs sm:text-sm font-semibold mb-0.5">Dépenses</p>
+                <p className="text-slate-800/75 text-xs sm:text-sm font-semibold mb-0.5">{t('patient_orders.expenses', 'Dépenses')}</p>
                 <h3 className="text-xl sm:text-2xl font-black text-slate-950 truncate">{formatCurrency(deliveredTotalSpent)}</h3>
                 <p className="text-[11px] sm:text-xs font-bold text-indigo-950 mt-1 truncate">
-                  Total payé
+                  {t('patient_orders.total_paid', 'Total payé')}
                 </p>
               </div>
               {/* Barres décoratives */}
@@ -299,10 +299,10 @@ export function PatientOrders() {
                   </div>
                   <div>
                     <h3 className="font-bold text-amber-950 dark:text-amber-300 text-xs sm:text-sm">
-                      {unpaidOrders.length} Commande(s) Validée(s) en attente de règlement
+                      {t('patient_orders.validated_pending_payment_alert', { count: unpaidOrders.length, defaultValue: `${unpaidOrders.length} Commande(s) Validée(s) en attente de règlement` })}
                     </h3>
                     <p className="text-[11px] sm:text-xs text-amber-900/80 dark:text-amber-300/80 mt-0.5">
-                      La pharmacie a confirmé la disponibilité de vos médicaments. Réglez maintenant pour lancer la préparation immédiate.
+                      {t('patient_orders.pharmacy_confirmed_desc', 'La pharmacie a confirmé la disponibilité de vos médicaments. Réglez maintenant pour lancer la préparation immédiate.')}
                     </p>
                   </div>
                 </div>
@@ -318,7 +318,7 @@ export function PatientOrders() {
                   className="w-full sm:w-auto px-5 py-2.5 min-h-[44px] bg-[#194B4B] hover:bg-teal-700 text-white rounded-xl sm:rounded-2xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition active:scale-95"
                 >
                   <ShieldCheck size={16} className="text-yellow-400" />
-                  Payer maintenant
+                  {t('patient_orders.pay_now', 'Payer maintenant')}
                   <ArrowRight size={14} />
                 </button>
               </div>
@@ -335,7 +335,7 @@ export function PatientOrders() {
                   : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400 hover:bg-gray-200"
               }`}
             >
-              Toutes ({orders.length})
+              {t('patient_orders.all_tab', 'Toutes')} ({orders.length})
             </button>
             
             <button
@@ -347,7 +347,7 @@ export function PatientOrders() {
               }`}
             >
               <CreditCard size={13} />
-              À Payer ({unpaidOrders.length})
+              {t('patient_orders.unpaid_tab', 'À Payer')} ({unpaidOrders.length})
             </button>
 
             <button
@@ -359,7 +359,7 @@ export function PatientOrders() {
               }`}
             >
               <Truck size={13} />
-              En Cours ({inProgressOrders.length})
+              {t('patient_orders.in_progress_tab', 'En Cours')} ({inProgressOrders.length})
             </button>
 
             <button
@@ -370,7 +370,7 @@ export function PatientOrders() {
                   : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400 hover:bg-gray-200"
               }`}
             >
-              Livrées ({deliveredOrders.length})
+              {t('patient_orders.delivered_tab', 'Livrées')} ({deliveredOrders.length})
             </button>
 
             <button
@@ -381,29 +381,29 @@ export function PatientOrders() {
                   : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400 hover:bg-gray-200"
               }`}
             >
-              Annulées ({cancelledOrders.length})
+              {t('patient_orders.cancelled_tab', 'Annulées')} ({cancelledOrders.length})
             </button>
           </div>
 
           {/* LISTE DES CARTES DE COMMANDE BIEN DISPOSÉES */}
           {loading ? (
             <div className="py-20 text-center text-sm text-gray-500 dark:text-zinc-400 animate-pulse">
-              Chargement de vos commandes...
+              {t('patient_orders.loading_orders', 'Chargement de vos commandes...')}
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="py-16 text-center bg-white dark:bg-zinc-900 rounded-3xl border border-dashed border-gray-200 dark:border-zinc-800 p-8">
               <ShoppingBag size={48} className="mx-auto text-gray-300 dark:text-zinc-700 mb-3" />
               <h3 className="font-bold text-base text-gray-800 dark:text-white">
-                Aucune commande dans cette section
+                {t('patient_orders.no_orders_section', 'Aucune commande dans cette section')}
               </h3>
               <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1 max-w-sm mx-auto">
-                Retrouvez ici l'état d'avancement de vos prescriptions et vos factures.
+                {t('patient_orders.no_orders_sub', "Retrouvez ici l'état d'avancement de vos prescriptions et vos factures.")}
               </p>
               <button
                 onClick={() => navigate("/patient/search")}
                 className="mt-5 px-6 py-2.5 min-h-[44px] bg-[#194B4B] text-white rounded-full text-xs font-bold hover:bg-teal-700 transition shadow-sm"
               >
-                Parcourir les médicaments
+                {t('patient_orders.browse_meds', 'Parcourir les médicaments')}
               </button>
             </div>
           ) : (
@@ -416,29 +416,29 @@ export function PatientOrders() {
                 const items = order.items || [];
 
                 // Libellé et Style du Statut
-                let statusLabel = "En attente";
+                let statusLabel = t('status.pending', "En attente");
                 let statusClass = "bg-gray-100 text-gray-700 dark:bg-zinc-800 dark:text-zinc-300";
 
                 if (order.status === 'validated_awaiting_payment' || (order.status === 'pending' && !order.paidAt)) {
-                  statusLabel = "Validée — À Payer";
+                  statusLabel = t('status.validated_awaiting_payment', "Validée — À Payer");
                   statusClass = "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300";
                 } else if (order.status === 'paid') {
-                  statusLabel = "Payé — Préparation";
+                  statusLabel = t('status.paid', "Payé — Préparation");
                   statusClass = "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300";
                 } else if (order.status === 'preparing') {
-                  statusLabel = "En préparation";
+                  statusLabel = t('status.preparing', "En préparation");
                   statusClass = "bg-teal-100 text-[#194B4B] dark:bg-teal-950 dark:text-teal-300";
                 } else if (order.status === 'ready' || order.status === 'ready_for_pickup') {
-                  statusLabel = order.deliveryMethod === 'pickup' ? "Prêt au comptoir" : "Prêt pour livraison";
+                  statusLabel = order.deliveryMethod === 'pickup' ? t('status.ready_counter', "Prêt au comptoir") : t('status.ready_delivery', "Prêt pour livraison");
                   statusClass = "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300";
                 } else if (order.status === 'on_the_way' || order.status === 'picked_up') {
-                  statusLabel = "En livraison";
+                  statusLabel = t('status.in_delivery', "En livraison");
                   statusClass = "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300";
                 } else if (order.status === 'delivered') {
-                  statusLabel = "Livrée";
+                  statusLabel = t('status.delivered', "Livrée");
                   statusClass = "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300";
                 } else if (order.status === 'cancelled' || order.status === 'rejected') {
-                  statusLabel = "Annulée";
+                  statusLabel = t('status.cancelled', "Annulée");
                   statusClass = "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400";
                 }
 
@@ -455,12 +455,12 @@ export function PatientOrders() {
                     <div className="flex items-start justify-between gap-3 border-b border-gray-100 dark:border-zinc-800 pb-3">
                       <div className="space-y-1">
                         <h3 className="font-black text-gray-900 dark:text-white text-base tracking-tight">
-                          Commande #{order.id.slice(0, 8).toUpperCase()}
+                          {t('patient_orders.order_hash', 'Commande')} #{order.id.slice(0, 8).toUpperCase()}
                         </h3>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-zinc-400">
                           <span className="flex items-center gap-1">
                             <Clock size={13} className="text-gray-400" />
-                            {dateObj ? dateObj.toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Récemment"}
+                            {dateObj ? dateObj.toLocaleDateString(t('locale_code', 'fr-FR'), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : t('recently', "Récemment")}
                           </span>
                           {order.pharmacyName && (
                             <span className="flex items-center gap-1 font-medium text-gray-700 dark:text-zinc-300">
@@ -482,7 +482,7 @@ export function PatientOrders() {
                     {/* SECTION 2 : LISTE DES MÉDICAMENTS */}
                     <div className="bg-gray-50 dark:bg-zinc-800/60 rounded-2xl p-4 space-y-2.5">
                       <p className="text-[11px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
-                        {items.length} Médicament(s) commandé(s)
+                        {t('patient_orders.items_ordered_count', { count: items.length, defaultValue: `${items.length} Médicament(s) commandé(s)` })}
                       </p>
                       <div className="space-y-2">
                         {items.map((it: any, idx: number) => (
@@ -504,12 +504,12 @@ export function PatientOrders() {
                       {order.deliveryMethod === 'pickup' ? (
                         <div className="flex items-center gap-2">
                           <Store size={15} className="text-[#194B4B] dark:text-teal-400 shrink-0" />
-                          <span className="font-medium">Retrait sur place en pharmacie</span>
+                          <span className="font-medium">{t('patient_orders.pickup_at_counter', 'Retrait sur place en pharmacie')}</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 min-w-0">
                           <MapPin size={15} className="text-orange-600 shrink-0" />
-                          <span className="font-medium truncate">{order.deliveryAddress || "Livraison à domicile"}</span>
+                          <span className="font-medium truncate">{order.deliveryAddress || t('patient_orders.home_delivery', "Livraison à domicile")}</span>
                         </div>
                       )}
                     </div>
@@ -517,7 +517,7 @@ export function PatientOrders() {
                     {/* SECTION 4 : TOTAL TTC */}
                     <div className="flex items-center justify-between pt-1">
                       <span className="text-xs font-semibold text-gray-500 dark:text-zinc-400">
-                        Montant Total TTC
+                        {t('patient_orders.total_incl_tax', 'Montant Total TTC')}
                       </span>
                       <span className="font-black text-gray-950 dark:text-white text-lg sm:text-xl">
                         {formatCurrency(order.total)}
@@ -537,7 +537,7 @@ export function PatientOrders() {
                             }}
                             className="px-4 py-3 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 rounded-2xl transition text-center shrink-0"
                           >
-                            Annuler
+                            {t('patient_orders.cancel', 'Annuler')}
                           </button>
 
                           <button
@@ -546,7 +546,7 @@ export function PatientOrders() {
                             className="flex-1 py-3 px-4 min-h-[46px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-zinc-950 font-black text-xs sm:text-sm rounded-2xl shadow-md flex items-center justify-center gap-2 transition active:scale-[0.98]"
                           >
                             <ShieldCheck size={18} />
-                            <span>Payer la commande</span>
+                            <span>{t('patient_orders.pay_order', 'Payer la commande')}</span>
                             <ArrowRight size={16} />
                           </button>
                         </div>
@@ -556,13 +556,13 @@ export function PatientOrders() {
                       {isInDelivery && (
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
                           <span className="text-xs text-orange-600 font-bold flex items-center gap-1.5 animate-pulse">
-                            <Truck size={16} /> Coursier en route vers vous
+                            <Truck size={16} /> {t('patient_orders.courier_on_the_way', 'Coursier en route vers vous')}
                           </span>
                           <button
                             onClick={() => navigate(`/patient/tracking/${order.id}`)}
                             className="px-5 py-3 min-h-[44px] bg-[#194B4B] hover:bg-teal-700 text-white rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm transition"
                           >
-                            <MapPin size={16} /> Suivre sur la Carte Live
+                            <MapPin size={16} /> {t('patient_orders.track_live_map', 'Suivre sur la Carte Live')}
                           </button>
                         </div>
                       )}
@@ -571,13 +571,13 @@ export function PatientOrders() {
                       {isDelivered && (
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
                           <span className="text-xs text-emerald-600 font-bold flex items-center gap-1.5">
-                            <CheckCircle2 size={16} /> Paiement validé & Commande reçue
+                            <CheckCircle2 size={16} /> {t('patient_orders.payment_validated_received', 'Paiement validé & Commande reçue')}
                           </span>
                           <button
                             onClick={() => printInvoice(order)}
                             className="px-5 py-3 min-h-[44px] bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-800 dark:text-zinc-200 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition"
                           >
-                            <Download size={16} /> Télécharger Facture PDF
+                            <Download size={16} /> {t('patient_orders.download_pdf_invoice', 'Télécharger Facture PDF')}
                           </button>
                         </div>
                       )}
@@ -588,30 +588,30 @@ export function PatientOrders() {
                     {cancellingOrderId === order.id && (
                       <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-2xl border border-red-100 dark:border-red-900 space-y-3 mt-1">
                         <p className="text-xs font-bold text-red-900 dark:text-red-300">
-                          Motif de l'annulation de la commande :
+                          {t('patient_orders.cancel_reason_prompt', "Motif de l'annulation de la commande :")}
                         </p>
                         <select
                           value={cancelReason}
                           onChange={(e) => setCancelReason(e.target.value)}
                           className="w-full bg-white dark:bg-zinc-900 border border-red-200 dark:border-red-800 p-3 rounded-xl text-xs outline-none"
                         >
-                          <option value="Changement d'avis">Changement d'avis</option>
-                          <option value="Délai trop long">Délai trop long</option>
-                          <option value="Médicament trouvé ailleurs">Médicament trouvé ailleurs</option>
-                          <option value="Erreur dans la commande">Erreur dans la commande</option>
+                          <option value="Changement d'avis">{t('patient_orders.reasons.change_mind', "Changement d'avis")}</option>
+                          <option value="Délai trop long">{t('patient_orders.reasons.too_long', "Délai trop long")}</option>
+                          <option value="Médicament trouvé ailleurs">{t('patient_orders.reasons.found_elsewhere', "Médicament trouvé ailleurs")}</option>
+                          <option value="Erreur dans la commande">{t('patient_orders.reasons.order_error', "Erreur dans la commande")}</option>
                         </select>
                         <div className="flex justify-end gap-2 pt-1">
                           <button
                             onClick={() => setCancellingOrderId(null)}
                             className="px-4 py-2.5 min-h-[38px] bg-gray-200 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 rounded-xl text-xs font-bold"
                           >
-                            Retour
+                            {t('patient_orders.back', 'Retour')}
                           </button>
                           <button
                             onClick={(e) => handleCancelOrder(order.id, e)}
                             className="px-5 py-2.5 min-h-[38px] bg-red-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-red-700"
                           >
-                            Confirmer l'annulation
+                            {t('patient_orders.confirm_cancel', "Confirmer l'annulation")}
                           </button>
                         </div>
                       </div>

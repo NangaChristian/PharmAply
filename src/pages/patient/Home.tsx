@@ -190,12 +190,12 @@ export function PatientHome() {
             </div>
             <div>
               <p className="text-base font-bold text-gray-900 dark:text-white leading-tight">
-                Bonjour, {userData?.name || user?.displayName || t('user', 'Client')}
+                {t('hello', 'Bonjour')}, {userData?.name || user?.displayName || t('user', 'Client')}
               </p>
               <div className="flex items-center text-gray-500 dark:text-gray-400 text-xs mt-0.5">
                 <MapPin size={12} className="text-[#194B4B] dark:text-teal-400 mr-1 shrink-0" />
                 <span className="truncate max-w-[200px]">
-                  {userData?.address || t('select_address', 'Livraison à domicile')}
+                  {userData?.address || t('home_delivery', 'Livraison à domicile')}
                 </span>
               </div>
             </div>
@@ -207,8 +207,8 @@ export function PatientHome() {
             <button 
               onClick={() => navigate('/patient/messages')}
               className="w-10 h-10 bg-white dark:bg-zinc-800 rounded-full flex items-center justify-center border border-gray-100 dark:border-zinc-700 shadow-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
-              title="Messagerie"
-              aria-label="Messagerie"
+              title={t('messages', 'Messagerie')}
+              aria-label={t('messages', 'Messagerie')}
             >
               <MessageSquare size={18} />
             </button>

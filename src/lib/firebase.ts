@@ -137,22 +137,54 @@ export const updateProfile = async (userObj: any, profile: { displayName?: strin
     console.warn("Supabase auth updateUser error:", e);
   }
 
-  // Also sync to users table document
+  // Also sync to users table document and cascade to all orders and prescriptions
   const uid = userObj?.uid || auth.currentUser?.uid;
   if (uid) {
     try {
       const userDocRef = doc(db, 'users', uid);
-      const updateData: any = {};
+      const updateData: any = {
+        updatedAt: new Date().toISOString()
+      };
       if (profile.displayName !== undefined) {
         updateData.displayName = profile.displayName;
         updateData.name = profile.displayName;
+        updateData.fullName = profile.displayName;
       }
       if (profile.photoURL !== undefined) {
         updateData.photoURL = profile.photoURL;
         updateData.photoUrl = profile.photoURL;
         updateData.avatar_url = profile.photoURL;
+        updateData.avatar = profile.photoURL;
       }
       await setDoc(userDocRef, updateData, { merge: true });
+
+      // Cascade to orders and prescriptions
+      const cascadePayload: any = {};
+      if (profile.displayName !== undefined) {
+        cascadePayload.patientName = profile.displayName;
+      }
+      if (profile.photoURL !== undefined) {
+        cascadePayload.patientPhoto = profile.photoURL;
+        cascadePayload.patientPhotoUrl = profile.photoURL;
+      }
+
+      if (Object.keys(cascadePayload).length > 0) {
+        try {
+          const ordQuery = query(collection(db, 'orders'), where('patientId', '==', uid));
+          const ordSnap = await getDocs(ordQuery);
+          ordSnap.docs.forEach(d => {
+            updateDoc(doc(db, 'orders', d.id), cascadePayload).catch(() => {});
+          });
+
+          const prescQuery = query(collection(db, 'prescriptions'), where('patientId', '==', uid));
+          const prescSnap = await getDocs(prescQuery);
+          prescSnap.docs.forEach(d => {
+            updateDoc(doc(db, 'prescriptions', d.id), cascadePayload).catch(() => {});
+          });
+        } catch (cascadeErr) {
+          console.warn("Cascade update to orders/prescriptions warning:", cascadeErr);
+        }
+      }
     } catch (e) {
       console.warn("Could not sync profile to users collection:", e);
     }

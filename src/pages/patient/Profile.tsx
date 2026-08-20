@@ -7,6 +7,8 @@ import { ref, uploadBytesResumable, getDownloadURL } from '../../lib/firebase';
 import { updateProfile } from '../../lib/firebase';
 import { doc, updateDoc, signOut } from '../../lib/firebase';
 import { useDarkMode } from "../../components/DarkModeProvider";
+import { updateUserProfileAndCascade } from '../../lib/userSync';
+import toast from 'react-hot-toast';
 
 export function PatientProfile() {
   const navigate = useNavigate();
@@ -22,11 +24,16 @@ export function PatientProfile() {
      if(auth.currentUser && displayName.trim() !== '') {
         try {
            setUploading(true);
-           await updateProfile(auth.currentUser, { displayName });
-           await updateDoc(doc(db, "users", auth.currentUser.uid), { displayName });
+           await updateUserProfileAndCascade(auth.currentUser.uid, {
+             displayName: displayName.trim(),
+             name: displayName.trim(),
+             fullName: displayName.trim()
+           });
            setIsEditing(false);
+           toast.success(t('profile_updated', 'Profil mis à jour avec succès'));
         } catch(e) {
            console.error(e);
+           toast.error(t('profile_update_error', 'Erreur lors de la mise à jour'));
         } finally {
            setUploading(false);
         }
@@ -42,8 +49,11 @@ export function PatientProfile() {
         const uploadTask = await uploadBytesResumable(fileRef, file);
         const url = await getDownloadURL(uploadTask.ref);
         
-        await updateProfile(auth.currentUser, { photoURL: url });
-        await updateDoc(doc(db, "users", auth.currentUser.uid), { photoUrl: url });
+        await updateUserProfileAndCascade(auth.currentUser.uid, {
+          photoURL: url,
+          photoUrl: url
+        });
+        toast.success(t('photo_updated', 'Photo de profil mise à jour'));
       } catch (err: any) {
         console.error("Profile upload error", err);
         alert(err.message || t('profile_upload_failed', 'Failed to upload profile picture.'));

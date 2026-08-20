@@ -111,7 +111,7 @@ export function PharmacistOrderDetails() {
     const orderDocRef = doc(db, 'orders', id);
     const unsubscribeOrder = onSnapshot(orderDocRef, async (docSnap) => {
       if (docSnap.exists()) {
-        const orderData = { id: docSnap.id, ...docSnap.data() } as any;
+        const orderData = { ...docSnap.data(), id: docSnap.id } as any;
         
         // Charger les informations du patient si besoin
         if (orderData.patientId && !orderData.patientName) {
@@ -259,7 +259,10 @@ export function PharmacistOrderDetails() {
         <div className="flex items-center gap-3">
           <button 
             type="button"
-            onClick={() => navigate(`/pharmacist/messages/${order.id}`)}
+            onClick={() => {
+              const targetId = String(order?.id || id || '');
+              navigate(`/pharmacist/messages/${targetId}`);
+            }}
             className="px-5 py-2.5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 text-gray-700 dark:text-gray-300 rounded-full text-sm font-bold shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition flex items-center gap-2"
           >
             <MessageCircle size={16} />

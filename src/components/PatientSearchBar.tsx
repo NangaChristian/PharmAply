@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, Leaf, ShieldCheck, AlertCircle, X, ArrowRight, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 import { db, collection, query, getDocs, limit } from '../lib/firebase';
 import { formatCurrency } from '../lib/utils';
@@ -17,6 +18,7 @@ function useDebounce(value: string, delay: number) {
 
 export function PatientSearchBar() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [queryText, setQueryText] = useState('');
   const debouncedQuery = useDebounce(queryText, 250);
   const [results, setResults] = useState<any[]>([]);
@@ -136,7 +138,7 @@ export function PatientSearchBar() {
         <input
           type="text"
           className="block w-full pl-10 pr-20 py-3 border border-gray-200 dark:border-zinc-700 rounded-2xl leading-5 bg-gray-50/80 dark:bg-zinc-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#194B4B] focus:border-[#194B4B] text-xs sm:text-sm transition-all dark:text-white shadow-xs"
-          placeholder="Rechercher un médicament, DCI, symptôme..."
+          placeholder={t('search_bar.placeholder', 'Rechercher un médicament, DCI, symptôme...')}
           value={queryText}
           onChange={(e) => setQueryText(e.target.value)}
           onFocus={() => { if (results.length > 0 || queryText.length >= 2) setIsOpen(true); }}
@@ -159,7 +161,7 @@ export function PatientSearchBar() {
             type="submit"
             className="px-3 py-1.5 bg-[#194B4B] hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1 active:scale-95"
           >
-            <span>Rechercher</span>
+            <span>{t('search_bar.search_btn', 'Rechercher')}</span>
           </button>
         </div>
       </form>
@@ -170,13 +172,13 @@ export function PatientSearchBar() {
           {results.length > 0 ? (
             <>
               <div className="px-4 py-2 border-b border-gray-100 dark:border-zinc-800/80 flex items-center justify-between text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                <span>Résultats suggérés ({results.length})</span>
+                <span>{t('search_bar.suggested_results', 'Résultats suggérés')} ({results.length})</span>
                 <button
                   type="button"
                   onClick={() => handleSearchSubmit()}
                   className="text-[#194B4B] dark:text-teal-400 hover:underline flex items-center gap-0.5 normal-case font-semibold"
                 >
-                  Voir tout dans le catalogue <ArrowRight size={12} />
+                  {t('search_bar.view_all_catalog', 'Voir tout dans le catalogue')} <ArrowRight size={12} />
                 </button>
               </div>
 
@@ -202,12 +204,12 @@ export function PatientSearchBar() {
                           </p>
                           {product.is_prescription_required && (
                             <span className="bg-red-50 text-red-600 dark:bg-red-950/40 text-[9px] font-bold px-1.5 py-0.2 rounded border border-red-200">
-                              Ordonnance
+                              {t('search_bar.prescription_tag', 'Ordonnance')}
                             </span>
                           )}
                           {product.is_essentiel && (
                             <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 text-[9px] font-bold px-1.5 py-0.2 rounded border border-emerald-200">
-                              Essentiel
+                              {t('search_bar.essential_tag', 'Essentiel')}
                             </span>
                           )}
                         </div>
@@ -219,9 +221,9 @@ export function PatientSearchBar() {
 
                     <div className="text-right shrink-0">
                       <p className="font-black text-xs sm:text-sm text-[#194B4B] dark:text-teal-400">
-                        {product.price ? formatCurrency(product.price) : 'En stock'}
+                        {product.price ? formatCurrency(product.price) : t('search_bar.in_stock', 'En stock')}
                       </p>
-                      <span className="text-[10px] text-gray-400 font-medium">Disponible</span>
+                      <span className="text-[10px] text-gray-400 font-medium">{t('search_bar.available', 'Disponible')}</span>
                     </div>
                   </div>
                 ))}
@@ -234,7 +236,7 @@ export function PatientSearchBar() {
                   className="w-full py-2 bg-white dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-xl text-xs font-bold text-[#194B4B] dark:text-teal-300 border border-gray-200 dark:border-zinc-700 transition flex items-center justify-center gap-1.5"
                 >
                   <Search size={13} />
-                  <span>Afficher tous les résultats pour « {queryText} »</span>
+                  <span>{t('search_bar.show_all_results_for', { query: queryText, defaultValue: `Afficher tous les résultats pour « ${queryText} »` })}</span>
                 </button>
               </div>
             </>
@@ -242,14 +244,14 @@ export function PatientSearchBar() {
             !loading && queryText.length >= 2 && (
               <div className="p-6 text-center text-xs text-gray-500 dark:text-gray-400 space-y-2">
                 <Search className="mx-auto h-6 w-6 text-gray-300 dark:text-gray-600" />
-                <p className="font-bold text-gray-700 dark:text-gray-300">Aucun médicament trouvé pour « {queryText} »</p>
-                <p className="text-[11px] text-gray-400">Appuyez sur "Rechercher" pour explorer tout le catalogue ou envoyer une ordonnance.</p>
+                <p className="font-bold text-gray-700 dark:text-gray-300">{t('search_bar.no_meds_found', { query: queryText, defaultValue: `Aucun médicament trouvé pour « ${queryText} »` })}</p>
+                <p className="text-[11px] text-gray-400">{t('search_bar.press_search_hint', 'Appuyez sur "Rechercher" pour explorer tout le catalogue ou envoyer une ordonnance.')}</p>
                 <button
                   type="button"
                   onClick={() => handleSearchSubmit()}
                   className="mt-2 px-4 py-2 bg-[#194B4B] text-white rounded-xl text-xs font-bold inline-flex items-center gap-1"
                 >
-                  Rechercher dans le catalogue complet
+                  {t('search_bar.search_full_catalog', 'Rechercher dans le catalogue complet')}
                 </button>
               </div>
             )

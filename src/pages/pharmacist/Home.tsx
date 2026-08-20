@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, ChevronDown, Lock, Grid, Activity, Users, Settings, MoreHorizontal, CheckCircle, Package, ShieldAlert, AlertTriangle, Clock, TrendingUp, DollarSign, Pill, Moon, Sun, ArrowUpRight, MessageSquare } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from 'recharts';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { collection, query, where, getDocs, onSnapshot, addDoc, serverTimestamp } from '../../lib/firebase';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../components/AuthProvider';
@@ -12,6 +12,9 @@ import { formatCurrency, parseDate, sortByDateDesc } from '../../lib/utils';
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
 import { NotificationBell } from "../../components/NotificationBell";
+import { LanguageSwitcher } from "../../components/LanguageSwitcher";
+import { useUserProfiles } from "../../lib/userSync";
+import { UserAvatar } from "../../components/common/UserAvatar";
 
 export function PharmacistHome() {
   const { t } = useTranslation();
@@ -24,6 +27,13 @@ export function PharmacistHome() {
   const [pharmacy, setPharmacy] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState<Set<string>>(new Set());
+
+  // Real-time lookup for patient names & avatars
+  const patientIds = useMemo(() => {
+    return orders.map(o => o.patientId || o.userId).filter(Boolean);
+  }, [orders]);
+
+  const userProfiles = useUserProfiles(patientIds);
 
   useEffect(() => {
     let unsubscribeOrders: () => void;
@@ -126,30 +136,27 @@ export function PharmacistHome() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input 
                    type="text" 
-                   placeholder="Search" 
+                   placeholder={t('search', 'Rechercher...')} 
                    className="w-full bg-[#FAFBFA] dark:bg-slate-800 border border-transparent focus:border-gray-200 py-3 pl-12 pr-4 rounded-full text-sm outline-none text-gray-900 dark:text-white transition-all shadow-sm"
                 />
              </div>
           </div>
           
           <div className="flex items-center gap-3 sm:gap-4">
-             <div className="flex items-center gap-2 bg-[#FAFBFA] dark:bg-slate-800 px-3.5 py-2 rounded-full shadow-sm cursor-pointer border border-gray-100 dark:border-zinc-700">
-                <span className="text-sm font-bold text-gray-700 dark:text-gray-200">FR</span>
-                <ChevronDown size={14} className="text-gray-400" />
-             </div>
+             <LanguageSwitcher variant="pill" />
              
              <button 
                 onClick={toggleDarkMode}
                 className="w-10 h-10 flex items-center justify-center bg-[#FAFBFA] dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors rounded-full text-gray-600 dark:text-gray-300 shadow-sm border border-gray-100 dark:border-zinc-700"
-                title="Mode sombre"
+                title={isDarkMode ? t('light_mode', 'Mode clair') : t('dark_mode', 'Mode sombre')}
              >
                 {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
              </button>
 
              <button 
-                onClick={() => navigate('/pharmacist/support')}
+                onClick={() => navigate('/pharmacist/messages')}
                 className="w-10 h-10 flex items-center justify-center bg-[#FAFBFA] dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors rounded-full text-gray-600 dark:text-gray-300 shadow-sm border border-gray-100 dark:border-zinc-700"
-                title="Messagerie & Support"
+                title={t('messages', 'Messagerie')}
              >
                 <MessageSquare size={18} />
              </button>
@@ -163,7 +170,7 @@ export function PharmacistHome() {
                   className="w-10 h-10 rounded-full object-cover shadow-sm"
                 />
                 <div className="hidden sm:block">
-                   <p className="font-bold text-gray-900 dark:text-white text-sm">{userData?.name || user?.displayName || pharmacy?.name || 'Pharmacist'}</p>
+                   <p className="font-bold text-gray-900 dark:text-white text-sm">{userData?.name || user?.displayName || pharmacy?.name || t('pharmacist', 'Pharmacien')}</p>
                    <p className="text-xs text-gray-500">{user?.email}</p>
                 </div>
                 <ChevronDown size={14} className="text-gray-400 hidden sm:block" />
@@ -176,10 +183,10 @@ export function PharmacistHome() {
          {/* Welcome Section */}
          <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
-               Welcome {userData?.name?.split(' ')[0] || 'Back'}!
+               {t('welcome', 'Bienvenue')} {userData?.name?.split(' ')[0] || ''} !
             </h1>
             <div className="bg-[#0B3B3C] text-white px-5 py-2.5 rounded-full flex items-center gap-2 text-sm font-bold shadow-md cursor-pointer hover:bg-[#082a2b] transition-colors">
-               <span>Team Member</span>
+               <span>{t('team_member', 'Membre de l\'équipe')}</span>
                <ChevronDown size={14} />
             </div>
          </div>
@@ -187,11 +194,11 @@ export function PharmacistHome() {
          {/* Stats Row */}
          <div>
             <div className="flex items-center justify-between mb-4">
-               <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Pharmacy Sales Results</h2>
+               <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{t('pharmacy_sales_results', 'Résultats des Ventes de la Pharmacie')}</h2>
                <div className="flex items-center gap-3">
                   <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 px-4 py-2 rounded-full flex items-center gap-2 text-sm font-bold shadow-sm cursor-pointer">
                      <Clock size={14} />
-                     <span>This Month</span>
+                     <span>{t('this_month', 'Ce mois')}</span>
                      <ChevronDown size={14} className="text-gray-400" />
                   </div>
                   <button className="w-9 h-9 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-600 shadow-sm hover:bg-gray-50">
@@ -209,10 +216,10 @@ export function PharmacistHome() {
                       <MoreHorizontal size={16} className="text-[#0B3B3C]/50" />
                    </div>
                    <div className="z-10 relative">
-                      <p className="text-[#0B3B3C]/70 text-sm font-bold mb-1">Todays Sales</p>
+                      <p className="text-[#0B3B3C]/70 text-sm font-bold mb-1">{t('todays_sales', 'Ventes du jour')}</p>
                       <h3 className="text-3xl font-black text-[#0B3B3C] mb-2">{formatCurrency(todayRevenue)}</h3>
                       <p className="text-xs font-bold text-[#0B3B3C]/60 flex items-center gap-1">
-                         <span className="text-[#0B3B3C]">+2.5%</span> This Month
+                         <span className="text-[#0B3B3C]">+2.5%</span> {t('this_month', 'Ce mois')}
                       </p>
                    </div>
                    <div className="absolute bottom-0 right-4 flex items-end gap-1.5 opacity-20 h-16">
@@ -231,12 +238,12 @@ export function PharmacistHome() {
                       <MoreHorizontal size={16} className="text-[#0B3B3C]/50" />
                    </div>
                    <div className="z-10 relative">
-                      <p className="text-[#0B3B3C]/70 text-sm font-bold mb-1">Available Categories</p>
+                      <p className="text-[#0B3B3C]/70 text-sm font-bold mb-1">{t('available_categories', 'Catégories disponibles')}</p>
                       <h3 className="text-3xl font-black text-[#0B3B3C] mb-2">
                         {Array.from(new Set(products.map(p => p.category || p.ux_category_id))).filter(Boolean).length}
                       </h3>
                       <p className="text-xs font-bold text-[#0B3B3C]/60 flex items-center gap-1">
-                         <span className="text-[#0B3B3C]">+2.5%</span> This Month
+                         <span className="text-[#0B3B3C]">+2.5%</span> {t('this_month', 'Ce mois')}
                       </p>
                    </div>
                    <div className="absolute bottom-0 right-4 flex items-end gap-1.5 opacity-20 h-16">
@@ -255,10 +262,10 @@ export function PharmacistHome() {
                       <MoreHorizontal size={16} className="text-[#0B3B3C]/50" />
                    </div>
                    <div className="z-10 relative">
-                      <p className="text-[#0B3B3C]/70 text-sm font-bold mb-1">Expired Medicines</p>
+                      <p className="text-[#0B3B3C]/70 text-sm font-bold mb-1">{t('expired_medicines', 'Médicaments expirés')}</p>
                       <h3 className="text-3xl font-black text-[#0B3B3C] mb-2">{expiredPercentage.toFixed(2)}%</h3>
                       <p className="text-xs font-bold text-[#0B3B3C]/60 flex items-center gap-1">
-                         <span className="text-[#0B3B3C]">+2.5%</span> This Month
+                         <span className="text-[#0B3B3C]">+2.5%</span> {t('this_month', 'Ce mois')}
                       </p>
                    </div>
                    <div className="absolute bottom-0 right-4 flex items-end gap-1.5 opacity-20 h-16">
@@ -277,10 +284,10 @@ export function PharmacistHome() {
                       <MoreHorizontal size={16} className="text-[#0B3B3C]/50" />
                    </div>
                    <div className="z-10 relative">
-                      <p className="text-[#0B3B3C]/70 text-sm font-bold mb-1">System Users</p>
+                      <p className="text-[#0B3B3C]/70 text-sm font-bold mb-1">{t('system_users', 'Utilisateurs du système')}</p>
                       <h3 className="text-3xl font-black text-[#0B3B3C] mb-2">{customers.size}</h3>
                       <p className="text-xs font-bold text-[#0B3B3C]/60 flex items-center gap-1">
-                         <span className="text-[#0B3B3C]">+{customers.size > 0 ? '1' : '0'}</span> This Month
+                         <span className="text-[#0B3B3C]">+{customers.size > 0 ? '1' : '0'}</span> {t('this_month', 'Ce mois')}
                       </p>
                    </div>
                    <div className="absolute bottom-0 right-4 flex items-end gap-1.5 opacity-20 h-16">
@@ -297,7 +304,7 @@ export function PharmacistHome() {
          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-[#FAFBFC] dark:bg-slate-800 rounded-3xl p-6 relative overflow-hidden border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col">
                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">Graph Report</h3>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('graph_report', 'Rapport Graphique')}</h3>
                   <button className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-slate-700 border border-gray-100 text-gray-500 hover:bg-gray-50">
                      <MoreHorizontal size={14} />
                   </button>
@@ -323,7 +330,7 @@ export function PharmacistHome() {
                      </PieChart>
                   </ResponsiveContainer>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                     <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1">Total</p>
+                     <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1">{t('total', 'Total')}</p>
                      <p className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(totalRevenue)}</p>
                   </div>
                </div>
@@ -339,7 +346,7 @@ export function PharmacistHome() {
 
             <div className="bg-[#FAFBFC] dark:bg-slate-800 rounded-3xl p-6 relative overflow-hidden border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col">
                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">Total Sales Overview</h3>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('total_sales_overview', 'Aperçu Total des Ventes')}</h3>
                   <button className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-slate-700 border border-gray-100 text-gray-500 hover:bg-gray-50">
                      <MoreHorizontal size={14} />
                   </button>
@@ -386,17 +393,17 @@ export function PharmacistHome() {
          {/* Recent Sales List */}
          <div>
             <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6 gap-4 mt-8">
-               <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Recent Sales List</h2>
+               <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">{t('recent_sales_list', 'Liste des Ventes Récentes')}</h2>
                <div className="flex items-center gap-3">
                   <div className="relative">
                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                     <input type="text" placeholder="Search..." className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 py-2.5 pl-9 pr-4 rounded-xl text-xs font-medium w-48 outline-none shadow-sm" />
+                     <input type="text" placeholder={t('search', 'Rechercher...')} className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 py-2.5 pl-9 pr-4 rounded-xl text-xs font-medium w-48 outline-none shadow-sm" />
                   </div>
                   <button className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 shadow-sm">
-                     <Settings size={14} /> Filter <ChevronDown size={12} />
+                     <Settings size={14} /> {t('filter', 'Filtrer')} <ChevronDown size={12} />
                   </button>
                   <button className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 shadow-sm">
-                     <ArrowUpRight size={14} /> Sort By <ChevronDown size={12} />
+                     <ArrowUpRight size={14} /> {t('sort_by', 'Trier par')} <ChevronDown size={12} />
                   </button>
                   <button className="w-9 h-9 flex items-center justify-center bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl text-gray-600 dark:text-gray-300 shadow-sm">
                      <MoreHorizontal size={14} />
@@ -409,32 +416,39 @@ export function PharmacistHome() {
                   <table className="w-full text-left border-collapse">
                      <thead>
                         <tr className="border-b border-gray-100 dark:border-slate-700">
-                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Name</th>
-                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Medicine</th>
-                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Status</th>
-                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Quantity</th>
-                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">Total Price</th>
-                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase flex items-center gap-1">Date <ChevronDown size={12}/></th>
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">{t('name', 'Nom')}</th>
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">{t('medicine', 'Médicament')}</th>
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">{t('status', 'Statut')}</th>
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">{t('quantity', 'Quantité')}</th>
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase">{t('total_price', 'Prix Total')}</th>
+                           <th className="py-4 px-6 text-xs font-bold tracking-wider text-gray-500 uppercase flex items-center gap-1">{t('date', 'Date')} <ChevronDown size={12}/></th>
                         </tr>
                      </thead>
-                     <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
+                      <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
                         {loading ? (
-                           <tr><td colSpan={6} className="py-8 text-center text-gray-500 text-sm">Loading orders...</td></tr>
+                           <tr><td colSpan={6} className="py-8 text-center text-gray-500 text-sm">{t('loading_sales', 'Chargement des commandes...')}</td></tr>
                         ) : orders.length === 0 ? (
-                           <tr><td colSpan={6} className="py-8 text-center text-gray-500 text-sm">No recent sales.</td></tr>
+                           <tr><td colSpan={6} className="py-8 text-center text-gray-500 text-sm">{t('no_recent_sales', 'Aucune vente récente.')}</td></tr>
                         ) : (
-                           orders.slice(0, 5).map((order) => (
+                           orders.slice(0, 5).map((order) => {
+                              const pId = order.patientId || order.userId;
+                              const liveName = userProfiles[pId]?.name || order.patientName || 'Client';
+                              const livePhoto = userProfiles[pId]?.photoUrl || order.patientPhoto || order.patientPhotoUrl || '';
+                              return (
                               <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors group">
                                  <td className="py-4 px-6">
                                     <div className="flex items-center gap-3">
-                                       <div className="w-8 h-8 rounded-full bg-[#E2EBE9] dark:bg-slate-700 flex items-center justify-center text-[#0B3B3C] dark:text-white font-bold text-xs">
-                                          {order.patientName ? order.patientName.charAt(0) : 'U'}
-                                       </div>
-                                       <span className="font-bold text-gray-800 dark:text-white text-sm">{order.patientName || 'Unknown User'}</span>
+                                       <UserAvatar
+                                          userId={pId}
+                                          name={liveName}
+                                          photoUrl={livePhoto}
+                                          sizeClassName="w-8 h-8"
+                                       />
+                                       <span className="font-bold text-gray-800 dark:text-white text-sm">{liveName}</span>
                                     </div>
                                  </td>
                                  <td className="py-4 px-6 text-sm font-medium text-gray-600 dark:text-gray-300">
-                                    {order.items && order.items[0] ? order.items[0].name : 'Unknown Item'}
+                                    {order.items && order.items[0] ? order.items[0].name : 'Item'}
                                     {order.items && order.items.length > 1 && ` (+${order.items.length - 1})`}
                                  </td>
                                  <td className="py-4 px-6 text-sm text-gray-500 dark:text-gray-400 capitalize">
@@ -452,7 +466,8 @@ export function PharmacistHome() {
                                     {order.createdAt ? dayjs(parseDate(order.createdAt)).format('MMM DD, YYYY hh:mm A') : 'N/A'}
                                  </td>
                               </tr>
-                           ))
+                              );
+                           })
                         )}
                      </tbody>
                   </table>

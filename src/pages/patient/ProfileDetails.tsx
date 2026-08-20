@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { auth, db } from '../../lib/firebase';
 import { doc, getDoc, updateDoc } from '../../lib/firebase';
 import { GooglePlacesAddressInput } from '../../components/GooglePlacesAddressInput';
+import { updateUserProfileAndCascade } from '../../lib/userSync';
+import toast from 'react-hot-toast';
 
 export function PatientProfileDetails() {
   const navigate = useNavigate();
@@ -32,8 +34,15 @@ export function PatientProfileDetails() {
         setFormData(prev => ({ ...prev, fullName: auth.currentUser?.displayName || '' }));
         try {
           const d = await getDoc(doc(db, "users", auth.currentUser.uid));
-          if (d.exists() && d.data().profileDetails) {
-            setFormData(prev => ({ ...prev, ...d.data().profileDetails }));
+          if (d.exists()) {
+            const uData = d.data();
+            const resolvedName = uData.name || uData.fullName || uData.displayName || auth.currentUser?.displayName || '';
+            const resolvedPhone = uData.phone || uData.profileDetails?.phoneNumber || '';
+            if (uData.profileDetails) {
+              setFormData(prev => ({ ...prev, ...uData.profileDetails, fullName: resolvedName || prev.fullName, phoneNumber: resolvedPhone || prev.phoneNumber }));
+            } else {
+              setFormData(prev => ({ ...prev, fullName: resolvedName || prev.fullName, phoneNumber: resolvedPhone || prev.phoneNumber }));
+            }
           }
         } catch (e) {
           console.error(e);
@@ -55,14 +64,22 @@ export function PatientProfileDetails() {
     setSuccess(false);
     try {
       if (auth.currentUser) {
-        await updateDoc(doc(db, "users", auth.currentUser.uid), {
+        // Save profile details and cascade
+        await updateUserProfileAndCascade(auth.currentUser.uid, {
+          name: formData.fullName,
+          displayName: formData.fullName,
+          fullName: formData.fullName,
+          phone: formData.phoneNumber,
           profileDetails: formData
         });
+
         setSuccess(true);
+        toast.success(t('profile_saved', 'Informations enregistrées avec succès'));
         setTimeout(() => setSuccess(false), 2000);
       }
     } catch(err) {
       console.error(err);
+      toast.error(t('error_saving', 'Erreur lors de la sauvegarde'));
     } finally {
       setLoading(false);
     }
